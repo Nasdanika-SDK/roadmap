@@ -1,0 +1,233 @@
+@Ecore(nsURI="https://iam.models.nasdanika.org", nsPrefix="org.nasdanika.models.iam")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.iam
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.Period
+import org.nasdanika.models.nxcore.NamedPeriod
+import org.nasdanika.models.nxcore.Evaluator
+
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+enum Effect {
+    ALLOW
+    DENY
+}
+
+/* ---- Actions ---- */
+
+/*
+ * Something that can be done to a protected element: view, edit, publish,
+ * execute, administer. Instance data, not an enum: each realm or catalog
+ * defines its own action taxonomy. Hierarchical: granting an action
+ * implies its children (administer implies edit implies view, if so
+ * modeled).
+ */
+class Action extends ModelElement, Period {
+    contains Action[] children
+}
+
+/* ---- Subjects (who) ---- */
+
+/*
+ * Anyone or anything access can be granted to or denied. Subjects can be
+ * assigned IAM roles and can carry subject-side permissions directly,
+ * though permissions usually live on roles.
+ */
+abstract class Subject extends ModelElement, Period {
+    refers Role[] roles
+    contains Permission[] permissions
+}
+
+/*
+ * An individual identity: a person, a service account, an agent.
+ * Authentication of the principal (how it proves it is who it says it is)
+ * is the enforcement layer's problem; aliases carry the external
+ * identifiers (login, e-mail, OIDC subject) used to match.
+ */
+class Principal extends Subject {
+    String[] aliases
+}
+
+/*
+ * A named set of subjects: an organizational unit, a team, a subscription
+ * tier. Groups may contain groups. In the sealed-delivery extension a
+ * group is the unit of key distribution.
+ */
+class Group extends Subject {
+    refers Subject[] members
+}
+
+/*
+ * An IAM role: a named, assignable bundle of permissions (RBAC). Not to be
+ * confused with the role model's roles, which are engagement types on
+ * elements (owner, reviewer); see EngagedSubject for the bridge.
+ * Role extends Subject, so role hierarchies (a role having roles) and
+ * direct permissions come for free.
+ */
+class Role extends Subject {
+}
+
+/*
+ * An expression-defined set of subjects (ABAC): all principals for which
+ * the expression evaluates to true, e.g. principal.department == "Risk".
+ */
+class SubjectSelector extends Subject {
+    /* Boolean expression over subject attributes and properties. */
+    String expression
+}
+
+/*
+ * A relationship-defined subject (ReBAC): whoever is engaged with the
+ * protected element in the given role-model role, e.g. "owner",
+ * "reviewer". Bridges IAM to the role model: ownership data lives there,
+ * grants derived from it live here.
+ */
+class EngagedSubject extends Subject {
+    /* Name or URI of the role in the role model. Becomes a typed reference once the role model nsURI is verified. */
+    String role
+    /* If true, engagements on ancestor elements also match (the owner of a catalog is treated as engaged with its entries). */
+    boolean inherited
+}
+
+/* ---- Realms ---- */
+
+/*
+ * A protection / identity domain: the container of subjects and the action
+ * taxonomy they are granted against. Nests like a catalog: an organization
+ * realm containing team realms, a public realm containing subscription
+ * tiers. A realm is itself access controlled: who may administer the
+ * realm is instance data, not a special mechanism.
+ */
+class Realm extends NamedPeriod, AccessControlled {
+    contains Realm[] realms
+    contains Subject[] subjects
+    contains Action[] actions
+}
+
+/* ---- Authorization statements ---- */
+
+/*
+ * Resource-side statement, contained in the protected element: who may
+ * (or may not) do what, on which part of the element.
+ */
+class AccessControlEntry extends ModelElement, Period {
+	
+    Effect effect
+    /**
+     * Who the entry applies to.
+     */
+    refers Subject[] subjects
+    
+    /**
+     * Carve-outs: subjects excluded from the above, e.g. a group minus specific principals.
+     */
+    refers Subject[] except
+    
+    /**
+     * Computes subjects
+     */
+    contains Evaluator subjectEvaluator
+    
+    refers Action[] actions
+    
+    /**
+     * Computes actions
+     */
+    contains Evaluator actionEvaluator    
+        
+    /**
+     * Evaluator for descendant elements the entry covers; null means the element itself.
+     */
+    contains Evaluator targetEvaluator
+    
+    /**
+     * Structural feature names the entry covers; empty means all.
+     */
+    String[] features
+    
+    /**
+     * Operation names the entry covers; empty means all.
+     */
+    String[] operations
+    
+    /**
+     * Boolean expression evaluator over subject, element, and environment; ABAC and stage-scoped access live here.
+     */
+    contains Evaluator condition
+}
+
+/*
+ * Subject-side statement, contained in a subject (typically a Role):
+ * what the subject may (or may not) do, on which resources.
+ */
+class Permission extends ModelElement, Period {
+	
+    Effect effect
+    
+    refers Action[] actions
+    
+    /**
+     * Selector for the resources the permission covers, absolute or realm-relative.
+     */
+    contains Evaluator resources
+    
+    String[] features
+    
+    String[] operations
+    
+    /**
+     * Boolean expression evaluator over subject, element, and environment.
+     */
+    contains Evaluator condition
+}
+
+/* ---- Protected elements ---- */
+
+/*
+ * Anything which needs protection: a capability, an agent, an MCP server,
+ * a document, a realm. Domain models extend this class (possibly alongside
+ * lifecycle, role, and governance model classes) to acquire the access
+ * control aspect.
+ *
+ * Effective access for a (subject, action, element) triple: collect
+ * entries from the element and its AccessControlled ancestors (nearest
+ * first) whose target selector matches, plus the subject's own and
+ * role-carried permissions whose resource selector matches; explicit DENY
+ * overrides ALLOW; no match means DENY.
+ */
+interface AccessControlled {
+	
+    contains AccessControlEntry[] accessControl
+    
+}
+
+// === Specializations === 
+
+/**
+ * Access controlled content, e.g. targeted for specific audiences
+ */
+class Content extends org.nasdanika.models.role.Content, AccessControlled {
+	
+}
+
+/**
+ * Access controlled section, e.g. targeted for specific audiences
+ */
+class Section extends org.nasdanika.models.role.Section, AccessControlled {
+	
+}
+
+
+
+

@@ -1,0 +1,26 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+	<artifactId>parent</artifactId>
+	<packaging>pom</packaging>
+	<name>Nasdanika SDK Roadmap: Runtime</name>
+	<description>
+		What is on the roadmap for the Nasdanika SDK Runtime, as code. Each module mirrors the runtime
+		module it would graduate to: org.nasdanika.sdk.roadmap.runtime.common becomes
+		org.nasdanika.sdk.runtime.common by dropping "roadmap" from its names.
+	</description>
+
+	<modules>
+		<module>common</module>
+		<module>widget</module>
+		<module>tui</module>
+		<module>commander</module>
+	</modules>
+</project>

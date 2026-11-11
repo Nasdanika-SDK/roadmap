@@ -1,0 +1,132 @@
+[#direction]
+== Direction
+
+=== One model in the middle
+
+Nasdanika starts from one picture.
+In the middle is the model: not one large model but a federation of small ones, each small enough to read in one sitting, formal enough for tools and agents to work on, and composable with the others the way Java modules compose through Maven.
+A small model is cheap to write and cheap to publish, and that is what makes "one model at a time" a way to adopt modeling rather than a slogan.
+
+image::nasdanika.png[Nasdanika three audiences,pdfwidth=30%,float=right]
+
+Around the model are three audiences, and each meets it through its own surface.
+
+*People* write and read in the tools they already use: Draw.io diagrams, spreadsheets, Markdown, generated sites and books, a command line, a terminal.
+They get a user interface for a task, or a group of tasks, rather than one portal for everything.
+
+*AI agents* do not get raw files.
+They get schemas and tool definitions generated from the metamodels, and the slice of the model that a task needs, so that they stay focused and bounded.
+
+*Systems* are where the work already happens: Git hosting, issue trackers, build tools, a running JVM.
+Connectors load what is in them as models and cross-reference it.
+What is loaded can be saved as a snapshot and worked on later, away from the source: enriched in several passes, examined after access has expired, and compared with the next snapshot.
+
+The model is kept in Git, which gives versions and distributed ownership file by file.
+Change recording and telemetry, kept as models beside the model, give the finer grain that Git alone does not have: which feature changed, in which unit of work, caused by what.
+
+=== The North Star
+
+The destination is agentic work on bounded, typed models: inference that runs in the JVM, with tool calls recorded as models, state in Git, the safety of a transaction, and the same behavior on a laptop, in a container and in a build.
+
+The smallest demonstration that would be believed is one agentic workflow whose state is in Git and can be rolled back.
+The candidate is the dispute of a card transaction in the Nasdanika International Banking System, the reference application that grows with the platform.
+
+The North Star is what keeps gradient ascent from stopping on a local maximum.
+A step can be valuable and cheap and still lead away from it.
+
+=== How the next step is chosen
+
+*Gradient ascent.*
+A plan with dates for the next two years would be wrong within a month, since each thing that is built changes what the next thing costs and what it is worth.
+So the plan is a position and a rule.
+From where things stand, take the step with the most value for its time and effort, counting what it makes cheaper afterwards.
+Then measure again from the new position.
+Items in this book have a status and what they wait for, not a date, except the next release.
+
+*Socialize before inference.*
+The capabilities that need no inference are shown first: observability, insight into a running JVM, diagrams, documentation that cannot drift from the code.
+They have value on their own, to developers and architects, and they are the ground that inference will stand on.
+The runtime released so far is the result of this rule.
+
+*An increment says what it adds.*
+Each increment states the capability it adds, the demonstration that shows it, what it pulls in, and that it builds green from a clean clone.
+The chapters of this book with code follow that shape.
+
+*Salvage, do not port.*
+The older Nasdanika has a great deal of code.
+A module comes from it into the SDK as a small library, and its integrations come as adapters when something needs them.
+Nothing is moved because it exists.
+
+*Demonstrate on one example.*
+New capabilities are shown in the Nasdanika International Banking System where a bank would plausibly need them, and in the module's own book where it would not.
+
+=== Where things stand
+
+The Nasdanika SDK Runtime {runtime-version} is released to Maven Central.
+<<released>> lists what is in it, as the starting position of this roadmap.
+The {sdk-book}[SDK book] and the Nasdanika Zephyr Books, one for a module or a small group of modules, describe it.
+
+[#released]
+.What the runtime has, as of {runtime-version}
+[cols="1,3",options="header"]
+|===
+|Area |Modules
+
+|Foundation
+|`common`: flows on the JDK (`Pump`, `Transformer`), the capability loader, telemetry per unit of work, resource sets assembled from services
+
+|Files and serving
+|`volume`: the `Volume` SPI, content, an EMF URI handler over volumes, HTTP and WebDAV handlers
+
+|Testing with traces
+|`harness`, `playwright`: a server in the trace of its test, browser sessions with steps, screenshots, narration and video
+
+|Persistence
+|`emf-json`: JSON and YAML resources
+
+|Command line
+|`picocli`, `cli`, `bootstrap`, `cli-launcher`: commands contributed by modules and wired by generic type, and a distribution
+
+|DSL
+|`groovy`: a Groovy DSL for any model
+
+|Draw.io
+|`drawio`, `drawio-playwright`: a Java API for diagrams, and rendering with the viewer of draw.io
+
+|Models
+|core, file, telemetry, typescript, meta, jvm, html with Bootstrap, react with React Flow, diagram with ELK, presentation, drawio, svg
+|===
+
+What grew first is the half that needs no inference: telemetry, volumes, the command line, documentation, diagrams and browser automation.
+Inference, its providers, MCP, the change model, messaging and Cypher are not in the runtime yet.
+They are the path to the North Star, and <<designed-and-waiting>> lists them.
+
+=== What holds
+
+Some decisions are settled and shape everything in this book.
+The SDK book argues them; here they are in one line each.
+
+* *One identity.* A module's path gives its site page, namespace URI, Java module, package, Maven coordinates, logger and instrumentation scope.
+* *Pure Nasdanika* is Java, EMF core and the OpenTelemetry API. Anything else earns its place module by module.
+* *The JDK first.* `Flow`, virtual threads and the JDK's HTTP client and server, with no reactive library under them.
+* *Services before capabilities.* A lookup by type is a Java service. The capability framework is for requirements that are objects, and for resolution that chains.
+* *Telemetry per unit of work.* Spans for operations, log records for what happens in them, and one `OpenTelemetry` per unit of work carried in the context, never a global one.
+* *Three planes.* Data in volumes, semantics in resource sets, representation in views. Reads go up through volumes and writes go down through commands.
+* *A polymorphic user interface.* A view is chosen by the class of what it shows and by the format asked for, and an agent is a user too.
+* *Documentation is built.* Books are AsciiDoc in the module they describe, their listings are regions of tests, and a warning fails the build.
+
+=== The shape of what follows
+
+The rest of the book has two parts.
+
+*Runtime* is what comes next in the runtime itself.
+The order of its chapters is the order of dependency: bindings and waypoints go into `common`, widgets are built on bindings, the terminal on widgets, and the commander on the terminal and on volumes.
+Screens drawn in Draw.io, and the list of what is designed and waiting, close the part.
+
+*Models* is the larger and the slower part.
+The core model gains nano-models, small aspects that many models share.
+The models of the runtime itself, such as the command line and inference, come next.
+Then the model tower, the "business" models that build on each other floor by floor, and the technology models that load what is in other systems.
+
+The runtime is released quarterly.
+The next release is planned for February 2027, tentatively.

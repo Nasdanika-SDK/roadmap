@@ -1,0 +1,275 @@
+@Ecore(nsURI="https://governance.models.nasdanika.org", nsPrefix="org.nasdanika.models.governance")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.governance
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.Temporal
+import org.nasdanika.models.nxcore.Period
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/**
+ * Ordinal scale shared by likelihood, impact, and severity.
+ * TODO - to a class
+ */
+enum Level {
+    VERY_LOW
+    LOW
+    MEDIUM
+    HIGH
+    VERY_HIGH
+}
+
+/* ---- Program (root container) ---- */
+
+/*
+ * A governance program: the frameworks it answers to, the policies it sets,
+ * the controls it operates, the risks it tracks, and the record of
+ * assessments and waivers. An organization may have several programs
+ * (AI governance, information security, financial controls) sharing controls.
+ * TODO - extend relevant domains e.g. actor domain from Role
+ */
+class GovernanceProgram extends ModelElement {
+    contains Framework[] frameworks
+    contains Policy[] policies
+    contains Control[] controls
+    contains Risk[] risks
+    contains Assessment[] assessments
+    contains Waiver[] waivers
+}
+
+/* ---- Frameworks and requirements ---- */
+
+/*
+ * An external or internal source of requirements: NIST AI RMF, ISO/IEC 42001
+ * Annex A, EU AI Act, PCI DSS, a corporate policy manual. Modeled as data so
+ * new frameworks are catalog entries, not metamodel changes.
+ */
+class Framework extends ModelElement {
+    /* Issuing authority, e.g. NIST, ISO/IEC, European Union, internal. */
+    String authority
+    String version
+    String website
+    contains Requirement[] requirements
+}
+
+/*
+ * A single requirement within a framework, hierarchical to mirror framework
+ * structure (function > category > subcategory, article > paragraph).
+ */
+class Requirement extends ModelElement {
+    /* Reference identifier within the framework, e.g. "GOVERN 1.1", "A.6.2.4", "Art. 9". */
+    String reference
+    contains Requirement[] children
+}
+
+/* ---- Policies ---- */
+
+/*
+ * An internal statement of intent: what the organization requires of itself.
+ * Policies translate framework requirements into local rules and are enforced
+ * by controls.
+ */
+class Policy extends ModelElement {
+    /* Framework requirements this policy addresses. */
+    refers Requirement[] satisfies
+    /* Controls that enforce this policy. */
+    refers Control[] enforcedBy
+}
+
+/* ---- Controls ---- */
+
+/**
+ * TODO - to a class contained in the governance program (domain)
+ */
+enum ControlNature {
+    /* Stops the bad thing from happening: input validation, access control. */
+    PREVENTIVE
+    /* Notices that it happened: monitoring, review, reconciliation. */
+    DETECTIVE
+    /* Fixes it after the fact: rollback, incident response. */
+    CORRECTIVE
+    /* Tells people what to do: standards, training, procedures. */
+    DIRECTIVE
+    /* Substitutes for an infeasible primary control. */
+    COMPENSATING
+}
+
+/**
+ * TODO - to a class contained in the governance domain
+ */
+enum ControlAutomation {
+    MANUAL
+    /* Manual with automated support, e.g. human review of automated flags. */
+    HYBRID
+    AUTOMATED
+}
+
+/*
+ * A safeguard: a repeatable measure that mitigates risks and satisfies
+ * requirements. Controls are defined once and applied to many governed
+ * elements via ControlApplication.
+ */
+class Control extends ModelElement {
+    ControlNature nature
+    ControlAutomation automation
+    /* Crosswalk: requirements in any number of frameworks this control satisfies. */
+    refers Requirement[] satisfies
+    /**
+     * Risks this control mitigates.
+     * TODO - computed opposites to allow risks and controls to evolve in independent resources
+     */
+    refers Risk[] mitigates opposite mitigations 
+}
+
+/* ---- Risks ---- */
+
+/**
+ * TODO - to a class
+ */
+enum RiskTreatment {
+    /* Documented decision to live with it; pairs with the decision model. */
+    ACCEPT
+    MITIGATE
+    /* Insurance, contract, vendor. */
+    TRANSFER
+    /* Do not do the thing. */
+    AVOID
+}
+
+/*
+ * A risk: an uncertain event with a likelihood and an impact. Inherent values
+ * describe the untreated risk; residual values describe what remains after
+ * mitigations. Category is free-form here; the ai-governance extension
+ * provides a typed AI risk taxonomy.
+ */
+class Risk extends ModelElement {
+    String category // TODO - reference, hierarchy, risk domain
+    Level inherentLikelihood
+    Level inherentImpact
+    Level residualLikelihood
+    Level residualImpact
+    RiskTreatment treatment
+    refers Control[] mitigations opposite mitigates
+    /* What the risk is about; anything governed. */
+    refers Governed subject opposite risks
+}
+
+/* ---- Governed elements ---- */
+
+/*
+ * Anything which needs governance: an AI system, an agent, an MCP server,
+ * a capability provider, a dataset, a process. Domain models extend this
+ * class (possibly alongside lifecycle and role model classes) to acquire
+ * the governance aspect: applied controls, risks, waivers.
+ */
+abstract class Governed extends ModelElement {
+    contains ControlApplication[] controlApplications opposite subject
+    refers Risk[] risks opposite subject
+    refers Waiver[] waivers opposite subject
+}
+
+/**
+ * TODO - to class, maybe extending stage or just stage
+ */
+enum ImplementationStatus {
+    PLANNED
+    IN_PROGRESS
+    IMPLEMENTED
+    /* Independently verified as operating effectively. */
+    VERIFIED
+    /* Implemented but found not to operate effectively. */
+    INEFFECTIVE
+    RETIRED
+}
+
+/*
+ * The application of a control to a governed element: the unit of compliance
+ * status. "Control X on system Y is VERIFIED, and here is the evidence."
+ * TODO - to Staged and drop implementation status
+ */
+class ControlApplication extends ModelElement {
+    container Governed subject opposite controlApplications
+    refers Control control
+    ImplementationStatus status
+    Date lastVerified
+    contains Evidence[] evidence
+}
+
+/* ---- Evidence ---- */
+
+/*
+ * A record supporting a control application or assessment: a document, a test
+ * result, a telemetry query. Automated evidence pointing at modeled telemetry
+ * is continuous control monitoring. The ai-governance extension adds typed
+ * evidence: model cards, evaluations, telemetry.
+ */
+class Evidence extends ModelElement, Temporal {
+    /* URI of the artifact: document, dashboard, query, repository path. */
+    String location
+    /* Producing party or system. */
+    String source
+    boolean automated
+}
+
+/* ---- Assessments, findings, waivers ---- */
+
+/*
+ * A point-in-time evaluation of governed elements against controls:
+ * an audit, a review, a self-assessment. The ai-governance extension
+ * adds impact assessments.
+ */
+class Assessment extends ModelElement, Period, org.nasdanika.models.role.Undergoer {
+    /**
+     * Assessing party: internal audit, second line, external auditor.
+     */
+    // String assessor
+    refers Governed[] scope
+    contains Finding[] findings
+    contains Evidence[] evidence
+}
+
+/**
+ * TODO - to stages
+ */
+enum FindingStatus {
+    OPEN
+    IN_REMEDIATION
+    RESOLVED
+    /* Risk-accepted via a waiver; documented decision. */
+    ACCEPTED
+}
+
+/**
+ * TODO - to staged
+ */
+class Finding extends ModelElement {
+    Level severity
+    FindingStatus status
+    /* The control application the finding is about, if any. */
+    refers ControlApplication subject
+    /* Markdown remediation plan. */
+    String remediation
+    Date due
+}
+
+/*
+ * An approved, time-boxed deviation: a control not applied, a policy not met.
+ * Governance without waivers is fiction; modeling them keeps the record honest.
+ * Approval records (who, in what role) come from the role model.
+ */
+class Waiver extends ModelElement, Period {
+    refers Control control
+    refers Governed subject opposite waivers
+    /* Markdown justification and compensating measures. */
+    String justification
+}

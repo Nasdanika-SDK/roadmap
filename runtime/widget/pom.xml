@@ -1,0 +1,30 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<artifactId>widget</artifactId>
+	<packaging>jar</packaging>
+	<name>Nasdanika SDK Roadmap: Runtime Widget</name>
+	<description>
+		One API for many formats: a view is written against kinds such as Text, Link, Section, ItemList
+		and Table, asked for by the type of the context it will be rendered into, and rendered later
+		into an instance of it. Markdown, GitHub Flavored Markdown and a neutral terminal context are
+		in the module, since they need no dependency.
+	</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.nasdanika.sdk.runtime</groupId>
+			<artifactId>common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+			<artifactId>common</artifactId>
+		</dependency>
+	</dependencies>
+</project>

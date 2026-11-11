@@ -1,0 +1,333 @@
+@Ecore(nsURI="https://product-management.models.nasdanika.org", nsPrefix="org.nasdanika.models.product-management")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.productmanagement
+
+import org.nasdanika.models.productmanagement.ProductmanagementPackage
+import org.nasdanika.models.nxcore.Period
+import org.nasdanika.models.nxcore.NamedElement
+import org.nasdanika.models.nxcore.NamedPeriod
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.StringIdentity
+import org.nasdanika.models.capability.AbstractCapability
+import org.nasdanika.models.capability.CapabilityDomain
+import org.nasdanika.models.capability.CapabilityProviderDomain
+import org.nasdanika.models.role.ActorDomain
+
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+type Instant wraps java.time.Instant
+type Duration wraps java.time.Duration 
+
+
+class ProductModel extends 
+    NamedPeriod, 
+    PersonaDomain, 
+    CapabilityDomain, 
+    CapabilityProviderDomain,
+    ActorDomain {
+        
+}
+
+interface AbstractPersona extends ModelElement {
+    
+} 
+
+class Persona extends NamedPeriod, AbstractPersona, ConcernDomain {
+    
+}
+
+class PersonaDomain extends NamedElement, AbstractPersona {
+    
+    @Nasdanika(logicalContainment="false")         
+    contains AbstractPersona[] personas keys ^id
+    
+    @Nasdanika(logicalContainment="true")         
+    refers derived transient volatile readonly AbstractPersona[] resolvedPersonas keys ^id get {
+        val result = new org.eclipse.emf.common.util.BasicEList<AbstractPersona>()
+        for (persona : personas) {
+            val resolved = resolvePersonaReference(persona)
+            if (resolved !== null) result.add(resolved)
+        }
+        result
+    }
+    
+    op AbstractPersona resolvePersonaReference(AbstractPersona start) {
+        var AbstractPersona current = start
+        val seen = new java.util.HashSet<AbstractPersona>()
+        while (current instanceof PersonaReference) {
+            if (!seen.add(current)) {
+                return null  // cycle detected
+            }
+            current = current.target
+            if (current === null) return null  // dangling reference
+        }
+        return current
+    }    
+        
+}
+
+class PersonaReference extends AbstractPersona {
+    
+    refers Persona target    
+}
+
+interface AbstractConcern extends ModelElement {
+    
+}
+
+class Concern extends NamedPeriod, AbstractConcern {
+    
+    /**
+     * Addressed by allows to explain how some external capabilities address
+     * concerns. 
+     * It also allows to model capabilities within concerns to have a 
+     * self-contained persona. 
+     * It can be used in acquisition/unification scenarios
+     * where shared capabilities are extracted (e.g. accounting or a custom script/tool)
+     * and unique are retained (e.g. the best clam chowder in town, report generation)
+     */
+    contains AbstractCapability[] addressedBy
+    
+    /**
+     * Addressed concerns from this capability plus addressedBy from concerns
+     */
+    refers derived transient volatile readonly AbstractCapability[] allAddressedBy get {
+        val result = new org.eclipse.emf.common.util.BasicEList<AbstractCapability>()
+        result.addAll(addressedBy)
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.CAPABILITY__ADDRESSES)) {
+            if (referrer instanceof AbstractCapability) {
+                result.add(referrer)
+            }
+        }
+        result
+    }    
+    
+    
+    /**
+     * Goals supported by this need
+     */
+    contains ConcernReference[] supports
+    
+    /**
+     * Supports from this need plus supportingNeeds from goals
+     */
+    refers derived transient volatile readonly Concern[] allSupports get {
+        val result = new org.eclipse.emf.common.util.BasicEList<Concern>()
+        for (ref : supports) {
+            var target = ref.target
+            result.add(target)
+        }
+        
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.CONCERN__SUPPORTED_BY)) {
+            if (referrer instanceof Concern) {
+                result.add(referrer)
+            }
+        }
+        result
+    }    
+        
+    /**
+     * References to needs supporting this goal
+     */
+    contains ConcernReference[] supportedBy
+    
+    /**
+     * Supporting needs from this goal plus supports from needs
+     */
+    refers derived transient volatile readonly Concern[] allSupportedBy get {
+        val result = new org.eclipse.emf.common.util.BasicEList<Concern>()
+        for (ref : supportedBy) {
+            var target = ref.target
+            result.add(target)
+        }
+        
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.CONCERN__SUPPORTS)) {
+            if (referrer instanceof Concern) {
+                result.add(referrer)
+            }
+        }
+        result
+    }    
+            
+}
+
+class ConcernReference extends AbstractConcern {
+    
+    //@Nasdanika(logicalContainment="true")         
+    refers Concern target
+    
+}
+
+class ConcernDomain extends NamedElement, AbstractConcern {
+    
+    @Nasdanika(logicalContainment="false")         
+    contains AbstractConcern[] concerns keys ^id
+    
+    @Nasdanika(logicalContainment="true")         
+    refers derived transient volatile readonly AbstractConcern[] resolvedConcerns keys ^id get {
+        val result = new org.eclipse.emf.common.util.BasicEList<AbstractConcern>()
+        for (concern : concerns) {
+            val resolved = resolveConcernReference(concern)
+            if (resolved !== null) result.add(resolved)
+        }
+        result
+    }
+    
+    op AbstractConcern resolveConcernReference(AbstractConcern start) {
+        var AbstractConcern current = start
+        val seen = new java.util.HashSet<AbstractConcern>()
+        while (current instanceof ConcernReference) {
+            if (!seen.add(current)) {
+                return null  // cycle detected
+            }
+            current = current.target
+            if (current === null) return null  // dangling reference
+        }
+        return current
+    }    
+    
+}
+
+class Goal extends Concern {
+        
+    /**
+     * References to pain points blocking this goal
+     */
+    contains ConcernReference[] blockedBy
+    
+    /**
+     * BlockedBy from this goal plus blocks from pain points
+     */
+    refers derived transient volatile readonly PainPoint[] allBlockedBy get {
+        val result = new org.eclipse.emf.common.util.BasicEList<PainPoint>()
+        for (ref : blockedBy) {
+            var target = ref.target
+            if (target instanceof PainPoint) {
+                result.add(target)
+            }
+        }
+        
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.PAIN_POINT__BLOCKS)) {
+            if (referrer instanceof PainPoint) {
+                result.add(referrer)
+            }
+        }
+        result
+    }    
+    
+}
+
+class Need extends Concern {
+    
+    /**
+     * References to pain points violating this need
+     * with an optional documentation explaining
+     * how the need is violated
+     */
+    contains ConcernReference[] violatedBy
+        
+    /**
+     * ViolatedBy from this need plus violates from pain points
+     */
+    refers derived transient volatile readonly PainPoint[] allViolatedBy get {
+        val result = new org.eclipse.emf.common.util.BasicEList<PainPoint>()
+        for (ref : violatedBy) {
+            var target = ref.target
+            if (target instanceof PainPoint) {
+                result.add(target)
+            }
+        }
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.PAIN_POINT__VIOLATES)) {
+            if (referrer instanceof PainPoint) {
+                result.add(referrer)
+            }
+        }
+        result
+    }        
+    
+}
+
+class PainPoint extends Concern {
+    
+    contains ConcernReference[] blocks
+    
+    /**
+     * Blocks from this pain point plus blockers from pain points
+     */
+    refers derived transient volatile readonly Goal[] allBlocks get {
+        val result = new org.eclipse.emf.common.util.BasicEList<Goal>()
+        for (ref : blocks) {
+            var target = ref.target
+            if (target instanceof Goal) {
+                result.add(target)
+            }
+        }
+        
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.GOAL__BLOCKED_BY)) {
+            if (referrer instanceof Goal) {
+                result.add(referrer)
+            }
+        }
+        result
+    }        
+    
+    contains ConcernReference[] violates
+            
+    /**
+     * Blocks from this pain point plus blockers from pain points
+     */
+    refers derived transient volatile readonly Need[] allViolates get {
+        val result = new org.eclipse.emf.common.util.BasicEList<Need>()
+        for (ref : violates) {
+            var target = ref.target
+            if (target instanceof Need) {
+                result.add(target)
+            }
+        }
+        
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.NEED__VIOLATED_BY)) {
+            if (referrer instanceof Need) {
+                result.add(referrer)
+            }
+        }
+        result
+    }     
+    
+ }
+           
+class Capability extends 
+	org.nasdanika.models.capability.Capability,
+    PersonaDomain, 
+    ConcernDomain {
+    
+    contains AbstractConcern[] addresses
+
+    /**
+     * Addressed concerns from this capability plus addressedBy from concerns
+     */
+    refers derived transient volatile readonly AbstractConcern[] allAddresses get {
+        val result = new org.eclipse.emf.common.util.BasicEList<AbstractConcern>()
+        result.addAll(addresses)
+        for (referrer : getReferrers(ProductmanagementPackage.Literals.CONCERN__ADDRESSED_BY)) {
+            if (referrer instanceof AbstractConcern) {
+                result.add(referrer)
+            }
+        }
+        result
+    }
+            
+}
+
+class CompositeCapability extends Capability, CapabilityDomain {
+    
+}

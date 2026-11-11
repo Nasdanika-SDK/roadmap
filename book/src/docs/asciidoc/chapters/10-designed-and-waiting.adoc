@@ -1,0 +1,136 @@
+[#designed-and-waiting]
+== Designed and Waiting
+
+The items in this chapter are designed, some of them in detail, and none has code in this repository yet.
+Each will get a chapter when it gets a module.
+They are grouped by area, and within a group roughly by value for effort as it looked in November 2026.
+
+=== Toward the North Star
+
+These are the increments that lead to agentic work on typed models, and they will be shown in the Nasdanika International Banking System.
+
+[cols="2,5",options="header"]
+|===
+|Item |What it is
+
+|[.planned]#PLANNED# Inference
+|A model of inference, with providers called over the JDK's HTTP client: a conversation, its turns and its tool calls are a model that can be saved, loaded and continued with another provider. <<runtime-models>> has the sketch.
+
+|[.planned]#PLANNED# Tools over volumes
+|File tools for an agent, working on a volume, and an overlay in memory as a sandbox: the agent writes, and what it wrote is reviewed before it reaches the volume below.
+
+|[.planned]#PLANNED# MCP
+|A server and a client on one JSON-RPC core, which a language server can share. Tools come from the tool model.
+
+|[.planned]#PLANNED# The change model as the command
+|Agents read with queries and write with changes. A change is data, so it can be validated, shown and approved before it is applied. <<core-nano-models>> has the sketch.
+
+|[.planned]#PLANNED# State in Git
+|A commit as a message between the steps of an executable graph, and Git as its durable log. <<waypoints>> has the design of the carrier.
+
+|[.planned]#PLANNED# AI as an operator
+|A model provider as a step of rendering or transformation: a binding that runs once its input has been still for a while in a live screen, and once, cached by a hash of its input and labeled as generated, in a document.
+|===
+
+=== Seeing and changing a running system
+
+[cols="2,5",options="header"]
+|===
+|Item |What it is
+
+|[.planned]#PLANNED# Live telemetry
+|The spans of a unit of work as they happen, over server-sent events in a browser and as a tree in a terminal.
+
+|[.planned]#PLANNED# System volumes
+|A system presented as a volume of models, so that it can be browsed, copied as a snapshot and compared with the next one. A running JVM first, then the resources of a cloud account.
+
+|[.planned]#PLANNED# A sanitizer for telemetry
+|Values mapped before they reach logs and telemetry: as they are for a test, masked for production, encrypted or replaced by tokens. The mapping is chosen by what a value is, from classifications in the model, and its strength by the environment.
+
+|[.planned]#PLANNED# Model auto-save
+|A command that changes a model in place saves what it changed when it succeeds and validates. It is built on change recording: only net changes are saved, everything is serialized before anything is written, and a failed write rolls the model back.
+
+|[.planned]#PLANNED# Reactive compute graphs
+|Processors connected by <<bindings>>, settling by the lineage of <<waypoints>>. The first practical graph has arithmetic in its nodes: cost rolled up and risk propagated along the dependencies of an enterprise model. Nodes that call a model provider come after, paced by their inputs and cached by them.
+|===
+
+=== The command line
+
+[cols="2,5",options="header"]
+|===
+|Item |What it is
+
+|[.planned]#PLANNED# Commands over what is built
+|`drawio render` and `drawio video`, SVG and diagram generation, and `http`, `https` and `webdav` to serve a volume. The handlers and the APIs exist, and the commands are small.
+
+|[.planned]#PLANNED# `nsdk install` and profiles
+|An installation extended from Maven coordinates, through the mirrors an organization has configured and nothing else, with profiles that compose.
+
+|[.planned]#PLANNED# Self-documenting command lines
+|The command tree that a set of modules assembles, saved as a model and rendered by <<widgets>> into a site, a book or a terminal browser, and compared between releases. <<runtime-models>> has the model.
+
+|[.planned]#PLANNED# An edit command
+|The editor of <<commander>> as a command of its own, for a file, an attribute of a model element, or a file in a repository on a server.
+|===
+
+=== Documents and diagrams
+
+[cols="2,5",options="header"]
+|===
+|Item |What it is
+
+|[.planned]#PLANNED# Generated metamodel references
+|The reference of a model generated into its book from its package, with the hand-written text in files that are created once and never overwritten, and a check in the build that the reference is current.
+
+|[.planned]#PLANNED# The document model and a Markdown reader
+|Structure in the model and text in a named format. Markdown is read into it, and AsciiDoc, Markdown and HTML are written from it. <<core-nano-models>> has the sketch.
+
+|[.planned]#PLANNED# Measured text for generated diagrams
+|A table of character widths for one font, so that a diagram laid out on one machine looks the same on every other.
+
+|[.planned]#PLANNED# Draw.io actions and animation
+|Custom actions of a Draw.io diagram as objects, and from them animations recorded as video: a trace shown as a diagram that moves.
+
+|[.planned]#PLANNED# Video as a build artifact
+|A model as the script of a video, narration anchored to its words, recorded with the browser automation the runtime has, and assembled by the build. No timeline editor.
+
+|[.planned]#PLANNED# Office formats from their schemas
+|The package format and the word processing format first, read into models generated from the published schemas, without a third-party library in between.
+
+|[.planned]#PLANNED# A merger
+|Merging generated files with files that people changed: create once, keep a sidecar, or merge three ways. Draw.io diagrams are merged by element id.
+
+|[.planned]#PLANNED# Content digests
+|A digest of a model element computed from its content, as an identifier that does not depend on where the element is, and later signatures over digests.
+
+|[.planned]#PLANNED# The polymorphic user interface in a browser
+|React with Bootstrap, after the terminal. A view covers the features it shows and hands the rest to a less specific view, so that the reflective view at the end of the chain shows only what nobody claimed.
+|===
+
+=== Books and the body of knowledge
+
+[cols="2,5",options="header"]
+|===
+|Item |What it is
+
+|[.planned]#PLANNED# The runtime's site
+|A home page generated from the build's own description of its modules, with a link to each module's book.
+
+|[.planned]#PLANNED# The books in the IDE
+|An extension that brings the books of the installed version into the editor, where an assistant can read them too.
+
+|[.planned]#PLANNED# The International Banking System book
+|The practice of architecture as code, taught on one example that grows with the platform.
+
+|[.planned]#PLANNED# Cascading roadmaps and architectures
+|A roadmap that depends on another team's released roadmap, as a build depends on a library: a slip shows up as a difference, and conflicting dates as warnings. The same for architecture repositories. This roadmap, with ids and dates as data, would be the first to be depended on.
+|===
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+This chapter is the public part of the "Next" and "Later" lists of the roadmap file of 2026-10-25, with its additions through 2026-11-10, one line per item.
+The order within the groups is the assistant's reading of those lists and has not been ranked again.
+Decide which items are missing because they are private and which because they were overlooked.
+====
+endif::[]

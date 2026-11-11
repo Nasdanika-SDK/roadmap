@@ -1,0 +1,672 @@
+@Ecore(nsURI="https://cli.models.nasdanika.org", nsPrefix="org.nasdanika.models.cli")
+@GenModel(
+	modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * Nasdanika CLI model - a projection of the picocli (https://picocli.info/) problem
+ * domain onto META (https://meta.models.nasdanika.org/), plus the one thing Meta has
+ * no reason to have: the resolved command tree.
+ *
+ * WHY META RATHER THAN A MODEL OF ITS OWN. A picocli command spec is a class with
+ * features. `required` and `arity` are lowerBound and upperBound, a multi-valued
+ * option is upperBound -1, a Set-typed one is unique, an enum-valued option is a
+ * ClassifierReference to a Meta Enum, and an arg group's multiplicity is literally a
+ * containment Reference's bounds. Extending Meta is not a stylistic preference: it
+ * means picocli-to-JSON-Schema is never written, because picocli-to-Meta is written
+ * once here and Meta-to-JSON-Schema is written once there and shared with TypeScript,
+ * React and everything else downstream of Meta.
+ *
+ * THE TYPE / OCCURRENCE SPLIT is the reason this model exists at all. `save` is ONE
+ * Command and MANY Registrations - it appears under every html-app producing path in
+ * the tree. The generated documentation site cannot state that, because it renders
+ * the unfolded tree and duplicates the page at every URL. A Command is a type in the
+ * CommandCatalog; a Registration is one place that type occupies in one resolved
+ * tree. Everything agent-facing addresses Registrations; everything schema-facing
+ * addresses Commands.
+ *
+ * SNAPSHOTS, NOT DEFINITIONS. The Nasdanika CLI resolves its tree at runtime: the
+ * capability framework contributes subcommands and mixins from whatever is on the
+ * module layer, so the tree is a property of an INSTALLATION rather than of a
+ * release. A Program is therefore a dated snapshot carrying the module list it was
+ * resolved from, and comparing two Programs is a supported and useful operation.
+ *
+ * PROJECTION, NOT MIRROR. Converters, completion candidates, parameter consumers,
+ * @Spec injection and heterogeneous factories are not modelled. They land in the
+ * inherited Meta `annotations`, on the same bargain Meta strikes with Ecore and XSD:
+ * a loader puts what it cannot map there rather than dropping it, so the projection
+ * stays honest about being one.
+ *
+ * EXECUTION IS NOT MODELLED, deliberately and permanently. A command's body is Java
+ * reached through a capability requirement. Modelling it rebuilds the MCP model's
+ * Binding hierarchy (https://mcp.models.nasdanika.org/), which already exists and is
+ * better at it.
+ *
+ * TOWER POSITION: branches off META for the argument shapes, off the JVM model
+ * (https://jvm.models.nasdanika.org/) for provenance, and off the TOOL model
+ * (https://tool.models.nasdanika.org/) for the agent surface. The first two are
+ * picocli-shaped and the third is not, which is why it is argued separately below
+ * under TOOLS. Meta and JVM are
+ * parents, neither of which extends the other, and the second one is not decoration:
+ * in the Nasdanika CLI a command arrives through a capability factory contribution,
+ * so WHICH MODULE PUT IT THERE is the defining fact about it. A command can come
+ * from one module, a mixin on that command from a second, and the factory that
+ * joined them from a third, and none of those three is derivable from the others.
+ * Every JVM reference here is optional and carries a binary name beside it, so a
+ * catalog loaded without a JVM model still works and a catalog loaded with one
+ * becomes traversable into the module graph.
+ *
+ * ASSEMBLY. A Program plus the Layer it resolved from is what the packaging story
+ * calls an assembly: a chosen set of modules, and therefore a chosen set of
+ * commands. This is the model's most useful property and it is worth stating
+ * plainly: on this design, WHAT AN AGENT MAY DO IS DECIDED BY WHICH MODULES ARE ON
+ * THE PATH. Permission is composition rather than policy, checkable at build time,
+ * and enforced by absence rather than by an allowlist something has to evaluate.
+ *
+ * TOOLS. A command occupying a position in an assembly is a tool by definition, and
+ * the tool model already says what a tool is: a description for a model, schemas,
+ * examples, and a call with some arguments fixed. So this model sits on Tool rather
+ * than restating it. A Command is NOT a tool, it is a type; a CommandTool is the
+ * decision to publish one Registration, with a description written for a model and
+ * the arguments that must not be model-controlled bound. That keeps being-a-tool a
+ * fact about publication rather than about the class, the same split the tool model
+ * makes between Operation and OperationCallTool.
+ *
+ * EXAMPLES come with Tool, from the example model
+ * (https://example.models.nasdanika.org/), so this model has no example class of its
+ * own. A command's examples are an ExampleSet like anybody else's, which makes them
+ * citable, composable with sets outside the CLI, and usable as a conformance suite for
+ * the command rather than only as help text.
+ *
+ * Ownership, lifecycle and governance of a command reach the model the way the
+ * TypeScript model gets them, through markers to the elements that actually have
+ * owners, not by making every Option Accountable. The one exception argued for
+ * below is EffectKind, which is here because a default-deny agent surface needs it
+ * before any IAM floor exists.
+ *
+ * XCORE KEYWORD ESCAPES: `abstract`, `default`, `class` and `interface` are Xcore
+ * keywords. Meta's Class and Package are referenced by qualified name for that
+ * reason, and because `Class` is ambiguous with java.lang.Class.
+ */
+package org.nasdanika.models.cli
+
+import org.nasdanika.models.meta.Attribute
+import org.nasdanika.models.meta.ModelElement
+import org.nasdanika.models.meta.Reference
+import org.nasdanika.models.meta.TypeReference
+
+import org.nasdanika.models.jvm.Layer
+import org.nasdanika.models.jvm.Type
+
+import org.nasdanika.models.example.ExampleCatalog
+import org.nasdanika.models.example.ExampleSet
+
+import org.nasdanika.models.tool.ArgumentBinding
+import org.nasdanika.models.tool.BoundTool
+import org.nasdanika.models.tool.ToolCatalog
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ===========================================================================
+ * CATALOG - the unit of publication
+ * =========================================================================== */
+
+/*
+ * A namespace of command types, and the resolved trees built from them.
+ *
+ * Extends Meta's Package, so `classifiers` holds the Commands, the ArgGroups and the
+ * Meta Enums that enum-valued options refer to, and `namespace`, `prefix` and
+ * `version` come for free. A consumer that only knows Meta can read the catalog and
+ * emit schemas without knowing this model exists, which is the point.
+ */
+class CommandCatalog extends org.nasdanika.models.meta.Package {
+    /*
+     * Resolved trees. Normally one, occasionally several: the same catalog compared
+     * across installations, or across releases, is how CLI surface drift is found.
+     */
+    contains Program[] programs
+    /*
+     * Example catalogs the commands here draw on. Referenced rather than contained,
+     * on the same reasoning as ToolCatalog.exampleCatalogs: examples are their own
+     * publication unit, and a CLI's examples are as useful to a tool catalog or a
+     * conformance run as they are to a help page.
+     */
+    refers ExampleCatalog[] exampleCatalogs
+}
+
+/* ===========================================================================
+ * COMMAND TYPES
+ * =========================================================================== */
+
+/*
+ * A command spec: what picocli builds from a class, independent of where that
+ * command sits in any tree.
+ *
+ * Inherited from Meta Class and used:
+ *   name        - the declared name, @Command(name=...)
+ *   abstract    - a spec never registered on its own: a mixin, or a base class
+ *   superTypes  - Java inheritance between command classes, which picocli honours
+ *                 for inherited @Option fields. Genuine inheritance, kept as such.
+ *   features    - Options, Positionals and ArgGroupBindings, in declaration order
+ *   annotations - everything picocli expresses that this model does not
+ * Inherited and deliberately unused: typeParameters, operations. A command's body is
+ * not modelled, so there is no signature to carry.
+ * Inherited from NxCore Documented: `documentation` is @Command(description=...),
+ * and `docRef` is where externally licensed reference text belongs.
+ */
+class Command extends org.nasdanika.models.meta.Class {
+    /* Alternative names the command answers to, @Command(aliases=...). */
+    String[] aliases
+    /* @Command(header=...): the one line summary, distinct from the description. */
+    String header
+    /* @Command(customSynopsis=...), when the generated synopsis is overridden. */
+    String[] synopsis
+    /* Binary name of the Java class the spec was built from. Always set. */
+    String sourceTypeName
+    /*
+     * The same class in a JVM model, when one is loaded beside this catalog. The
+     * declaring module is the container chain Type -> Package -> Module, so it is
+     * not stored again. Optional: the name above is the authoritative form, the
+     * reference is the join.
+     */
+    refers Type sourceType
+    boolean hidden
+    /* @Command(helpCommand=true): runs without required arguments being validated. */
+    boolean helpCommand
+    /*
+     * What running this does to the world. UNKNOWN is the default on purpose: an
+     * agent-facing surface denies UNKNOWN, so an unclassified command is unreachable
+     * rather than silently permitted. Retrofitting this is the expensive order.
+     */
+    EffectKind effect
+    /*
+     * Mixin layers, in application order. See MixinBinding: these are layers, not
+     * supertypes, and Command.features holds the FLATTENED result.
+     */
+    contains MixinBinding[] mixins
+    /* Subcommands declared statically, @Command(subcommands=...). NOT the resolved
+     * tree, which is Registration. A command contributed by a capability provider
+     * appears in the tree and never here, and the difference is the whole point. */
+    refers Command[] declaredSubcommands
+    contains ExitCode[] exitCodes
+    /*
+     * Worked examples, from the example model. An example's `input` is the command
+     * line, program name included, as a user would type it; its `output` is what the
+     * command prints, where that is stable enough to state; what it does and why the
+     * example exists go in the example's documentation.
+     *
+     * Examples are the highest value tokens an agent-facing description can spend, and
+     * a generated site wants them too. Typed as command lines here and as JSON
+     * arguments on a CommandTool, which derives the second from the first: see
+     * CommandTool.
+     */
+    refers ExampleSet[] exampleSets
+    /*
+     * DECLARATIVE PIPELINES. A command contributes a value its descendants consume
+     * (https://medium.com/nasdanika/declarative-command-pipelines-5c70468e7a7e).
+     * Stating it as a TypeReference turns "which commands may follow to-model" into
+     * a query, and constrains a pipeline an assistant composes by type compatibility
+     * rather than by hope. Unset means the command contributes nothing downstream.
+     */
+    contains TypeReference produces
+    /*
+     * What an ANCESTOR must produce for this command to be usable. Plural because a
+     * command may consume from any ancestor, not only its parent.
+     */
+    contains TypeReference[] consumes
+}
+
+/*
+ * A documented exit code, @Command(exitCodeListHeading / exitCodeList).
+ *
+ * Small, and worth modelling because it is the one part of a CLI contract an
+ * automated caller has to interpret and a help page usually buries. Meaning goes in
+ * the inherited documentation.
+ */
+class ExitCode extends ModelElement {
+    int code
+}
+
+/* ===========================================================================
+ * ARGUMENTS
+ * =========================================================================== */
+
+/*
+ * Common ground between an option and a positional parameter.
+ *
+ * Extends Meta Attribute rather than Reference because a command line carries values:
+ * there is nothing on the other end of an option to point at.
+ *
+ * Inherited from TypedElement and used:
+ *   type        - PrimitiveTypeReference for scalars, ClassifierReference to a Meta
+ *                 Enum for enum-valued arguments, OpaqueTypeReference for File, URI,
+ *                 and anything with a custom converter
+ *   lowerBound  - 0 optional, 1 required. picocli's `required` and the arity lower.
+ *   upperBound  - 1 single valued, -1 multi valued. The arity upper.
+ *   unique      - the argument collects into a Set
+ *   ordered     - collection order is significant
+ * Inherited from Feature and used: defaultValue.
+ * Inherited and unused: derived, readonly, and Attribute's identifying. A command
+ * line has no derived values and nothing identifies an invocation.
+ */
+abstract class Argument extends Attribute {
+    /*
+     * picocli's arity string, verbatim: "0..1", "1..*", "2". The bounds above are the
+     * parsed form, kept beside it for the same reason the release model parses SemVer
+     * into integers: openCypher has no range arithmetic, and the query surface is the
+     * reason this model exists.
+     */
+    String arity
+    /* @Option(paramLabel="<file>"), for synopsis rendering. */
+    String paramLabel
+    boolean hidden
+    /* Prompted for rather than read from the command line. Never logged, never in a
+     * generated example, and an agent-facing surface must refuse to supply it. */
+    boolean interactive
+    /*
+     * The value must never be persisted: not in telemetry, not in a generated
+     * example, not in a saved invocation. `interactive` implies it; this covers the
+     * secret passed on the command line or from an environment variable, which
+     * picocli has no annotation for.
+     *
+     * REDACTION IS MODEL DRIVEN because of this flag. A recorder writing a run to
+     * disk knows which arguments to drop because the spec says so, rather than by a
+     * regular expression over strings that has to guess what a secret looks like.
+     * Nothing may be recorded on an agent's branch until this is honoured.
+     */
+    boolean sensitive
+    /* Regular expression splitting one argument into many values. */
+    String split
+    ArgumentScope scope
+    /*
+     * Fully qualified ITypeConverter when one is declared. Provenance: the projection
+     * emits a string and states the accepted format in documentation, because a JSON
+     * schema cannot express a converter.
+     */
+    String converter
+    /*
+     * The mixin layer that contributed this argument, unset when it is declared
+     * locally. Resolved specs are FLAT - picocli merges mixins at spec build time -
+     * so this pointer is what survives the flattening, and it is what makes
+     * "every command that gets --verbose, and from which mixin" a one hop query.
+     */
+    refers MixinBinding contributor
+}
+
+/*
+ * A named argument. @Option.
+ */
+class Option extends Argument {
+    /* Every form the option answers to: -v, --verbose. The first is canonical. */
+    String[] names
+    /* @Option(negatable=true): --verbose implies --no-verbose. */
+    boolean negatable
+    /* Value used when the option is present with no argument of its own. */
+    String fallbackValue
+}
+
+/*
+ * A positional parameter. @Parameters.
+ */
+class Positional extends Argument {
+    /* picocli's index range, verbatim: "0", "1..*". */
+    String index
+}
+
+/* ===========================================================================
+ * GROUPS AND LAYERS
+ * =========================================================================== */
+
+/*
+ * An argument group. @ArgGroup binds a field whose TYPE holds the arguments, so a
+ * group is a class, and extending Meta Class is the literal truth rather than an
+ * analogy: `features` holds this group's Options, Positionals and nested
+ * ArgGroupBindings.
+ *
+ * `exclusive` does not become a feature of the projection - it becomes a
+ * UnionTypeReference when the group is projected to Meta or to JSON Schema, which is
+ * `oneOf`. Keeping it as a boolean here and resolving it in the projection is what
+ * keeps the model faithful to picocli while the schema stays faithful to JSON.
+ */
+class ArgGroup extends org.nasdanika.models.meta.Class {
+    /* Members are mutually exclusive. False means all of them apply together. */
+    boolean exclusive
+    /* @ArgGroup(validate=false): a grouping for help rendering only. */
+    boolean validate = "true"
+    /* Usage help section heading. */
+    String heading
+    /* Binary name of the Java class the group was built from. */
+    String sourceTypeName
+    refers Type sourceType
+}
+
+/*
+ * A group's appearance on a command or inside another group, and the place where
+ * extending Meta pays for itself outright.
+ *
+ * Extends Meta Reference, so `containment` is true (the group's values are owned by
+ * the invocation) and picocli's multiplicity IS lowerBound and upperBound, with no
+ * new concept. Lives in Command.features alongside the arguments, in declaration
+ * order, so the features list is the whole authoring surface in one place.
+ *
+ * The inherited `type` is a ClassifierReference to the same ArgGroup that `group`
+ * refers to. The duplication is deliberate and follows the release model: a Meta-only
+ * consumer reads `type`, a query reads `group` in one hop.
+ */
+class ArgGroupBinding extends Reference {
+    refers ArgGroup group
+    /* Verbatim multiplicity, "0..1", "1..*". Bounds are the parsed form. */
+    String multiplicity
+    int order
+}
+
+/*
+ * A mixin layer. @Mixin, or a capability contribution.
+ *
+ * MIXINS ARE LAYERS, NOT SUPERTYPES, and the distinction is the one correction this
+ * model makes to the obvious design. Multiple inheritance cannot express three things
+ * picocli does: mixins are flattened at spec build time rather than resolved as a
+ * diamond, two mixins can collide on an option name, and a mixin is contributed AT
+ * RUNTIME by a capability provider, so the set is not a property of the class at all.
+ * Layering is: Command.features is the flattened result that a reader consumes, and
+ * Argument.contributor points back at the layer that put each one there, which an
+ * auditor consumes. The same bargain Docker image layers make, and the same one the
+ * object-level inheritance design in the model tower makes.
+ *
+ * Extends Meta Reference for the same reason ArgGroupBinding does, with the inherited
+ * bounds fixed at 1..1: a mixin applies once or not at all.
+ */
+class MixinBinding extends Reference {
+    /* A mixin's spec is itself a CommandSpec, so the target is a Command. */
+    refers Command mixin
+    /*
+     * Capability factory that contributed this layer, as a binary name. Unset for a
+     * declared @Mixin.
+     *
+     * THIS IS THE THREE MODULE CASE, and it is why the JVM dependency is here. The
+     * mixin class lives in one module, the command it lands on in another, and this
+     * factory in a third. None of the three is derivable from the others, and the
+     * question "what on this installation added these options to this command" has no
+     * answer anywhere in the source.
+     */
+    String providerTypeName
+    refers Type provider
+    /* Application order. Later layers win on a name collision. */
+    int order
+}
+
+/* ===========================================================================
+ * THE RESOLVED TREE
+ * =========================================================================== */
+
+/*
+ * One CLI, as one installation resolved it, at one moment.
+ *
+ * `nsd 2026.9.0` with a given set of modules on the layer produces THIS tree; a
+ * different set of capability providers produces a different one. That is why a
+ * Program is dated and carries its module list rather than being a definition: the
+ * snapshot is the unit of comparison, and comparing two of them is how a contributed
+ * command that nobody expected gets found.
+ *
+ * A Program plus its Layer is an ASSEMBLY. Shipping a narrower assembly is how the
+ * command set is narrowed, which is why `effects` below is worth computing.
+ */
+class Program extends ModelElement {
+    /* The launcher name, nsd, is the inherited `name`. */
+    /* Version reported by the launcher. */
+    String version
+    /* When the tree was resolved. */
+    Date resolved
+    /* Names of the modules in the layer the capability loader scanned. Always set. */
+    String[] moduleNames
+    /*
+     * The module layer itself, in a JVM model loaded beside this catalog. The
+     * launcher builds its CapabilityLoader over exactly this layer, so the layer is
+     * the assembly and the tree below is what the assembly resolved to.
+     *
+     * Having it as a reference rather than as names is what makes the useful question
+     * askable: given these commands, what is the smallest set of modules that still
+     * produces them. That is a module graph computation, and the JVM model already
+     * carries resolved readability to answer it.
+     */
+    refers Layer layer
+    /*
+     * Content hash of the resolved tree.
+     *
+     * THIS IS WHAT MAKES PER RUN RECORDING TRACTABLE. A thousand runs on one
+     * installation resolve the same tree a thousand times, and writing it a thousand
+     * times is absurd. Write the Program and its JVM model once per digest, and let
+     * every run's telemetry reference the digest. Cardinality drops from per run to
+     * per installation, which is how often the fact actually changes.
+     *
+     * The same value is a change detector, and that is the more interesting use. For
+     * a long lived MCP server the tree is resolved per session; a digest that differs
+     * between two sessions of one process means the exposed toolset changed while the
+     * server was running, which is a security event rather than an optimisation
+     * detail. A model that stores the tree per session hides this; one that stores a
+     * digest surfaces it for free.
+     */
+    String digest
+    contains Registration root
+    /*
+     * Every EffectKind occurring anywhere in the tree, computed on load and stored.
+     *
+     * One attribute read answers "does this assembly touch the network", which is the
+     * question an agentic workflow and its reviewer both have to answer, and a
+     * traversal is the wrong way to answer something asked on every invocation. An
+     * assembly whose effects are READ_ONLY and WRITES_FILES cannot reach past the
+     * filesystem, and that is a property of the module path rather than of a policy.
+     */
+    EffectKind[] effects
+}
+
+/*
+ * One place a command occupies in one resolved tree.
+ *
+ * `save` is one Command and many Registrations. Everything agent-facing addresses a
+ * Registration, because the question is never "what does save do" but "what does save
+ * do HERE, and what has it inherited from the path above it".
+ *
+ * The inherited `name` is the name at THIS position, which is normally but not
+ * necessarily Command.name.
+ */
+class Registration extends ModelElement {
+    /* Alternative names accepted at this position. */
+    String[] aliases
+    refers Command command
+    contains Registration[] subcommands
+    /*
+     * Space separated path from the program: "nsd drawio to-model html-app save".
+     * Computed on load and stored, because it is the identifier every agent-facing
+     * surface uses and recomputing it per query is the wrong trade.
+     *
+     * It is also THE TELEMETRY JOIN KEY. A span named `save` is ambiguous, because
+     * `save` occurs at many paths; a span carrying this path is not. The telemetry
+     * model resolves semantic convention attributes to model element URIs at load
+     * time by design, so `cli.command.path` is all the coupling either model needs,
+     * and neither has to depend on the other.
+     */
+    String path
+    /*
+     * Binary name of the capability factory that contributed this registration, unset
+     * when the subcommand was declared statically. With the JVM reference beside it,
+     * "which module contributes this branch of the tree, and what else does that
+     * module contribute" is two hops.
+     */
+    String providerTypeName
+    refers Type provider
+    boolean hidden
+    /*
+     * Options declared above this point and visible here: picocli's INHERIT scope.
+     * Computed on load and stored, so an assistant authoring at this path is handed
+     * one flat option set rather than being asked to walk ancestors correctly.
+     */
+    refers Option[] inheritedOptions
+}
+
+/* ===========================================================================
+ * INVOCATION - an authored command line, before it runs
+ * =========================================================================== */
+
+/*
+ * A command line as a model instance rather than as a string.
+ *
+ * This is the small class that carries the whole agent argument. A free text command
+ * line is the agentic equivalent of concatenated SQL: it can only be checked by
+ * running it. An Invocation can be validated against the Registration it targets -
+ * required arguments present, types convertible, exclusive groups respected, effect
+ * permitted - BEFORE a process starts. That is the same validate-before-run property
+ * the Cypher work claims over Groovy evaluators, applied to a command line.
+ *
+ * Rendering an Invocation to a command line is trivial and one directional. Parsing a
+ * string back into one is picocli's job, not this model's.
+ */
+class Invocation extends ModelElement {
+    refers Registration registration
+    contains ArgumentValue[] arguments
+    /* The next stage of the pipeline: nsd <a> <b> <c> is three nested Invocations. */
+    contains Invocation subcommand
+}
+
+/*
+ * One argument and the values given for it.
+ *
+ * Values are strings because a command line is strings; conversion is picocli's, and
+ * Argument.type is what a validator checks the strings against.
+ */
+class ArgumentValue extends ModelElement {
+    refers Argument argument
+    String[] values
+}
+
+/* ===========================================================================
+ * TOOLS - an assembly's published agent surface
+ * =========================================================================== */
+
+/*
+ * The tools an assembly publishes.
+ *
+ * NOT A REPLACEMENT FOR THE THREE FIXED TOOLS. list_commands, describe_command and
+ * run_command(path, arguments) remain the general surface, because a tree resolved at
+ * runtime cannot be baked into a tool list. This catalog is the curated one: a few
+ * registrations, each with a description written for a model and its dangerous
+ * arguments bound, validated against a resolved Program rather than baked ahead of
+ * one. An assembly may publish either, or both.
+ *
+ * `tools` is inherited from ToolCatalog and holds CommandTools. Holding anything else
+ * is not forbidden, and a catalog mixing command tools with a query tool that
+ * ArgumentDiscovery points at is the expected shape.
+ */
+class CommandToolCatalog extends ToolCatalog {
+    /* The assembly snapshot the tools were last validated against. */
+    refers Program program
+    /*
+     * Program.digest at validation time. When the installation's digest differs, the
+     * catalog has to be revalidated before it is served: a path that no longer
+     * resolves is drift, and a path that resolves to a command with a different spec
+     * is worse, because it still looks valid.
+     */
+    String programDigest
+}
+
+/*
+ * One registration, published as a tool, with some arguments fixed.
+ *
+ * Extends BoundTool rather than OperationCallTool: a command has features, not a
+ * signature, and binding is what matters about both.
+ *
+ * ADDRESSED BY PATH, with the reference as the join, on the same bargain as
+ * sourceTypeName and sourceType. Programs are snapshots, so an authored tool must
+ * outlive the one it was written against; `path` is authoritative and `registration`
+ * is resolved into whichever Program is loaded.
+ *
+ * INPUT SCHEMA, from getInputSchema(), is the Meta projection of the UNBOUND arguments
+ * along the whole path: the target Command's features, Registration.inheritedOptions,
+ * and the arguments of every ancestor, because running `save` means running
+ * `nsd drawio <file> to-model html-app save`. Binding an ancestor's arguments is the
+ * main use: fix the input file and the pipeline, and expose only where the output
+ * goes. Nothing is hand-written, which is what Meta to JSON Schema is for.
+ *
+ * VALIDITY, checked on load, because each is cheaper to refuse than to discover:
+ *   - every `interactive` argument on the path is bound, since an agent must never be
+ *     asked for a prompted value
+ *   - every `sensitive` argument on the path is bound, through an evaluator that says
+ *     where the value comes from rather than what it is, and never appears in the
+ *     schema or in a derived example
+ *   - getEffect() is not UNKNOWN, carrying the default-deny rule from Command.effect
+ *     into the tool layer
+ *
+ * EXAMPLES. The inherited `exampleSets` hold examples whose input conforms to the input
+ * schema, as the tool model requires. When a tool declares none, it is offered the
+ * target command's sets, derived: each command line is parsed against the registration,
+ * examples that contradict a binding are dropped, and the unbound values become the
+ * JSON arguments. So a command's examples serve its help page and every tool published
+ * over it, and a binding that makes an example impossible removes it rather than
+ * teaching the model a call it cannot make.
+ *
+ * INVOCATION. The inherited `invocation` is left unset. How a command runs follows from
+ * `path` and the Program, and a second statement of it could only disagree.
+ */
+class CommandTool extends BoundTool {
+    /* Space separated, program name included, as in Registration.path. Always set. */
+    String path
+    refers Registration registration
+    /*
+     * The strongest EffectKind anywhere on the path, where UNKNOWN outranks everything.
+     * An ancestor that publishes makes the tool one that publishes, however harmless
+     * the leaf.
+     */
+    op EffectKind getEffect()
+}
+
+/*
+ * A fixed argument somewhere on a command tool's path.
+ *
+ * A name alone cannot address a command line argument. Options answer to several
+ * names, a positional has an index rather than a name, and the same option name can
+ * occur on two commands along one path. So the argument is referenced, and its
+ * position is a path, with the inherited `parameter` kept as the readable form.
+ *
+ * The inherited `value` is an Evaluator and the tool model's security note applies:
+ * it evaluates at the trust level of the catalog it came from. For a sensitive
+ * argument that is the whole point, since the binding says where the secret comes
+ * from and the catalog never holds it.
+ */
+class CommandArgumentBinding extends ArgumentBinding {
+    /* Registration path the argument belongs to. Unset means the tool's own path. */
+    String path
+    refers Registration registration
+    refers Argument argument
+}
+
+/* ===========================================================================
+ * ENUMERATIONS
+ * =========================================================================== */
+
+/*
+ * What running a command does to the world.
+ *
+ * UNKNOWN is first so that it is the default literal, and the default matters more
+ * than the values: an agent-facing surface denies UNKNOWN, so a command nobody has
+ * classified is unreachable rather than quietly permitted. This is a local enum
+ * standing in for a proper treatment on the IAM and governance floors, the way the
+ * release model's status enum stands in for lifecycle.
+ */
+enum EffectKind {
+    UNKNOWN READ_ONLY WRITES_FILES NETWORK PUBLISHES DESTRUCTIVE
+}
+
+/*
+ * picocli's ScopeType: whether an argument applies only to its own command or to
+ * every command beneath it.
+ */
+enum ArgumentScope {
+    LOCAL INHERIT
+}

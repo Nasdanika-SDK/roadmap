@@ -1,0 +1,127 @@
+= Nasdanika SDK Roadmap: What Comes Next, and How to Take Part
+Pavel Vlasov
+:doctype: book
+:description: The public roadmap of the Nasdanika SDK: what is planned for the runtime and its models, the modules that can be tried today, the models to migrate, and how to take part.
+:keywords: Nasdanika, roadmap, EMF, Ecore, Xcore, bindings, widgets, terminal UI, TamboUI, model tower, models, architecture
+:lang: en
+:sectnums:
+:sectnumlevels: 2
+:partnums:
+:chapter-signifier: Chapter
+:part-signifier: Part
+:appendix-caption: Appendix
+:toc:
+:toclevels: 2
+:title-page:
+:title-logo-image: image:nasdanika-sdk-logo.jpg[pdfwidth=1.75in,align=left]
+:front-cover-image: image:cover.png[Front cover,1500,1953]
+:listing-caption: Listing
+:figure-caption: Figure
+:table-caption: Table
+:source-language: java
+:tabsize: 4
+:hide-uri-scheme:
+:runtime-repo: https://github.com/Nasdanika-SDK/runtime
+:runtime-site: https://runtime.sdk.nasdanika.org
+:sdk-site: https://sdk.nasdanika.org
+:sdk-book: https://leanpub.com/nasdanika-sdk-runtime
+:models-org: https://github.com/Nasdanika-Models
+:medium: https://medium.com/nasdanika
+:github: https://github.com/pvlasov
+:linkedin: https://www.linkedin.com/in/pavelvlasov/
+:copyright: Copyright (C) 2026 Pavel Vlasov. Text and figures licensed under CC BY 4.0; code under EPL-2.0.
+
+// Defaults for previews in an editor; the Maven build sets these
+ifndef::roadmap-root[:roadmap-root: ../../../..]
+ifndef::runtime-version[:runtime-version: 2026.11.0]
+ifndef::tamboui-version[:tamboui-version: 0.7.0]
+ifndef::imagesdir[:imagesdir: images]
+ifndef::site-url[:site-url: https://roadmap.sdk.nasdanika.org]
+ifndef::pdf-url[:pdf-url: {site-url}/nasdanika-roadmap.pdf]
+ifndef::epub-url[:epub-url: {site-url}/nasdanika-roadmap.epub]
+ifndef::leanpub-url[:leanpub-url: https://leanpub.com/nasdanika-sdk-roadmap]
+ifndef::roadmap-repo[:roadmap-repo: https://github.com/Nasdanika-SDK/roadmap]
+
+// Where the listings come from: tagged regions of the modules' sources and tests
+:flow-main: {roadmap-root}/runtime/common/src/main/java/org/nasdanika/sdk/roadmap/runtime/common/flow
+:flow-test: {roadmap-root}/runtime/common/src/test/java/org/nasdanika/sdk/roadmap/runtime/common/flow
+:waypoint-main: {roadmap-root}/runtime/common/src/main/java/org/nasdanika/sdk/roadmap/runtime/common/waypoint
+:waypoint-test: {roadmap-root}/runtime/common/src/test/java/org/nasdanika/sdk/roadmap/runtime/common/waypoint
+:widget-main: {roadmap-root}/runtime/widget/src/main/java/org/nasdanika/sdk/roadmap/runtime/widget
+:widget-test: {roadmap-root}/runtime/widget/src/test/java/org/nasdanika/sdk/roadmap/runtime/widget
+:tui-main: {roadmap-root}/runtime/tui/src/main/java/org/nasdanika/sdk/roadmap/runtime/tui
+:tui-test: {roadmap-root}/runtime/tui/src/test/java/org/nasdanika/sdk/roadmap/runtime/tui
+:commander-main: {roadmap-root}/runtime/commander/src/main/java/org/nasdanika/sdk/roadmap/runtime/commander
+:commander-test: {roadmap-root}/runtime/commander/src/test/java/org/nasdanika/sdk/roadmap/runtime/commander
+:showcase-test: {roadmap-root}/tests/widgets/src/test/java/org/nasdanika/sdk/roadmap/tests/widgets
+:nano-test: {roadmap-root}/models/core/src/test/java/org/nasdanika/sdk/roadmap/models/core
+:nano-xcore: {roadmap-root}/models/core/src/main/resources/org/nasdanika/sdk/roadmap/models/core
+
+include::front/colophon.adoc[]
+
+include::front/preface.adoc[]
+
+[#the-roadmap]
+= The Roadmap
+
+[partintro]
+Where Nasdanika is going and how the next step is chosen, what a reader can do with a roadmap that has code in it, and how to work with an AI assistant that has read it.
+
+include::chapters/01-direction.adoc[]
+
+include::chapters/02-taking-part.adoc[]
+
+include::chapters/03-assistants.adoc[]
+
+[#runtime]
+= Runtime
+
+[partintro]
+What is on the roadmap for the Nasdanika SDK Runtime.
+The first five chapters have modules in this repository, built on the released runtime and tested with every build: bindings, waypoints, widgets, the terminal and Nasdanika Commander.
+The last two are designs without code yet.
+
+include::chapters/04-bindings.adoc[]
+
+include::chapters/05-waypoints.adoc[]
+
+include::chapters/06-widgets.adoc[]
+
+include::chapters/07-terminal.adoc[]
+
+include::chapters/08-commander.adoc[]
+
+include::chapters/09-drawn-screens.adoc[]
+
+include::chapters/10-designed-and-waiting.adoc[]
+
+[#models]
+= Models
+
+[partintro]
+The models on the roadmap: the nano-models that are to join the core model, the models of the runtime itself, the model tower, the executable graph and mapping models to revisit, and the technology models to migrate.
+
+include::chapters/11-core-nano-models.adoc[]
+
+include::chapters/12-runtime-models.adoc[]
+
+include::chapters/13-model-tower.adoc[]
+
+include::chapters/14-opgraph-and-nsml.adoc[]
+
+include::chapters/15-technology-models.adoc[]
+
+include::appendices/a-items.adoc[]
+
+include::appendices/b-revisions.adoc[]
+
+include::appendices/c-building.adoc[]
+
+include::appendices/d-glossary.adoc[]
+
+// The NBOK appendix, shared with every book of NBOK, comes from the runtime release the roadmap is built on
+include::nbok/nbok-appendix.adoc[]
+
+:sectnums!:
+
+include::back/about-the-author.adoc[]

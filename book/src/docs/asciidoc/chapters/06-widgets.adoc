@@ -1,0 +1,304 @@
+[#widgets]
+== Widgets
+
+[horizontal]
+Capability:: A view written once, against kinds such as text, link, section, list and table, and rendered into any format that provides them: Markdown, a terminal, and later AsciiDoc, HTML with Bootstrap and a diagram.
+Demonstration:: `RoadmapViewTests` in `tests/widgets`: one view of this roadmap's runtime items, rendered four ways. Its output is in this chapter.
+Status:: [.sketch]#SKETCH# in `runtime/widget`. Markdown, GitHub Flavored Markdown and a neutral terminal context are in the module. AsciiDoc, HTML and interaction are [.planned]#PLANNED#.
+Depends on:: The runtime's `common` for the capability framework, and <<bindings>> for values that change.
+Value and effort:: High for medium. The polymorphic user interface has a vocabulary in the model and nothing at the level of Java. This is the missing half.
+How to help:: Write a context for a format you need. AsciiDoc is the next one, and its design is below.
+
+=== Why
+
+The runtime chooses a view by the class of what it shows.
+The SDK book's example of that returns an HTML node from every view, so every view is an HTML view, and a second format means a second set of views.
+
+A view written against kinds does not name a format.
+It asks for a table and says what the columns and the rows are, and the format decides what a table is.
+The choice then has two halves, the class of the element and the format asked for, and this module is the second half.
+
+The split is the one the `volume` module makes.
+Developers write against an API, and a format implements an SPI, as `PathVolume` implements `Volume`.
+Widget toolkits have always been built this way, and the ones that failed did so by offering only what every platform had.
+So from the first version there are two ways out: a kind that a format does not have is simply absent, and a format that can do better than the neutral kind provides its own.
+
+=== A widget
+
+.A widget renders itself into a context
+[source,java]
+----
+include::{widget-main}/Widget.java[tag=widget,indent=0]
+----
+
+The context's type is the format: `MarkdownContext`, `TerminalContext`.
+What rendering gives back depends on the format too: nothing for Markdown, which is written and not built, and the number of rows used for a terminal.
+
+A widget is asked for by the *type* of the context and given the *instance* only when it renders.
+The reasons are practical.
+A terminal draws many times a second, each time into a new area, so a widget bound to an instance would hold a stale one.
+Nested widgets render into derived contexts, a sub-area or a deeper heading level, and one child may render into many of them.
+And a widget built before any context exists is a value: it can be passed around and rendered into two terminals, or into a file and into an answer to an agent.
+
+=== One view, four renderings
+
+The demonstration is a view of this roadmap's own runtime items.
+
+.The data
+[source,java]
+----
+include::{showcase-test}/RoadmapViewTests.java[tag=data,indent=0]
+----
+
+.The view names no format
+[source,java]
+----
+include::{showcase-test}/RoadmapViewTests.java[tag=view,indent=0]
+----
+
+`Kinds<C>` holds the kinds available for a context type.
+`require` gives a kind or fails, and `find` gives an `Optional`, for a kind the view can do without.
+Here the view asks for a table and falls back to a list.
+
+In GitHub Flavored Markdown there are tables:
+
+[source,java]
+----
+include::{showcase-test}/RoadmapViewTests.java[tag=gfm,indent=0]
+----
+
+.What the test wrote
+[source,markdown]
+----
+include::../showcase/roadmap.md[]
+----
+
+CommonMark has no tables, so no table kind is provided for `MarkdownContext`, and the same view renders a list:
+
+.The same view in CommonMark
+[source,markdown]
+----
+include::../showcase/roadmap-commonmark.md[]
+----
+
+On a terminal, as a grid of characters with no terminal library involved:
+
+[source,java]
+----
+include::{showcase-test}/RoadmapViewTests.java[tag=grid,indent=0]
+----
+
+.The same view as text
+[source,text]
+----
+include::../showcase/roadmap.txt[]
+----
+
+And on a TamboUI screen, where a section is a box and a status has a color.
+<<terminal>> says how.
+
+.The same view on a TamboUI screen, as the test drew it
+image::roadmap.svg[The runtime roadmap on a terminal screen,pdfwidth=100%]
+
+The table of items above is therefore not written by hand anywhere.
+It is this roadmap rendering a part of itself with the module it describes, and <<items>> may be generated the same way once the items are a model.
+
+=== How a kind is found
+
+A kind is resolved through the capability framework.
+The requirement is an explicit record:
+
+[source,java]
+----
+include::{widget-main}/KindOf.java[tag=kind-of,indent=0]
+----
+
+A format contributes a factory with the kinds it provides, each for a context type:
+
+.The kinds of Markdown
+[source,java]
+----
+include::{widget-main}/markdown/MarkdownKinds.java[tag=kinds,indent=0]
+----
+<1> The table is for `GfmContext` only. Everything else serves both, since a `GfmContext` is a `MarkdownContext`.
+
+The factory is registered as a service in the module's descriptor, as every capability factory is:
+
+[source,java]
+----
+include::{roadmap-root}/runtime/widget/src/main/java/module-info.java[tag=provides,indent=0]
+----
+
+Resolution follows the context's class hierarchy, as views follow the supertypes of a class:
+
+.Along the hierarchy
+[source,java]
+----
+include::{widget-test}/WidgetTests.java[tag=hierarchy,indent=0]
+----
+<1> No text kind is written for `GfmContext`. The one for `MarkdownContext` answers.
+<2> A missing kind means that the format does not have the feature, and the view is told so.
+
+.The most specific provider wins
+[source,java]
+----
+include::{widget-main}/Kinds.java[tag=find,indent=0]
+----
+<1> Every provider whose context type is the one asked for, or a supertype of it.
+<2> A provider for a subtype is more specific than one for its supertype.
+<3> Two providers for the same context type are a tie, and a tie is reported.
+
+.A format that can do better says so
+[source,java]
+----
+include::{widget-test}/WidgetTests.java[tag=specific,indent=0]
+----
+<1> A loader with Markdown's kinds and one more factory.
+<2> For `GfmContext` the specific kind is found, and for `MarkdownContext` the neutral one still is.
+
+Resolutions are remembered per kind and context type.
+Each one is traced, like every capability resolution, so the trace of a rendering says which kinds were used and where they came from.
+
+=== Text carries its format
+
+A plain string is never read as markup.
+
+.A value cannot inject markup
+[source,java]
+----
+include::{widget-test}/WidgetTests.java[tag=plain,indent=0]
+----
+<1> The text kind for Markdown.
+<2> A value that looks like HTML, emphasis and a link with a script in it.
+<3> Rendered, it is that text and nothing else.
+
+That is a security boundary and not only a convenience.
+What a view shows comes from models, from files and from people, and none of it should be able to add a link, a script or a heading to the output.
+The same rule holds on a terminal, where the danger is an escape sequence:
+
+[source,java]
+----
+include::{widget-test}/WidgetTests.java[tag=sanitize,indent=0]
+----
+<1> The bytes that would start a hyperlink in a terminal. Control characters never reach the screen.
+
+Text that *is* markup says so.
+Text in the target's own format is passed through, and text in another format needs a conversion:
+
+[source,java]
+----
+include::{widget-test}/WidgetTests.java[tag=formats,indent=0]
+----
+<1> Markdown into Markdown: passed through.
+<2> HTML into Markdown: no conversion exists yet, so it is reported and rendered as plain text, which is the safe direction.
+
+Diagnostics go through the context and not into what a widget returns.
+By default a diagnostic is a log record in the current span.
+
+Conversions between formats are [.planned]#PLANNED# to go through the document model, as Pandoc's go through its own: a reader and a writer per format, not a converter per pair.
+
+=== Markdown
+
+A Markdown context knows how deep it is in sections and whether it is writing a block, text within a line, or a table cell.
+Nested widgets render into derived contexts.
+A section renders its body one heading level down:
+
+[source,java]
+----
+include::{widget-main}/markdown/MarkdownKinds.java[tag=section,indent=0]
+----
+<1> The body is rendered into a derived context, one level deeper. The widgets in it do not know their level.
+
+A list item, a link's label and a table cell render into a buffer of their own, which the enclosing widget places:
+
+[source,java]
+----
+include::{widget-main}/markdown/MarkdownContext.java[tag=capture,indent=0]
+----
+
+Escaping depends on where the text goes:
+
+[source,java]
+----
+include::{widget-main}/markdown/MarkdownContext.java[tag=escape,indent=0]
+----
+<1> Characters that are markup anywhere.
+<2> A pipe ends a cell only in a table.
+<3> Characters that start a block only at the start of a line.
+<4> A dot or a parenthesis after digits at the start of a line would start a numbered list.
+<5> Within a line or a cell, a line break is a space.
+
+=== Surfaces and the terminal
+
+Some contexts are areas: a rectangle that widgets draw into and divide among the widgets inside them.
+
+[source,java]
+----
+include::{widget-main}/SurfaceContext.java[tag=surface,indent=0]
+----
+
+The terminal is one such surface, with cells as its unit.
+A Draw.io page is another, with pixels, and <<drawn-screens>> comes back to it.
+
+[source,java]
+----
+include::{widget-main}/terminal/TerminalContext.java[tag=terminal,indent=0]
+----
+
+`TerminalContext` abstracts only what the neutral kinds need: an area, text at a position, and a style in logical terms.
+Colors are logical too, named for what they mean: primary, success, danger.
+The names are Bootstrap's, so a view says "danger" once, and a page, a terminal's palette and a diagram each show it their own way.
+
+A terminal widget gives back the rows it used, which is how widgets are stacked without a pass to measure them first:
+
+[source,java]
+----
+include::{widget-main}/terminal/TerminalKinds.java[tag=section,indent=0]
+----
+<1> The title, in a context where text is bold and in the primary color unless it says otherwise.
+<2> Each widget of the body gets what is left of the area, indented.
+<3> And says how many rows it used.
+
+A widget cannot draw outside the area it was given, and a table reads only the rows that fit.
+A table of a million rows on a screen of five reads three of them.
+
+`GridContext` implements the terminal context over a grid of characters in memory.
+It is the smallest provider, and a useful one: a test asserts on it, a log can include it, and an agent can read a screen as text.
+
+=== A binding is a value
+
+Every value a kind takes is a supplier, so a binding from <<bindings>> is a value.
+
+[source,java]
+----
+include::{widget-test}/WidgetTests.java[tag=binding,indent=0]
+----
+<1> The date is a binding. The view does not know.
+<2> The same widget, rendered again, reads the value as it is now.
+
+A static format reads the value when it renders, and a screen reads it on every frame.
+The widget is the same.
+
+State that outlives one rendering, a scroll position or a selection, is not the widget's.
+The screen owns it and passes it in, as TamboUI and Ratatui do, or the widget reads it through a binding.
+Otherwise binding late to a context would only move the early binding into the widget's own fields.
+
+=== What is not there yet
+
+* [.planned]#PLANNED# *An AsciiDoc context.* AsciiDoc is a format of several files. Widgets ask for sections, and the context decides through a policy which sections become files of their own: by level, as a book splits into chapters, or by class, as a reference has a file per class. A locator maps a model element to a path and an anchor, so a link to an element is written before the element is rendered. `Include` is a kind that only AsciiDoc has.
+* [.planned]#PLANNED# *The first consumers:* the glossary of a Meta package, rendered as Markdown and AsciiDoc with the bank model as the example, and the documentation of a command line, rendered from its saved command tree (<<runtime-models>>).
+* [.planned]#PLANNED# *An HTML context with Bootstrap,* beside the HTML models it depends on, and a context that builds the document model of <<core-nano-models>>.
+* [.planned]#PLANNED# *Interaction:* `Action`, `Selection` and `Input` as kinds that static formats do not provide, and `Tree` and a form, each arriving with the first screen that needs it.
+* [.planned]#PLANNED# *A table that scrolls,* with its position in a state object.
+
+=== Why not something that exists
+
+The question will be asked, and the survey was made.
+Nothing found covers documents and screens with one vocabulary in Java.
+
+* *Maven Doxia* has a sink with calls for document elements, and writers for several formats. It is for documents only, and its list of calls is a good checklist for the kinds.
+* *json-render and Adaptive Cards* are catalogs of components rendered by several hosts. They are the closest in idea and are not Java libraries. Each could be a context here.
+* *JSON Forms and EMF Forms* render forms from a model and write no documents.
+* *Pandoc* converts between document formats through one model, which is the plan for conversions here, and has no screens.
+
+The answer to "why not" is then the same each time: this is a small API over what a format already has, and where a format has a library, the library is its provider.

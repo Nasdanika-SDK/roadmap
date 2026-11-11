@@ -1,0 +1,192 @@
+@Ecore(nsURI="https://threat.models.nasdanika.org", nsPrefix="org.nasdanika.models.threat")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.threat
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.governance.Governed
+import org.nasdanika.models.governance.Level
+import org.nasdanika.models.governance.Control
+import org.nasdanika.models.governance.Risk
+import org.nasdanika.models.architecture.Element
+import org.nasdanika.models.architecture.ElementKind
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ---- Taxonomies (instance data, not enums) ---- */
+
+/*
+ * A threat classification scheme: STRIDE, LINDDUN, CAPEC, ATT&CK, ATLAS,
+ * OWASP Top 10 / LLM Top 10, or an internal library. Modeled as data so
+ * new methodologies are catalog entries, not metamodel changes; mirrors
+ * Framework/Requirement in the governance model.
+ */
+class Taxonomy extends ModelElement {
+    /* Issuing authority, e.g. Microsoft, MITRE, OWASP, internal. */
+    String authority
+    String version
+    String website
+    contains ThreatCategory[] categories
+}
+
+/*
+ * A category within a taxonomy, hierarchical to mirror taxonomy structure
+ * (tactic > technique > sub-technique).
+ */
+class ThreatCategory extends ModelElement {
+    /* Reference identifier within the taxonomy, e.g. "S" (spoofing), "T1566", "AML.T0051", "LLM01". */
+    String reference
+    contains ThreatCategory[] children
+}
+
+/*
+ * A kind of asset: process, data store, external entity, service, model,
+ * dataset, credential. Extends the architecture model's ElementKind, so
+ * asset kinds live in the same catalogs and Draw.io shape mappings as
+ * element kinds, adding default threats per kind (threat generation
+ * rules as data).
+ */
+class AssetKind extends ElementKind {
+    /* Threats every asset of this kind starts with; the prototype mechanism for "a data store crossing a boundary gets tampering and information disclosure". */
+    contains Threat[] defaultThreats
+}
+
+/* ---- What we are working on ---- */
+
+/*
+ * Anything worth attacking, and therefore worth modeling: a process, a
+ * data store, an external entity, an AI model, a dataset. Extends the
+ * architecture model's Element: an asset IS an architecture element,
+ * with containment, relationships, and kind from architecture and the
+ * full aspect spine (work, governance, lifecycle, access control, roles)
+ * from the tower. Threat modeling adds only what is threat-specific:
+ * value, threats, weaknesses. Concrete: instantiate directly for the
+ * standalone exercise; subclass where typed features are needed.
+ */
+class Asset extends Element {
+    /* Sensitivity/value of the asset, driving impact. */
+    Level value
+    contains Threat[] threats opposite target
+    contains Weakness[] weaknesses
+}
+
+/*
+ * A data or control flow between assets. A flow is itself an asset
+ * (threats attach to flows; STRIDE-per-interaction), so Flow extends
+ * Asset rather than being a second hierarchy. The element-reified
+ * counterpart of an architecture Relationship: use a Flow where threats
+ * must attach, a plain relationship elsewhere; a Flow may cite the
+ * relationship it reifies via origin.
+ */
+class Flow extends Asset {
+    refers Asset ^source
+    refers Asset destination
+    /* e.g. HTTPS, JDBC, MCP, file drop. */
+    String protocol
+    refers TrustBoundary[] crosses
+}
+
+/*
+ * A trust boundary: the line whose crossing generates threats (network
+ * perimeter, process boundary, tenant boundary, human/AI boundary).
+ * An overlay over the asset containment hierarchy, hence refers, not
+ * contains. A boundary is an asset too: it can be attacked.
+ */
+class TrustBoundary extends Asset {
+    refers Asset[] members
+}
+
+/* ---- What can go wrong ---- */
+
+/*
+ * Who attacks: an external attacker, a malicious insider, a compromised
+ * dependency, a rogue agent. Capability and intent drive likelihood.
+ */
+class ThreatActor extends ModelElement {
+    Level capability
+    Level intent
+    /* e.g. financial, espionage, disruption, accidental. */
+    String motivation
+}
+
+enum ThreatStatus {
+    IDENTIFIED
+    /* Analyzed and being addressed via controls. */
+    MITIGATED
+    /* Risk-accepted; should trace to a governance waiver or decision. */
+    ACCEPTED
+    /* Analyzed and found not to apply; keeping it recorded keeps the model honest. */
+    NOT_APPLICABLE
+}
+
+/*
+ * A weakness the threat exploits: a missing check, a design flaw, a CWE
+ * entry. Distinct from the threat (the attack) and the risk (the
+ * consequence).
+ */
+class Weakness extends ModelElement {
+    /* External reference, e.g. "CWE-79". */
+    String reference
+}
+
+/*
+ * Something that can go wrong: the unit of threat modeling. Contained in
+ * the asset it targets; categorized in any number of taxonomies
+ * (crosswalk); mitigated by governance controls; elevated into the
+ * governance risk register when it survives analysis. Contains child
+ * threats: an attack tree, with the root as goal and leaves as steps.
+ */
+class Threat extends ModelElement {
+    container Asset target opposite threats
+    ThreatStatus status
+    refers ThreatCategory[] categories
+    refers ThreatActor[] actors
+    refers Weakness[] exploits
+    Level likelihood
+    Level impact
+    /* What we are going to do: reused from governance, threat modeling is demand for the control catalog. */
+    refers Control[] mitigations
+    /* The risk register entry this threat was elevated to; analysis feeds governance. */
+    refers Risk[] risks
+    contains Threat[] children
+    /* URI of the authoring source: STRIDE GPT style generation, workshop note, diagram annotation. */
+    String origin
+}
+
+/* ---- The exercise ---- */
+
+/*
+ * A threat modeling exercise over a scope: the model of one system at one
+ * time, with its assumptions on record. "Did we do a good job" is a
+ * governance Assessment whose scope is the same assets; review findings
+ * and waivers live there, not here.
+ */
+class ThreatModel extends Governed {
+    contains Taxonomy[] taxonomies
+    contains AssetKind[] kinds
+    contains ThreatActor[] actors
+    /* Standalone scope: assets modeled here. */
+    contains Asset[] assets
+    /* Aspect scope: assets defined in extending architecture/domain models. */
+    refers Asset[] scope
+    contains Assumption[] assumptions
+}
+
+/*
+ * An assumption the analysis rests on ("the network is hostile", "the
+ * model registry is trusted"). First-class because invalidated
+ * assumptions are how threat models rot; a validated=false assumption is
+ * a finding waiting to happen.
+ */
+class Assumption extends ModelElement {
+    boolean validated
+}
+

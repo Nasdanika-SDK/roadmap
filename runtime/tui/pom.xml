@@ -1,0 +1,58 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<artifactId>tui</artifactId>
+	<packaging>jar</packaging>
+	<name>Nasdanika SDK Roadmap: Runtime TUI</name>
+	<description>
+		The terminal, on TamboUI: TamboUIContext, a provider of the widget module's TerminalContext
+		over a TamboUI buffer, kinds that use what TamboUI has and the neutral ones do not, and
+		screenshots of a buffer as SVG and as text, for tests and for books.
+	</description>
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+			<artifactId>widget</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>dev.tamboui</groupId>
+			<artifactId>tamboui-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>dev.tamboui</groupId>
+			<artifactId>tamboui-widgets</artifactId>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<!-- See tamboui.exports in the root pom -->
+					<compilerArgs>
+						<arg>--add-exports=dev.tamboui.core/dev.tamboui.export=org.nasdanika.sdk.roadmap.runtime.tui</arg>
+						<arg>--add-exports=dev.tamboui.core/dev.tamboui.export.svg=org.nasdanika.sdk.roadmap.runtime.tui</arg>
+						<arg>--add-exports=dev.tamboui.core/dev.tamboui.export.text=org.nasdanika.sdk.roadmap.runtime.tui</arg>
+					</compilerArgs>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>${tamboui.exports}</argLine>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

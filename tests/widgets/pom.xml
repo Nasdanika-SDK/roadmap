@@ -1,0 +1,38 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap.tests</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<artifactId>widgets</artifactId>
+	<packaging>jar</packaging>
+	<name>Nasdanika SDK Roadmap: Widget Tests</name>
+	<description>
+		One view, written once against kinds, rendered into CommonMark, GitHub Flavored Markdown, a
+		text grid and a TamboUI buffer. The tests write each rendering to target/showcase, where the
+		book takes its listings and its screenshot from.
+	</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+			<artifactId>tui</artifactId>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- The tui module's screenshots use TamboUI's exporters: see tamboui.exports in the root pom -->
+					<argLine>${tamboui.exports}</argLine>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

@@ -1,0 +1,8 @@
+/*
+ * Nasdanika SDK Roadmap: the name at the top left, in place of the name of the Zephyr Books.
+ * Appended after zephyr-bridge.css of the runtime, so this rule wins.
+ */
+#header::before,
+#toc.toc2::before {
+	content: "Nasdanika SDK Roadmap";
+}

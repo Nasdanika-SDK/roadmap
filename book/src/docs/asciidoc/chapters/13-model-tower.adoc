@@ -1,0 +1,236 @@
+[#model-tower]
+== The Model Tower
+
+[horizontal]
+Capability:: A set of small models of an organization and its solutions that build on each other, so that an element at the top is documented, owned, access controlled, staged, decided, governed, worked on and threat-modeled without any one model defining more than its own concern.
+Demonstration:: The Nasdanika International Banking System, as it grows. Today the tower is published as the pre-SDK models, each with its own site.
+Status:: [.planned]#PLANNED#, floor by floor. The 22 models are in `models/tower` as Xcore files to read, as they are in the pre-SDK tower.
+Depends on:: <<core-nano-models>>, and Meta for the upper floors.
+Value and effort:: The largest item in this book, and the slowest. Its value is in composition, so it arrives a floor at a time.
+How to help:: Take the floor nearest to your work and model something real with it, on the pre-SDK version if need be. What a model cannot say is the most useful thing to learn before it is rebuilt.
+
+=== What the tower is
+
+The tower is not a product suite.
+It is a set of small models, each published on its own and each depending only on those below it.
+What makes it more than a pile is that the floors compose.
+A concern defined once near the bottom, such as identity, documentation, provenance or time, is inherited by everything above, and a model that takes its place in the tower stops defining what a lower floor already provides.
+The tower gets taller and the models get smaller.
+
+Taken together they describe an organization from a button on a screen down to a field in a record of a mainframe, with ownership, access, stage, decisions, risks, controls, evidence, cost and work along the way.
+One graph then answers questions that today take four tools and an export: which teams depend on this system of record, who approved this alternative and on what analysis, which controls cover this requirement, what breaks if this library has a vulnerability.
+
+It is for anyone who has to understand something complicated quickly and pass it on accurately.
+A model is a deliverable that keeps working after the engagement that produced it: it can be handed over, extended, queried and regenerated.
+A reference architecture, a set of controls and a catalog of personas are models too, and new work starts from one of them and not from an empty page.
+
+=== What changes with the SDK
+
+The tower was built on the older Nasdanika, floor by floor, in Xcore.
+Three things change as it moves.
+
+*The lowest floors become the core.*
+What the tower called NxCore is the runtime's core model.
+Time leaves it for the occupancy nano-model, where it is one dimension among others.
+Role, IAM, Seal and Lifecycle become nano-models.
+So the tower proper starts higher than it did, on a base that more models share.
+
+*Concepts move down, and models shrink.*
+With relationships, kinds, occupancy and the enterprise vocabulary in core, several floors lose most of what they define.
+An architecture element with relationships is nearly `Related`.
+A persona with concerns is a stakeholder with concerns.
+A model is expected to be smaller after the move than before it, and where it is not, something below it is wrong.
+
+*The upper floors are defined in Meta.*
+Up to lifecycle the models stay hand-written Xcore: a small, slow base that everything cites.
+From accounting upward a floor is defined in Meta, the runtime's language-neutral type system, and its Xcore, Ecore and TypeScript are generated.
+The floors above lifecycle are structure with almost no behavior, which is what Meta describes.
+
+*A product is built on a projection, not on the tower.*
+Someone building a product for resumes needs a person, positions over time, organizations and skills, and not eight levels of supertypes.
+They select the elements they need, flatten the hierarchies they do not care about, and get a small model generated for them, in which every class and feature records the tower element it came from.
+When the tower changes, the projection is generated again and compared, and an empty difference says the product is not affected.
+Large reference vocabularies have been cut down to subsets this way for twenty years.
+The tool that does it, an assembler, is [.planned]#PLANNED# after the browser form of the polymorphic user interface.
+
+=== The floors
+
+The tables give each model with its file in `models/tower`, what it is, and what the move to the SDK does to it.
+Each row is a model to migrate, and none has a date.
+
+==== The spine
+
+[cols="2,4,4",options="header"]
+|===
+|Model |What it is |With the SDK
+
+|Accounting +
+`accounting.xcore`
+|A light double-entry model: ledgers, commodities, accounts, entries, transactions and assertions about balances. Cost can be attributed to any element of the graph.
+|The first floor defined in Meta. Accounting periods are extents of the occupancy nano-model.
+
+|Decision analysis +
+`decision-analysis.xcore`
+|Decisions with several criteria, several experts and several alternatives: judgments, direct weights, pairwise comparisons and results.
+|Deciders come from Role, confidentiality of judgments from IAM, and the workflow of a decision from Lifecycle.
+
+|Decision binding +
+`decision-binding.xcore`
+|Which alternative was committed to which variation point, by whom, based on what analysis and what other decisions. Decision records that cannot drift from what they decide.
+|"Binding" here is a commitment, and in <<bindings>> it is a value. One of the two words has to give way.
+
+|Governance +
+`governance.xcore`
+|Programs, frameworks, requirements, policies, controls, risks, evidence, assessments, findings and waivers, after the common shape of management systems.
+|Obligations get addressees from the enterprise nano-model.
+
+|Work +
+`work.xcore`
+|Work items attached to anything, with dependencies and constraints in time. A finding traces to the work that remedies it.
+|Time constraints are occupancies, including relative ones: "starts when the review clears".
+
+|Requirements +
+`requirements.xcore`
+|Requirements, acceptance criteria, verification, and what satisfies what.
+|Satisfaction is a relationship, of `Related`.
+
+|Architecture +
+`architecture.xcore`
+|Elements with containment, relationships that are objects, and kinds as data, so that C4, ArchiMate and TOGAF vocabularies load as catalogs.
+|Most of it is `Related` and the kind nano-model. What is left may be a catalog and not a model.
+
+|Threat +
+`threat.xcore`
+|Assets, threats, weaknesses, trust boundaries and actors, with STRIDE, ATT&CK, ATLAS and the OWASP lists as catalogs. An asset is an architecture element seen for its security.
+|Being an asset becomes a facet held for a time, not a supertype. The Maven model then does not need to know that threats exist.
+
+|C4 +
+`c4.xcore`
+|Person, software system, container, component and code, on architecture.
+|A catalog of kinds over `Related`, with the diagrams the runtime already draws.
+|===
+
+==== Branches
+
+[cols="2,4,4",options="header"]
+|===
+|Model |What it is |With the SDK
+
+|AI governance +
+`ai-governance.xcore`
+|AI systems, model and dataset assets, risks, impact assessments, oversight controls, model cards, evaluations and incidents, grounded in the threat and governance floors.
+|Unchanged in intent. Not reviewed by a specialist in AI governance: it maps to public frameworks and does not claim to satisfy them.
+
+|Agent +
+`agent.xcore`
+|Agentic systems, agents, tasks, tools and skills: for documenting such a system and for running it. An agent is an AI system, so it is governed by construction.
+|Runs on <<waypoints>>. Tools come from the tool model and inference from the inference model, so it should shrink. Authoring in Draw.io follows <<drawn-screens>>.
+
+|MCP +
+`mcp.xcore`
+|Servers, their versions, tools, resources and prompts, hosts and clients, and catalogs of them.
+|Tools move to the tool model, where MCP is one transport.
+
+|Capability +
+`capability.xcore`
+|Capabilities, their providers, dependencies between them and evidence that a provider has what it claims.
+|Unrelated to the runtime's capability framework, which resolves requirements in code. The name needs care.
+
+|Product management +
+`product-management.xcore`
+|Personas, their concerns, goals, needs and pain points, and the capabilities that concerns pull.
+|Personas and concerns move down to stakeholders and concerns of the enterprise nano-model.
+
+|Org design +
+`org-design.xcore`
+|Organizations, units, roles and people, strategy and goals, processes, decision rights and coordination.
+|A person extends a stakeholder. Membership of a unit for two quarters is an occupancy.
+
+|Family +
+`family.xcore`
+|Families, members, kinship, events and sources: genealogy, and a model anyone can check against what they know.
+|Kinship is a relationship with a kind, and a life is occupancies. A good first model to move.
+|===
+
+==== Estate and practice
+
+[cols="2,4,4",options="header"]
+|===
+|Model |What it is |With the SDK
+
+|Maven +
+`maven.xcore`
+|The Maven project model, generated from its schema: modules and their dependencies, as assets with computed ownership and vulnerabilities traced through dependencies.
+|Loaded through a volume, with the threat facet contributed by the threat floor.
+
+|TIBCO BusinessWorks 5 +
+`bw5.xcore`
+|Process definitions, activities, transitions and groups of an integration product, down to the activity.
+|Kept as the example of modernizing a legacy system: its processes become executable graphs on <<waypoints>>, with activities resolved through the capability framework.
+
+|CISO +
+`ciso.xcore`
+|A security program: incidents, vulnerabilities, awareness campaigns, continuity plans, exercises, third parties and metrics.
+|On governance and threat. Not reviewed by a security specialist.
+
+|System of record +
+`system-of-record.xcore`
+|An estate of systems of record: datasets, record layouts, copybooks, tables and columns, and mappings to a shared vocabulary.
+|The vocabulary is a Meta package, and a mapping is a mapping of <<opgraph-and-nsml>>.
+|===
+
+==== User interface models
+
+[cols="2,4,4",options="header"]
+|===
+|Model |What it is |With the SDK
+
+|UI +
+`ui.xcore`
+|A user interface as a model: elements, containers, layout, bindings to values and to events.
+|To be reviewed against <<widgets>> and <<drawn-screens>>. If something remains, it is the stored form of a drawn screen.
+
+|Bootstrap UI +
+`bootstrap-ui.xcore`
+|Bootstrap components on the UI model.
+|The runtime has HTML and Bootstrap models. Likely retired.
+
+|Action, Bootstrap, HTML application
+|Navigation and pages of generated sites in the older line.
+|Not migrated. The runtime's site generation and views replace them, if anything is needed at all.
+
+|Diagram, presentation, Draw.io
+|Models for reading and writing diagrams and slides.
+|[.available]#AVAILABLE# in the runtime. Sprotty is not needed. Visio, PowerPoint and Excel wait for models generated from the formats' schemas.
+|===
+
+=== One user interface or many
+
+The tower's models will have user interfaces in the terminal first, and accounting is the one to start with, because its author is its first user.
+
+The form is not one application for everything.
+It is a navigator with contributions: the tree of accounts on one side, and on the other a view that depends on what is selected, an account's entries, a transaction, an assertion that a balance is what the bank says it is.
+Each view comes from the module that knows the class, as views do everywhere in the runtime.
+The same form serves the other floors: a tree of capabilities, of controls, of work.
+It is the navigator with details that <<commander>> lists as planned.
+
+=== Order
+
+The tower moves in the order of dependency, and a floor moves when something needs it.
+
+. The nano-models of <<core-nano-models>>, since everything stands on them.
+. Role, IAM, Seal and Lifecycle as nano-models.
+. Accounting, as the first floor in Meta and the first with a terminal interface.
+. Then by need. The International Banking System decides: what a bank's example requires next is what moves next.
+
+A floor reaches Maven Central when its namespace is settled, it has a book, and something other than itself uses it.
+Until then its sketch is here.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The third column of the tables is the assistant's reading of the roadmap files and of the sketches, row by row, and is the part of this chapter most in need of review.
+The rows for Architecture, UI, Capability, Product management and Org design state things that the sources only suggest.
+The sketches in `models/tower` are copies of the Xcore in the Nasdanika-Models repositories as of November 2026 and are not kept in step with them.
+====
+endif::[]

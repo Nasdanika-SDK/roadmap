@@ -1,0 +1,181 @@
+@Ecore(nsURI="https://family.models.nasdanika.org", nsPrefix="org.nasdanika.models.family")
+@GenModel(
+	modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="21",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.family
+
+import org.nasdanika.models.orgdesign.Organization
+import org.nasdanika.models.orgdesign.Person
+import org.nasdanika.models.architecture.Element
+import org.nasdanika.models.architecture.Relationship
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ---- Root ---- */
+
+/*
+ * A family: an organization whose members are kin. Aggregates
+ * capabilities, holds concerns, makes decisions, owns resources; all of
+ * that arrives from the floors below. Families federate by reference:
+ * different relatives own different branches in different repositories.
+ */
+class Family extends Organization {
+    contains Member[] members
+    contains Source[] sources
+    contains Repository[] repositories
+    contains Media[] media
+    contains Note[] notes
+    contains EventKind[] eventKinds
+}
+
+/* ---- GEDCOM record base ---- */
+
+/*
+ * Mixin for GEDCOM-loaded elements: preserved cross-reference id for
+ * round-tripping, and the domain's own provenance.
+ */
+abstract class Record {
+    /* GEDCOM cross-reference id, e.g. "@I1@", preserved for round-tripping. */
+    String xref
+    contains Citation[] citations
+}
+
+/* GEDCOM 5.5.1 SEX values plus the GEDCOM 7 X (other). */
+enum Sex {
+    UNKNOWN
+    MALE
+    FEMALE
+    OTHER
+}
+
+/* ---- Members and kinship ---- */
+
+/*
+ * A family member: an org design Person (hence a capability provider and
+ * a persona with concerns) and an architecture Element (hence a source
+ * and target of typed relationships), plus GEDCOM specifics. Living-person
+ * visibility is a tag convention pending IAM audience tiers.
+ */
+class Member extends Person, Element, Record {
+    Sex sex
+    contains PersonalName[] names
+    contains Event[] events
+    refers Media[] media
+}
+
+/*
+ * A kinship tie: an architecture relationship between members, typed by
+ * RelationshipKind instance data (parent, spouse; biological, adoptive,
+ * step, foster as kind taxonomy; the family-ties demo vocabulary loads
+ * as a catalog). Spouse kinships carry the GEDCOM FAM xref and family
+ * events (marriage, divorce).
+ */
+class Kinship extends Relationship, Record {
+    contains Event[] events
+}
+
+/*
+ * A personal name in GEDCOM structure: the value keeps the original
+ * "Given /Surname/" form; parts are parsed for querying and display.
+ */
+class PersonalName {
+    /* Original GEDCOM form, e.g. "Elizabeth Alexandra Mary /Windsor/". */
+    String value
+    String given
+    String surname
+    String nickname
+    String prefix
+    String suffix
+    /* Name type per GEDCOM TYPE: birth, married, immigrant, aka. */
+    String ^type
+}
+
+/* ---- Events ---- */
+
+/*
+ * A kind of event or attribute: birth, death, marriage, occupation,
+ * residence, immigration. The GEDCOM tag vocabulary loads as a catalog.
+ */
+class EventKind {
+    String name
+    refers EventKind superType
+    /* GEDCOM tag, e.g. "BIRT", "DEAT", "MARR", "OCCU". */
+    String tag
+}
+
+/*
+ * An event of a member or a kinship. Shrinks onto the planned NxCore
+ * Event (named, documented Temporal): after that, this class contributes
+ * kind, place, and citations; name, documentation, and typed
+ * approximate/range dates come from the base.
+ */
+class Event extends org.nasdanika.models.nxcore.Event, Record {
+    refers EventKind kind
+    /* Raw GEDCOM date value, e.g. "ABT 1854", "BET 1912 AND 1914"; collapses into nxcore temporals. */
+    String date
+    String place
+    /* Free-form value for attribute-like events, e.g. occupation text. */
+    String value
+    refers Media[] media
+}
+
+/* ---- Sources: the domain's provenance ---- */
+
+/*
+ * A citation: this claim is supported by that source, at this location,
+ * with this quality. Two centuries of genealogical practice distilled.
+ */
+class Citation {
+    refers Source source
+    /* Location within the source (GEDCOM PAGE): page, entry, film frame. */
+    String page
+    /* GEDCOM QUAY 0..3: 0 unreliable, 1 questionable, 2 secondary, 3 primary evidence. */
+    Integer quality
+    /* Quoted text from the source (GEDCOM DATA/TEXT). */
+    String text
+}
+
+/* A source: parish register, census, photograph, family bible, interview. */
+class Source extends Record {
+    String title
+    String author
+    /* Publication facts (GEDCOM PUBL). */
+    String publication
+    refers Repository repository
+    /* Call number within the repository (GEDCOM CALN). */
+    String callNumber
+}
+
+/* An archive, library, registry office, or website holding sources. */
+class Repository extends Record {
+    String address
+    String website
+}
+
+/* ---- Media and notes ---- */
+
+/*
+ * A multimedia object: photograph, scan, recording. Derived artifacts
+ * (stylized icons generated from photographs, for diagrams and for
+ * privacy-preserving publication) cite the original as their source.
+ */
+class Media extends Record {
+    /* URI of the file. */
+    String file
+    String format
+    String title
+}
+
+/* A shared note record (GEDCOM NOTE); inline notes use nxcore documentation. */
+class Note extends Record {
+    String text
+} 
+

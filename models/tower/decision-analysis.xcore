@@ -1,0 +1,272 @@
+@Ecore(nsURI="https://DecisionAnalysis.models.nasdanika.org", nsPrefix="org.nasdanika.models.decision.analysis")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.decision.analysis
+
+import org.nasdanika.models.lifecycle.Staged
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.iam.Subject
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+
+/* ---- Comparands (what can be analyzed) ---- */
+
+/*
+ * The aspect extension point: anything comparable - anything that can be
+ * evaluated against criteria, compared pairwise or n-wise, and appear in
+ * a result. Criteria and alternatives are comparands within this model;
+ * models above extend Comparand so their elements (embodiments, controls,
+ * assets) can be analysis subjects. Extends the lifecycle model's Staged,
+ * so every comparand, and every record below, is staged,
+ * access-controlled, sealable, and signable by inheritance.
+ */
+abstract class Comparand extends Staged {
+}
+
+/*
+ * A candidate under consideration. May stand for another element
+ * (an embodiment, a vendor record, an IAM Subject when experts are the
+ * alternatives) via `represents`, or exist on its own (three restaurants,
+ * named and described inline).
+ */
+class Alternative extends Comparand {
+    /* Optional: the element this alternative stands for. */
+    refers ModelElement represents
+}
+
+/*
+ * A node in a criteria hierarchy. Weights are relative to siblings and
+ * come from judgments (DirectWeight, or derived from comparisons), not
+ * from an attribute: who weighted, when, and on what authority is part
+ * of the record.
+ */
+class Criterion extends Comparand {
+    contains Criterion[] children
+    /*
+     * Aggregation method identifier resolved via the capability
+     * framework, e.g. "wsm", "wpm", "ahp-eigenvalue", "best-worst".
+     * Per-node: one criterion group may use AHP while a sibling uses
+     * direct weights. Empty means inherited from the parent; the
+     * analysis-level default is "wsm", the on-ramp method.
+     */
+    String method
+    /* The catalog criterion this one instantiates, when reusing a published hierarchy. */
+    refers Criterion prototype
+    /*
+     * ANP-style feedback edges to criteria outside the parent-child
+     * hierarchy. Cycles are a deliberate choice: authoring tools should
+     * warn, and execution requires Analysis.cyclesEnabled.
+     */
+    refers Criterion[] influencedBy
+}
+
+/*
+ * A reusable library of criteria hierarchies and stock alternatives:
+ * "vendor selection criteria" authored once, versioned and shipped as a
+ * Maven artifact, instantiated across many analyses via
+ * Criterion.prototype.
+ */
+class Catalog extends Staged {
+    contains Criterion[] criteria
+    contains Alternative[] alternatives
+}
+
+/* ---- Panel (who judges) ---- */
+
+enum PanelRole {
+    /* Provides judgments within the assigned scope. */
+    EXPERT
+    /* Runs the analysis; sees everything, including blinded judgments and consistency diagnostics. */
+    FACILITATOR
+    /* Owns the decision the analysis informs. */
+    OWNER
+}
+
+/*
+ * Assignment of an IAM Subject to an analysis: who participates, in what
+ * role, over which part of the criteria hierarchy and which alternatives.
+ * Empty scopes mean the whole analysis. Agentic experts are Principals;
+ * assigning experts to criterion groups is itself a decision analysis
+ * when taken seriously (experts-as-alternatives).
+ */
+class Assignment extends Staged {
+    refers Subject subject
+    PanelRole role
+    /* Criterion groups in scope; empty means all. */
+    refers Criterion[] criteria
+    /* Alternatives in scope; empty means all. */
+    refers Alternative[] alternatives
+}
+
+/* ---- Judgments (the record) ---- */
+
+/*
+ * A dated, attributable assertion by an expert: the unit of record.
+ * Committed, dated, and - through the tower base - staged, signable, and
+ * sealable: "I provided my judgment, it is on the record; if you
+ * disagree, commit yours." Delphi blinding is access control on these
+ * records, not a separate mechanism; retraction is a lifecycle stage,
+ * not a deletion.
+ */
+abstract class Judgment extends Staged {
+    /* Who asserts: a person, a service account, an agent. */
+    refers Subject expert
+    Date date
+    /* Self-assessed confidence, 0..1. */
+    double confidence
+    /* Markdown rationale. */
+    String rationale
+    /*
+     * Override-as-record: the judgment this one overrides. The overridden
+     * judgment stays, so an overruling is a parallel assertion with
+     * authority and date attached, not an erasure - and sensitivity by
+     * authority stays computable.
+     */
+    refers Judgment overrides
+}
+
+/*
+ * A directly assigned weight, relative to siblings: the WSM/WPM on-ramp
+ * that skips comparison matrices entirely.
+ */
+class DirectWeight extends Judgment {
+    refers Criterion criterion
+    double weight
+}
+
+class Comparison extends Judgment {
+
+    refers Criterion context
+	
+}
+
+/*
+ * A pairwise comparison in the given context: how many times `first` is
+ * preferred over `second` with respect to `context` (Saaty scale or free
+ * ratio; the reciprocal is implied). Compared items may be sibling
+ * criteria (deriving weights) or alternatives (scoring under a leaf).
+ */
+class PairwiseComparison extends Comparison {
+    /* The criterion with respect to which the comparison is made. */
+    refers Comparand first
+    refers Comparand second
+    double value
+}
+
+/*
+ * An n-wise comparison (best-worst scaling / MaxDiff): out of `items`,
+ * the best and the worst with respect to `context`. Less respondent
+ * burden and more reliable weights than exhaustive pairwise; also the
+ * natural target shape for GenAI elicitation from narratives.
+ */
+class NWiseComparison extends Comparison {
+    refers Comparand[] items
+    refers Comparand best
+    refers Comparand worst
+}
+
+enum EvidenceKind {
+    /* Expert opinion, argument, reference. */
+    JUDGED
+    /* Produced by running the system: eval harness output, cost and latency observation. */
+    MEASURED
+}
+
+/*
+ * A direct evaluation of a comparand against a criterion. Measured
+ * evaluations point at their evidence (eval run, benchmark, dashboard).
+ * The value is a string to admit scalars, vectors, and richer payloads.
+ */
+class Evaluation extends Judgment {
+    refers Comparand evaluated
+    refers Criterion criterion
+    EvidenceKind kind
+    String value
+    /* URI of the evidence: eval report, benchmark run, measurement dashboard. */
+    String evidence
+}
+
+/*
+ * A free-form review or narrated opinion, and the judgments elicited from
+ * it. A GenAI elicitor extracts n-wise comparisons and evaluations across
+ * the criteria the text implicitly addresses; containment makes every
+ * elicited judgment traceable to its source. Honesty rule: what the
+ * narrative does not support is absent ("not provided"), not filled in.
+ */
+class Narrative extends Judgment {
+    /* The text itself, or empty when `location` points at it. */
+    String text
+    /* URI of an external narrative: a review, a recording transcript, a document. */
+    String location
+    contains Judgment[] elicited
+}
+
+/* ---- Results (what came out) ---- */
+
+/*
+ * A computed projection of the record: per-comparand values, typically a
+ * vector (benefit components over time, risk, cost Opex/Capex) rather
+ * than a single ranking number - dimensionality reduction to where humans
+ * can decide, not a decision made for them. Results are records like
+ * everything else: dated, signable, reproducible from `location`.
+ * Convergence is reported explicitly; a non-converged result says so.
+ */
+class Result extends Staged {
+    Date computed
+    /* URI of the producing computation: engine invocation, workflow run, notebook. */
+    String location
+    /* Judgments this result was computed over; empty means all judgments of the analysis at `computed` time. */
+    refers Judgment[] basis
+    boolean converged
+    /* Residual at the last iteration when not converged. */
+    double residual
+    int iterations
+    contains ResultEntry[] entries
+}
+
+/*
+ * One component of a result vector: the value of a comparand on an axis.
+ * String-typed to admit scalars, vectors, and non-numeric outputs.
+ */
+class ResultEntry {
+    refers Comparand comparand
+    /* The output axis: a criterion or criterion group; empty for a scalar rollup. */
+    refers Criterion axis
+    String value
+}
+
+/* ---- Analysis (root) ---- */
+
+/*
+ * A decision analysis: the question, the criteria, the candidates, the
+ * panel, the judgments, and the results - one auditable record. Comparands
+ * may be contained (standalone, grassroots analyses) or referenced
+ * (variation-point alternatives and embodiments from the decision-binding
+ * model, assets, controls - anything Comparand up the tower).
+ */
+class Analysis extends Staged {
+    /* Markdown: what is being decided and why. */
+    String question
+    /* The items under analysis: local alternatives and/or external comparands. */
+    refers Comparand[] comparands
+    /* Locally defined candidates. */
+    contains Alternative[] alternatives
+    /* Root criteria; reusable hierarchies come in via Criterion.prototype. */
+    contains Criterion[] criteria
+    contains Assignment[] assignments
+    contains Judgment[] judgments
+    contains Result[] results
+    /* Cycles in the criteria graph are opt-in; most decisions are acyclic. */
+    boolean cyclesEnabled
+    int maxIterations = "100"
+    double convergenceThreshold = "1e-6"
+}

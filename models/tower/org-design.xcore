@@ -1,0 +1,348 @@
+@Ecore(nsURI="https://orgdesign.models.nasdanika.org", nsPrefix="org.nasdanika.models.orgdesign")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.orgdesign
+
+import org.nasdanika.models.nxcore.NamedElement
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/*
+ * Root container
+ */
+
+@GenModel(documentation="Root container for an organizational design model. Aggregates all top-level elements: units, people, strategy, capabilities, processes, coordination mechanisms, decision rights, environment factors, and fit rules.")
+class Organization extends NamedElement {
+	@GenModel(documentation="Top-level organizational units. Sub-units are nested via OrganizationalUnit.subUnits.")
+	contains OrganizationalUnit[*] topLevelUnits opposite organization
+
+	@GenModel(documentation="People associated with the organization. People may fill multiple roles over time.")
+	contains Person[*] people
+
+	@GenModel(documentation="Strategic intent - coherent goal sets responding to environment factors.")
+	contains Strategy[*] strategies
+
+	@GenModel(documentation="External factors shaping design choices: market dynamics, regulatory pressure, technological change, competitive intensity.")
+	contains EnvironmentFactor[*] environmentFactors
+
+	@GenModel(documentation="Capabilities the organization claims to deliver. Cross-references from product management or application portfolio models typically resolve here.")
+	contains Capability[*] capabilities
+
+	@GenModel(documentation="Business and operational processes that span units.")
+	contains Process[*] processes
+
+	@GenModel(documentation="Mechanisms that coordinate work across units.")
+	contains CoordinationMechanism[*] coordinationMechanisms
+
+	@GenModel(documentation="Decision rights - what is decided, by whom, with what scope.")
+	contains DecisionRight[*] decisionRights
+
+	@GenModel(documentation="Rules expressing expected fit between design dimensions. Validation tooling can surface misalignments.")
+	contains FitRule[*] fitRules
+}
+
+/*
+ * Structure
+ */
+
+@GenModel(documentation="A unit of organization - division, department, team, working group, project, or any structural grouping. Units form a hierarchy.")
+class OrganizationalUnit extends NamedElement {
+	@GenModel(documentation="The organization this unit belongs to. Set on top-level units; null for sub-units, which inherit through their parent.")
+	refers Organization organization opposite topLevelUnits
+
+	@GenModel(documentation="Parent unit, if this is a sub-unit.")
+	refers OrganizationalUnit parent opposite subUnits
+
+	@GenModel(documentation="Sub-units of this unit.")
+	contains OrganizationalUnit[*] subUnits opposite parent
+
+	@GenModel(documentation="Roles defined within this unit.")
+	contains Role[*] roles opposite unit
+
+	@GenModel(documentation="Capabilities this unit delivers. Capability overlap across units is often the structural signature of duplicated effort.")
+	refers Capability[*] deliveredCapabilities
+
+	@GenModel(documentation="Structural pattern this unit follows.")
+	UnitType unitType
+}
+
+@GenModel(documentation="Common structural patterns for organizational units, drawn from the standard configurations literature.")
+enum UnitType {
+	@GenModel(documentation="Organized around functional specialty - engineering, marketing, finance.")
+	Functional
+	@GenModel(documentation="Organized around output - product line, market segment, geography.")
+	Divisional
+	@GenModel(documentation="Two reporting axes (e.g., function and product) intersect.")
+	Matrix
+	@GenModel(documentation="Loose federation of relatively autonomous units coordinating through standards or mutual adjustment.")
+	Network
+	@GenModel(documentation="Time-bound unit assembled around a specific deliverable.")
+	Project
+	@GenModel(documentation="Small, persistent group with shared work.")
+	Team
+	@GenModel(documentation="Other or hybrid pattern.")
+	Other
+}
+
+/*
+ * People and roles
+ */
+
+@GenModel(documentation="A position defined within an organizational unit. Roles abstract from people - they describe what someone in this position is responsible for and decides on.")
+class Role extends NamedElement {
+	refers OrganizationalUnit unit opposite roles
+
+	@GenModel(documentation="Person currently filling this role. Null if vacant.")
+	refers Person currentHolder opposite currentRoles
+
+	@GenModel(documentation="Capabilities required to fill this role effectively.")
+	refers Capability[*] requiredCapabilities
+
+	@GenModel(documentation="Decision rights this role holds.")
+	refers DecisionRight[*] decisionRights
+
+	@GenModel(documentation="Reporting line - the role this role reports to.")
+	refers Role reportsTo opposite directReports
+
+	@GenModel(documentation="Roles that report to this one.")
+	refers Role[*] directReports opposite reportsTo
+}
+
+@GenModel(documentation="A person associated with the organization. People are referenced by roles; the same person may fill multiple roles or transition over time.")
+class Person extends NamedElement {
+	@GenModel(documentation="Email address used as a secondary identifier and for documentation links.")
+	String email
+
+	@GenModel(documentation="Capabilities this person possesses. Comparing to required capabilities of the held roles surfaces gaps and overqualification.")
+	refers Capability[*] capabilities
+
+	@GenModel(documentation="Roles this person currently holds.")
+	refers Role[*] currentRoles opposite currentHolder
+}
+
+/*
+ * Capabilities
+ */
+
+@GenModel(documentation="An organizational capability - something the organization claims to be able to do. Capabilities are the bridge between strategy (what we want), structure (who delivers it), and applications (what supports it). Designed to be cross-referenced from product management and application portfolio models.")
+class Capability extends org.nasdanika.models.capability.Capability {
+
+
+	@GenModel(documentation="Maturity assessment.")
+	CapabilityMaturity maturity
+}
+
+// TODO - class
+@GenModel(documentation="Maturity levels for capabilities. Adapted from staged maturity models in widespread enterprise use.")
+enum CapabilityMaturity {
+	Initial
+	Repeatable
+	Defined
+	Managed
+	Optimizing
+}
+
+/*
+ * Strategy and environment
+ */
+
+@GenModel(documentation="A strategic intent - a coherent set of goals responding to environment factors and requiring specific capabilities.")
+class Strategy extends NamedElement {
+	contains Goal[*] goals
+
+	@GenModel(documentation="Environment factors this strategy responds to.")
+	refers EnvironmentFactor[*] respondsTo
+
+	@GenModel(documentation="Capabilities required to execute this strategy.")
+	refers Capability[*] requiresCapabilities
+
+	@GenModel(documentation="Time horizon for this strategy (e.g., '12 months', '3 years').")
+	String horizon
+}
+
+@GenModel(documentation="A measurable objective within a strategy.")
+class Goal extends NamedElement {
+	@GenModel(documentation="Metric used to measure progress (e.g., 'monthly active users', 'time to onboard a business banking client').")
+	String metric
+
+	@GenModel(documentation="Target value or threshold.")
+	String target
+
+	@GenModel(documentation="When the target should be achieved.")
+	String horizon
+}
+
+@GenModel(documentation="An external factor that shapes design choices. Environmental complexity and uncertainty are major contingency factors in classic organizational design literature.")
+class EnvironmentFactor extends NamedElement {
+	@GenModel(documentation="Category of environment factor.")
+	EnvironmentDimension dimension
+
+	@GenModel(documentation="Degree of unpredictability.")
+	Uncertainty uncertainty
+
+	@GenModel(documentation="Cynefin-inspired complexity classification.")
+	Complexity complexity
+}
+
+@GenModel(documentation="Categories of environment factors.")
+enum EnvironmentDimension {
+	Market
+	Regulatory
+	Technological
+	Competitive
+	Social
+	Economic
+}
+
+@GenModel(documentation="Degree of unpredictability in an environment factor.")
+enum Uncertainty {
+	Low
+	Medium
+	High
+}
+
+@GenModel(documentation="Complexity classification, in the Cynefin sense.")
+enum Complexity {
+	Simple
+	Complicated
+	Complex
+	Chaotic
+}
+
+/*
+ * Processes
+ */
+
+@GenModel(documentation="A business or operational process spanning one or more units.")
+class Process extends NamedElement {
+	@GenModel(documentation="Units that participate in executing this process.")
+	refers OrganizationalUnit[*] participatingUnits
+
+	@GenModel(documentation="Capabilities this process enables or contributes to.")
+	refers Capability[*] enabledCapabilities
+
+	ProcessType ^type
+
+	contains ProcessStep[*] steps
+}
+
+@GenModel(documentation="Process category. Operational processes deliver value to customers; management processes govern the organization; supporting processes provide infrastructure.")
+enum ProcessType {
+	Operational
+	Management
+	Supporting
+}
+
+@GenModel(documentation="A step within a process. Predecessor relationships define ordering; RACI-style assignments link steps to roles.")
+class ProcessStep extends NamedElement {
+	@GenModel(documentation="Role accountable for the step's outcome.")
+	refers Role responsible
+
+	@GenModel(documentation="Roles that perform the work.")
+	refers Role[*] performers
+
+	@GenModel(documentation="Roles consulted before or during the step.")
+	refers Role[*] consulted
+
+	@GenModel(documentation="Roles informed about the outcome.")
+	refers Role[*] informed
+
+	@GenModel(documentation="Steps that must complete before this one starts.")
+	refers ProcessStep[*] predecessors
+}
+
+/*
+ * Decision rights
+ */
+
+@GenModel(documentation="A decision right - authority to make a particular kind of decision over a particular scope.")
+class DecisionRight extends NamedElement {
+	DecisionScope scope
+
+	@GenModel(documentation="Units within which this decision right applies.")
+	refers OrganizationalUnit[*] applicableUnits
+
+	@GenModel(documentation="Capabilities this decision right pertains to.")
+	refers Capability[*] applicableCapabilities
+
+	DecisionAuthorityLevel authorityLevel
+}
+
+@GenModel(documentation="Strategic decisions concern direction; tactical concern means; operational concern execution.")
+enum DecisionScope {
+	Strategic
+	Tactical
+	Operational
+}
+
+@GenModel(documentation="Levels of decision authority - closely related to RACI but more granular for governance modeling.")
+enum DecisionAuthorityLevel {
+	Decide
+	Recommend
+	Consult
+	Inform
+	Veto
+}
+
+/*
+ * Coordination
+ */
+
+@GenModel(documentation="A mechanism that coordinates work across units. The enumeration draws on Mintzberg's six basic coordination mechanisms - the elementary ways organizations achieve unity of effort.")
+class CoordinationMechanism extends NamedElement {
+	CoordinationType ^type
+
+	@GenModel(documentation="Units this mechanism coordinates between.")
+	refers OrganizationalUnit[*] linkedUnits
+
+	@GenModel(documentation="How frequently this mechanism operates (e.g., 'daily standup', 'quarterly review', 'continuous').")
+	String cadence
+}
+
+@GenModel(documentation="Coordination mechanisms enumerated in the standard literature. Real organizations typically combine several; the choice and balance among them is itself a design decision.")
+enum CoordinationType {
+	@GenModel(documentation="Coordination via direct hierarchical instruction.")
+	DirectSupervision
+	@GenModel(documentation="Coordination by specifying how work is to be performed.")
+	StandardizationOfWork
+	@GenModel(documentation="Coordination by specifying expected outputs while leaving means to performers.")
+	StandardizationOfOutputs
+	@GenModel(documentation="Coordination by training performers in shared methods.")
+	StandardizationOfSkills
+	@GenModel(documentation="Coordination by shared values, beliefs, and behavioral norms.")
+	StandardizationOfNorms
+	@GenModel(documentation="Coordination by informal communication between performers.")
+	MutualAdjustment
+}
+
+/*
+ * Fit rules
+ */
+
+@GenModel(documentation="A rule expressing expected fit between design dimensions. Fit rules support the central insight from contingency-based design literature: there is no universally optimal organization, only better and worse fits between context, strategy, and structure. Validation tooling can use these to surface misalignments.")
+class FitRule extends NamedElement {
+	@GenModel(documentation="Condition expression. Implementation-defined; could be OCL, Xtend, or plain prose for documentation purposes.")
+	String condition
+
+	@GenModel(documentation="What is expected when the condition holds.")
+	String expectedOutcome
+
+	FitSeverity severity
+}
+
+@GenModel(documentation="Severity of a fit rule.")
+enum FitSeverity {
+	Recommended
+	Required
+	Forbidden
+	Warning
+}
+

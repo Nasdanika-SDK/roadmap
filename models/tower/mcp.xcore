@@ -1,0 +1,200 @@
+@Ecore(nsURI="https://mcp.models.nasdanika.org", nsPrefix="org.nasdanika.models.mcp")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.mcp
+
+import org.nasdanika.models.nxcore.NamedElement
+import org.nasdanika.models.lifecycle.Staged
+import org.nasdanika.models.role.Undergoer
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ---- Catalog ---- */
+
+/*
+ * A federated catalog: owns servers and roles, and may include other catalogs �
+ * team catalogs roll up into an org catalog, org catalogs reference public ones.
+ */
+class Catalog extends NamedElement, Staged, Undergoer { // TODO - just model element and NamedElement and NamedPeriod redefined at each floor
+    contains Server[] servers opposite catalog
+    refers Catalog[] includes
+}
+
+/* ---- Server and versions ---- */
+
+/* Logical server: reverse-DNS name per the official registry, e.g. io.github.acme/weather. */
+class Server extends NamedElement {
+    container Catalog catalog opposite servers
+    String website
+    String repository
+    contains ServerVersion[] versions opposite server
+}
+
+/* A concrete published version � the unit of distribution, lifecycle and execution. */
+class ServerVersion extends NamedElement {
+    container Server server opposite versions
+    String version
+    String protocolVersion
+    contains Tool[] tools
+    contains Resource[] resources
+    contains ResourceTemplate[] resourceTemplates
+    contains Prompt[] prompts
+    boolean logging
+    boolean completions
+    /* Extension ids (reverse-DNS) negotiated per the 2026 extensions framework. */
+    String[] extensions
+    contains Package[] packages
+    contains Remote[] remotes
+}
+
+/* ---- Distribution (registry server.json alignment) ---- */
+
+enum TransportType {
+    STDIO
+    STREAMABLE_HTTP
+    SSE
+    CUSTOM
+}
+
+/* Installable artifact: npm | pypi | oci | nuget | mcpb ... */
+class Package extends NamedElement {
+    String registryType
+    String artifact
+    String version
+    TransportType transport
+    contains Variable[] environmentVariables
+    contains Variable[] arguments
+}
+
+/* Hosted endpoint. */
+class Remote extends NamedElement {
+    TransportType transport
+    String url
+    contains Variable[] headers
+}
+
+class Variable extends NamedElement {
+    String value
+    boolean required
+    boolean secret
+}
+
+/* ---- Capabilities ---- */
+
+abstract class Capability extends NamedElement {
+    /* Implementation binding � used by the interpreting runtime; absent for pure documentation models. */
+    contains Binding binding
+    contains Example[] examples
+}
+
+/* Usage example - fuel for education, documentation and evals. */
+class Example extends NamedElement {
+    /* JSON arguments / input. */
+    String input
+    String output
+}
+
+/* JSON Schema, inline or by reference. */
+class Schema {
+    /* Inline JSON Schema definition. */
+    String definition
+    /* URI of the schema � resolved against the resource; classpath supported. */
+    String location
+}
+
+class Tool extends Capability {
+    contains Schema inputSchema
+    contains Schema outputSchema
+    /* Spec tool annotations � hints, not guarantees. */
+    boolean readOnlyHint
+    boolean destructiveHint = "true"
+    boolean idempotentHint
+    boolean openWorldHint = "true"
+}
+
+class Resource extends Capability {
+    String uri
+    String mimeType
+    long size
+    Date lastModified
+}
+
+class ResourceTemplate extends Capability {
+    /* RFC 6570 URI template. */
+    String uriTemplate
+    String mimeType
+}
+
+class Prompt extends Capability {
+    contains PromptArgument[] arguments
+    /* Message template with argument expansion. */
+    String template
+}
+
+class PromptArgument extends NamedElement {
+    boolean required
+}
+
+/* ---- Client side (education/completeness) ---- */
+
+/* Host application (Claude, IDE, agent) containing clients � one client per server connection. */
+class Host extends NamedElement {
+    contains Client[] clients opposite host
+}
+
+class Client extends NamedElement {
+    container Host host opposite clients
+    /* Client capabilities per the spec. */
+    boolean roots
+    boolean sampling
+    boolean elicitation
+    String[] extensions
+    /* The server (version) this client connects to. */
+    refers ServerVersion serverVersion
+    TransportType transport
+}
+
+/* ---- Execution bindings (interpretation flavor) ---- */
+
+/*
+ * Bindings attach executable behavior to modeled capabilities.
+ * The interpreting runtime walks the model, registers capabilities with the
+ * MCP Java SDK, and dispatches invocations to bindings. Metadata lives in the
+ * model instead of annotations; logic lives in Java, Groovy, or other scripts.
+ */
+abstract class Binding {
+    /* Binding configuration � passed to the handler at dispatch time. */
+    contains Variable[] parameters
+}
+
+/* Dispatch to a Java class � constructor/method resolved reflectively or via capability factory. */
+class JavaBinding extends Binding {
+    String className
+    String method
+}
+
+/* Inline or referenced script: Groovy, JavaScript, ... */
+class ScriptBinding extends Binding {
+    String language
+    String script
+    String location
+}
+
+/* Delegate to a capability obtained from the Nasdanika capability framework. */
+class CapabilityBinding extends Binding {
+    String requirement
+}
+
+/* Proxy to another modeled server capability � composition/federation of servers. */
+class ProxyBinding extends Binding {
+    refers Capability target
+}
+

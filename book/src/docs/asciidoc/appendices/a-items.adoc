@@ -1,0 +1,75 @@
+[appendix]
+[#items]
+== Items
+
+Every item of the roadmap, with its status and where it is described.
+An item has an id that does not change when its title does, so that another plan can refer to it.
+
+[.sketch]#SKETCH# means there is code in this repository, built and tested with every build.
+[.planned]#PLANNED# means designed or intended, and not built.
+
+=== Runtime
+
+[cols="2,3,1,2,3",options="header"]
+|===
+|Id |Item |Status |Where |Depends on
+
+|`runtime.binding` |Bindings |[.sketch]#SKETCH# |<<bindings>>, `runtime/common` |Runtime `common`
+|`runtime.binding.list` |List bindings with changes |[.planned]#PLANNED# |<<bindings>> |`runtime.binding`
+|`runtime.waypoint` |Waypoints, state, realms, telemetry |[.sketch]#SKETCH# |<<waypoints>>, `runtime/common` |Runtime `common`
+|`runtime.waypoint.git` |Waypoints in Git, and escalation |[.planned]#PLANNED# |<<waypoints>> |`runtime.waypoint`, a Git volume
+|`runtime.widget` |Widgets, kinds and Markdown |[.sketch]#SKETCH# |<<widgets>>, `runtime/widget` |`runtime.binding`
+|`runtime.widget.asciidoc` |An AsciiDoc context with files split by policy |[.planned]#PLANNED# |<<widgets>> |`runtime.widget`
+|`runtime.widget.html` |An HTML context with Bootstrap |[.planned]#PLANNED# |<<widgets>> |`runtime.widget`
+|`runtime.widget.interaction` |Actions, selection, input, tree and form |[.planned]#PLANNED# |<<widgets>> |`runtime.widget`
+|`runtime.tui` |The terminal on TamboUI, and screenshots |[.sketch]#SKETCH# |<<terminal>>, `runtime/tui` |`runtime.widget`
+|`runtime.tui.kit` |A base terminal command and the kit |[.planned]#PLANNED# |<<terminal>> |`runtime.tui`
+|`runtime.tui.telemetry` |Telemetry for commands in the terminal |[.planned]#PLANNED# |<<terminal>> |Runtime `cli`
+|`runtime.commander` |Nasdanika Commander |[.sketch]#SKETCH# |<<commander>>, `runtime/commander` |`runtime.tui`, runtime `volume`
+|`runtime.commander.tree` |Commander on any tree, with commands by type |[.planned]#PLANNED# |<<commander>> |`runtime.commander`
+|`runtime.screens` |Screens drawn in Draw.io |[.planned]#PLANNED# |<<drawn-screens>> |`runtime.tui`, runtime `drawio`
+|`runtime.inference` |Inference and provider modules |[.planned]#PLANNED# |<<designed-and-waiting>>, <<runtime-models>> |`model.tool`
+|`runtime.mcp` |MCP on a JSON-RPC core |[.planned]#PLANNED# |<<designed-and-waiting>> |`model.tool`
+|`runtime.telemetry.live` |Live telemetry |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `common`
+|`runtime.telemetry.sanitizer` |A sanitizer for telemetry |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `common`
+|`runtime.volume.system` |System volumes |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
+|`runtime.autosave` |Model auto-save on change recording |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `cli`
+|`runtime.graph` |Reactive compute graphs |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.binding`, `runtime.waypoint`
+|`runtime.cli.commands` |Commands over what is built |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `cli`
+|`runtime.cli.install` |`nsdk install` and profiles |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `bootstrap`
+|`runtime.doc.reference` |Generated metamodel references |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime models
+|`runtime.merger` |A merger for generated files |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
+|`runtime.ui.browser` |The polymorphic user interface in a browser |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.widget.html`
+|===
+
+=== Models
+
+[cols="2,3,1,2,3",options="header"]
+|===
+|Id |Item |Status |Where |Depends on
+
+|`model.core.related` |Related |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
+|`model.core.change` |Change |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
+|`model.core.occupancy` |Occupancy |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.related`, `model.core.change`
+|`model.core.kind` |Kind |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.change`, `model.core.occupancy`
+|`model.core.enterprise` |Enterprise |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
+|`model.core.document` |Document |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.enterprise`
+|`model.core.example` |Example |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
+|`model.core.role` |Role, IAM, Seal and Lifecycle as nano-models |[.planned]#PLANNED# |<<core-nano-models>>, `models/core/sketches` |`model.core.occupancy`, `model.core.kind`
+|`model.core.change.engine` |Applying changes |[.planned]#PLANNED# |<<core-nano-models>> |`model.core.change`
+|`model.cli` |The CLI model and self-documenting command lines |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `runtime.widget`
+|`model.tool` |The tool model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `model.core.example`
+|`model.inference` |The inference model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`
+|`model.expression` |The expression model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Runtime core model
+|`model.cypher` |The Cypher model, parser and engine |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.expression`
+|`model.xpath` |XPath for models |[.planned]#PLANNED# |<<runtime-models>> |Runtime core model
+|`model.tower` |The model tower on the SDK |[.planned]#PLANNED# |<<model-tower>>, `models/tower` |`model.core.role`, Meta
+|`model.tower.assembler` |Products on projections of the tower |[.planned]#PLANNED# |<<model-tower>> |`model.tower`, `runtime.ui.browser`
+|`model.opgraph` |OpGraph on the SDK |[.planned]#PLANNED# |<<opgraph-and-nsml>> |`runtime.waypoint`, `runtime.screens`
+|`model.nsml` |NSML on the SDK |[.planned]#PLANNED# |<<opgraph-and-nsml>> |`runtime.waypoint`
+|`model.technology` |Technology models: coverage, Excel, Git, GitHub, GitLab, Java, Jira, SQL |[.planned]#PLANNED# |<<technology-models>>, `models/technology` |`runtime.volume.system`
+|===
+
+The models in `models/runtime`, `models/tower` and `models/technology` are marked [.planned]#PLANNED# although each has an Xcore file there.
+The files are the pre-SDK models, kept to be read.
+An item becomes a [.sketch]#SKETCH# when it is rewritten on the SDK and builds here.

@@ -1,0 +1,72 @@
+[#assistants]
+== Working with AI Assistants
+
+Most of what is in this repository was built with an AI assistant, and a reader is likely to use one to build on it.
+An assistant is only as good as what it has read.
+Asked to "build a file manager for the terminal with Nasdanika", it will produce something plausible from its training, and Nasdanika's modules will not be in it, or will be there as they were in an older line of the code.
+Given this roadmap, it has the designs, the code and the tests to work from.
+
+=== What to give an assistant
+
+*The repository, not the rendered book.*
+The AsciiDoc sources are a fraction of the size of the HTML, and they lead to the code: every listing in a chapter is an `include` that names a file and a tagged region.
+An assistant that can read files finds its way as an engineer would.
+
+. `AGENTS.md` at the root says how the repository is laid out and what its conventions are.
+. The root `pom.xml` lists the modules, each with a name and a description.
+. `book/src/docs/asciidoc/chapters` has a chapter per item: the why, the design, and what is not built.
+. A module's tests show how it is used, one behavior per test.
+
+*The runtime's books, for the ground under it.*
+The roadmap is built on the released runtime and does not repeat its documentation.
+The {sdk-book}[SDK book] and the Zephyr Books are published with each release, and their sources are in the {runtime-repo}[runtime repository].
+
+=== How to ask
+
+Name the item and where it is, say what is yours, and say what done looks like.
+Some requests that work, with the paths as they are in this repository:
+
+[quote]
+Build me a commander for the entries of a zip file, based on the Nasdanika SDK Roadmap, chapter "Nasdanika Commander" and `runtime/commander`. One panel over a `Volume` for the zip file and one over the current directory. Add tests in the style of `CommanderTests`: keys pressed, the screen read from a buffer.
+
+[quote]
+Using `runtime/widget` in the Nasdanika SDK Roadmap, write a view of my `Invoice` class with a section, a table of line items and a total. Render it as GitHub Flavored Markdown and on a 100 by 30 terminal, as `RoadmapViewTests` in `tests/widgets` does, and write both renderings to `target`.
+
+[quote]
+Add a `Tree` kind to the widget module for `TerminalContext`, following how `Table` is done in `TerminalKinds`. Rows are read only when they are shown. Do not add it for Markdown: a view should find that it is missing and use a nested list.
+
+[quote]
+Sketch a nano-model for approvals in the style of `models/core` in the Nasdanika SDK Roadmap: an abstract class, a definition, a catalog and a reference, with a header comment that says what it is for, and a test that instantiates it.
+
+A request in that form gives the assistant a pattern to follow and a way to know when it has followed it.
+
+=== What an assistant is for, and what it is not
+
+The division of work that has held up is this.
+
+*The assistant drafts.*
+It writes the code, the tests and the first text, and it reads the whole roadmap each time, which a person cannot do.
+Keeping a plan with many connected ideas consistent is the kind of work it is good at.
+
+*The build judges behavior.*
+A claim about what code does is worth what its test is worth.
+That is why the listings in this book are regions of tests, and why a warning fails the build.
+
+*A person judges meaning.*
+Whether a name is the right word, whether a model says what the business means, whether an item is worth doing: no test answers those.
+The same holds for subject matter.
+A model of a regulation drafted by an assistant looks as finished as one reviewed by a specialist, and it is not, so this book labels what a specialist has not reviewed.
+
+Three habits help.
+
+* *Ask for the source of a statement.* The roadmap marks what was read in code, what was run, and what is from memory. Ask an assistant to keep doing that.
+* *Run before you bind.* For a user interface, look at it on a screen with nothing connected, then connect it. <<drawn-screens>> is that way of working turned into a tool.
+* *Keep decisions dated.* When an assistant changes a design, have it record what changed and why, as <<revisions>> does. A silent rewrite is how a plan loses its reasons.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The four requests above are written to match the repository as it is in this cut, and none has been run end to end as a prompt.
+Run each one against a fresh clone before the first release of the book, and replace it with the wording that worked.
+====
+endif::[]

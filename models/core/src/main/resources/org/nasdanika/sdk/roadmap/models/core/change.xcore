@@ -1,0 +1,167 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/change", nsPrefix="org.nasdanika.sdk.roadmap.models.core.change")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Changes as data.
+ *
+ * Inspired by EMF Change, with two differences. A change finds what it changes with a selector, an
+ * evaluator run in the context of a host object, where EMF Change holds a reference to the object.
+ * And a new value can be computed from that context, where EMF Change holds the value. So a change
+ * can be written before the objects it applies to exist, kept in a catalog, and applied to many
+ * hosts: a kind applies its changes to whatever it classifies, and a transition applies its changes
+ * to what moves.
+ *
+ * A change is a plan: it can be validated, shown and approved before anything is applied. Applying
+ * it is recorded by the ChangeRecorder of EMF, whose ChangeDescription is the reverse delta.
+ *
+ * Rules, from the roadmap:
+ *   - Changes apply in order, and each sees the result of those before it.
+ *   - A change sets values in the structure its host has, and never adds to that structure. A
+ *     feature that the class of the host does not have is a diagnostic.
+ *   - Selectors and values are side-effect free. XPath is the default language for catalogs that
+ *     are not trusted to run scripts.
+ */
+package org.nasdanika.sdk.roadmap.models.core.change
+
+import org.nasdanika.sdk.runtime.models.core.Evaluator
+import org.nasdanika.sdk.runtime.models.core.ModelElement
+import org.nasdanika.sdk.runtime.models.core.NamedElement
+
+/**
+ * Whether the host may say otherwise.
+ */
+enum ChangeMode {
+
+	/** A default: a value the host sets itself wins. */
+	DEFAULT
+
+	/** A constraint: a host value that differs is a diagnostic, not an override. */
+	CONSTRAINT
+
+}
+
+/**
+ * Something that carries changes to apply to a host: a kind, a transition.
+ */
+interface Changing {
+
+	contains AbstractChange[] changes
+
+}
+
+/**
+ * What a list of changes holds: a change, a set of changes, or a reference to either in a catalog.
+ */
+abstract class AbstractChange extends ModelElement {
+
+}
+
+/**
+ * Changes applied together and in order.
+ */
+class ChangeSet extends AbstractChange, Changing {
+
+}
+
+/**
+ * A change kept in a catalog, used from somewhere else.
+ */
+class ChangeReference extends AbstractChange {
+
+	refers AbstractChange target
+
+}
+
+/**
+ * A change to the objects a selector finds.
+ */
+abstract class Change extends AbstractChange {
+
+	/**
+	 * Finds the objects to change, in the context of the host. Without a selector the host itself
+	 * is changed.
+	 */
+	contains Evaluator selector
+
+	ChangeMode mode
+
+}
+
+/**
+ * A change to one feature of the selected objects, by name: the objects may be of different classes.
+ */
+abstract class FeatureChange extends Change {
+
+	String feature
+
+}
+
+/**
+ * Sets a single-valued feature.
+ */
+class SetChange extends FeatureChange {
+
+	/**
+	 * Computes the new value from the context: the host, the selected object and its current value.
+	 */
+	contains Evaluator value
+
+	/**
+	 * The new value as text, converted to the type of the feature, for the common case that needs
+	 * no computation.
+	 */
+	String literal
+
+}
+
+class UnsetChange extends FeatureChange {
+
+}
+
+/**
+ * Adds to a many-valued feature.
+ */
+class AddChange extends FeatureChange {
+
+	contains Evaluator value
+
+	String literal
+
+	/** Where to add. Negative adds at the end. */
+	int position = "-1"
+
+}
+
+/**
+ * Removes from a many-valued feature what the value evaluator selects.
+ */
+class RemoveChange extends FeatureChange {
+
+	contains Evaluator value
+
+}
+
+/**
+ * Removes the selected objects from their containers.
+ */
+class DeleteChange extends Change {
+
+}
+
+/**
+ * Changes published together, to be referenced.
+ */
+class ChangeCatalog extends NamedElement {
+
+	contains AbstractChange[] changes
+
+	contains ChangeCatalog[] catalogs
+
+}

@@ -1,0 +1,150 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/enterprise", nsPrefix="org.nasdanika.sdk.roadmap.models.core.enterprise")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. The first model of any effort: who the stakeholders are, what concerns them, and what
+ * each of them is shown, in what format and over what channel.
+ *
+ * The vocabulary is that of ISO/IEC/IEEE 42010, with formats and channels added. The kinds of the
+ * full enterprise model collapse into EMF: a kind of semantic element is an EClass, a semantic
+ * element is any EObject, and a kind of representation element is the EClass of a representation
+ * model, such as a table in the document model. What is left is small.
+ *
+ * Two uses:
+ *   - Documenting an enterprise. Concerns are rarely written down and viewpoints rarely explained.
+ *     A "monthly statement" viewpoint can say how to read a statement.
+ *   - Asking for a view. A request names a viewpoint, a format and a channel, and the polymorphic
+ *     UI builds the view. A rendered view can then link to its viewpoint as help.
+ *
+ * Open: whether Message is worth a class apart from View, whether a viewpoint refers to channels,
+ * and better names for the representation classes.
+ */
+package org.nasdanika.sdk.roadmap.models.core.enterprise
+
+import org.eclipse.emf.ecore.EClass
+import org.eclipse.emf.ecore.EObject
+import org.nasdanika.sdk.runtime.models.core.ModelElement
+import org.nasdanika.sdk.runtime.models.core.NamedElement
+
+/**
+ * Someone, or something, with an interest: a customer, an auditor, an operator, an AI agent.
+ */
+class Stakeholder extends NamedElement {
+
+	contains Concern[] concerns opposite stakeholder
+
+	/** The formats the stakeholder can take, most preferred first. */
+	refers Format[] formats
+
+	/** The channels the stakeholder can be reached over, most preferred first. */
+	refers Channel[] channels
+
+}
+
+/**
+ * What a stakeholder wants to know or to be sure of: "what is the state of my finances".
+ */
+class Concern extends NamedElement {
+
+	container Stakeholder stakeholder opposite concerns
+
+}
+
+/**
+ * A way of looking that frames concerns: "monthly statement". Its documentation says how to read
+ * the views made from it.
+ */
+class Viewpoint extends NamedElement {
+
+	refers Concern[] frames
+
+	/** The kinds of representation elements the viewpoint is made of: a table, a Sankey chart. */
+	refers EClass[] elementKinds
+
+}
+
+/**
+ * A way of writing a representation down: markdown, asciidoc, html, svg, drawio. The id is the
+ * string that docFormat and contentType of the core model already use.
+ */
+class Format extends NamedElement {
+
+}
+
+/**
+ * A way of delivering: e-mail, a web site, a Git repository, MCP, print.
+ */
+class Channel extends NamedElement {
+
+	/** The formats the channel takes. A view can go over a channel in a format they share. */
+	refers Format[] accepts
+
+}
+
+/**
+ * Something shown. A representation is a representation element, so representations nest, as
+ * sections do in a document.
+ */
+abstract class RepresentationElement extends ModelElement {
+
+	/** The model elements this one shows. */
+	refers EObject[] represents
+
+}
+
+class Representation extends RepresentationElement {
+
+	contains RepresentationElement[] elements
+
+}
+
+/**
+ * What was built from a viewpoint for some elements: "the statement for November 2026". A view is
+ * a model, so it can be saved, compared, traced and delivered again.
+ */
+class View extends NamedElement {
+
+	refers Viewpoint viewpoint
+
+	contains Representation[] representations
+
+}
+
+/**
+ * A view delivered: to whom, over what channel, in what format.
+ */
+class Message extends ModelElement {
+
+	refers View view
+
+	refers Stakeholder[] recipients
+
+	refers Channel channel
+
+	refers Format format
+
+}
+
+/**
+ * Stakeholders, viewpoints, formats and channels published together.
+ */
+class EnterpriseCatalog extends NamedElement {
+
+	contains Stakeholder[] stakeholders
+
+	contains Viewpoint[] viewpoints
+
+	contains Format[] formats
+
+	contains Channel[] channels
+
+	contains EnterpriseCatalog[] catalogs
+
+}

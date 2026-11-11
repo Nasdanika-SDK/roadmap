@@ -1,0 +1,131 @@
+[appendix]
+[#building]
+== Building and Conventions
+
+=== The repository
+
+[source,text]
+----
+pom.xml                     the parent: the runtime's bill of materials, versions, the modules
+AGENTS.md                   how the repository is laid out, for AI assistants
+runtime/                    what is on the roadmap for the runtime, as code
+  common/                   bindings and waypoints
+  widget/                   widgets, kinds, Markdown and the neutral terminal context
+  tui/                      the terminal on TamboUI, and screenshots
+  commander/                Nasdanika Commander
+models/
+  core/                     the core nano-models: Xcore that generates and compiles
+    sketches/               Role, IAM, Seal and Lifecycle, as they are before the SDK
+  runtime/ tower/ technology/   pre-SDK and drafted models, Xcore to read
+tests/
+  widgets/                  one view rendered four ways: tests across modules
+book/                       this book, and the site built from it
+.github/workflows/          the build that publishes the site
+----
+
+A module has the layout of a runtime module: `pom.xml`, `src/main/java` with a `module-info.java`, and `src/test/java`.
+Its group, module name and packages are the runtime's with `roadmap` added, and it depends on the runtime's modules through the runtime's bill of materials, with no versions of its own.
+
+=== Building
+
+Java 25 and Maven 3.9 are needed.
+From the root:
+
+[source,text]
+----
+mvn verify                                  everything: modules, tests, models, the book
+mvn verify -Dasciidoctor.skip=true          everything but the book
+mvn verify -Dbook.editor-notes=false        the book without editor's notes, as published
+mvn -pl runtime/commander -am package       one module and what it needs
+----
+
+The runtime comes from Maven Central, at the version of the `nasdanika.runtime.version` property.
+To try the roadmap against a runtime that is not released, install that runtime locally and pass its version:
+
+[source,text]
+----
+mvn verify -Dnasdanika.runtime.version=<version>
+----
+
+Nothing here is deployed to Maven Central.
+
+=== The book
+
+The book is AsciiDoc in `book/src/docs/asciidoc`, rendered by Asciidoctor to a PDF, an EPUB and one HTML page.
+
+Its build does five things, in order.
+
+. Unpacks the look of the HTML and the NBOK appendix from the runtime release, the artifacts `org.nasdanika.sdk.runtime.doc:zephyr` and `:nbok`.
+. Copies the manuscript to `target/manuscript`, and beside it what the tests wrote: the screenshots of the commander and the renderings of <<widgets>>.
+. Draws the cover, with `book/src/cover/Cover.java`, run by the JDK that runs Maven.
+. Renders the three formats into `target/book`.
+. Assembles `target/site`: the HTML as `index.html`, and the PDF and the EPUB under names that do not change, so that links to them keep working.
+
+The modules are built and tested before the book, because the book includes what their tests wrote.
+A warning from Asciidoctor fails the build: a missing tag, a broken cross-reference, a missing image.
+
+The PDF uses the theme of the SDK book, and the HTML the Bootswatch Zephyr look of the Nasdanika Zephyr Books.
+
+=== Publishing
+
+A workflow in `.github/workflows` builds the repository on every push and pull request.
+On a push to `main` it also publishes `book/target/site` to GitHub Pages, which serves it at {site-url}.
+The book on Leanpub is uploaded by hand, the PDF and the EPUB from `book/target/book`, when a release of the runtime is made or the roadmap has changed enough to say so.
+
+=== Conventions
+
+*Listings are includes.*
+Code in a chapter comes from a tagged region of a source file or a test:
+
+[source,text]
+----
+\include::{flow-test}/BindingTests.java[tag=first,indent=0]
+----
+
+A callout is a numbered comment at the end of a line of the source.
+Code that is not compiled anywhere, such as a design for something not built, is shown as such and said to be so.
+
+*A test is named for what it shows.*
+`aSlowSubscriberGetsTheLatestValueNotABacklog` is a sentence of the chapter it is quoted in.
+
+*Status labels,* [.sketch]#SKETCH# and [.planned]#PLANNED#, on anything that is not in a released runtime.
+The preface says what each means.
+
+*Editor's notes* record what is known to need a decision or a check.
+They are `IMPORTANT` blocks with the caption "Editor's note", inside a condition on the `editor-notes` attribute, shown by default and left out of published editions.
+
+*Sources are stated.*
+Where a statement comes from running something, the test is there.
+Where it comes from reading code, or from memory, the text says so.
+
+*Voice.*
+First person, the author's.
+No long dashes in prose.
+
+=== Adding an item
+
+. Add a row to <<items>>, with an id that will not change.
+. Write the chapter, or the section of one, with the six things an item says: <<taking-part>> lists them.
+. If there is code, add a module under `runtime/` or a model under `models/`, with tests, and tag what the chapter quotes.
+. Add an entry to <<revisions>> if a decision was made or changed.
+
+=== When an item graduates
+
+The module moves to the runtime's repository, and `roadmap` is dropped from its group, its module name and its packages.
+Its tests become tests of the runtime, and its chapter becomes a chapter of the runtime's books, with its listings following the tests.
+Here, its row in <<items>> is removed, its chapter is replaced by a line in <<direction>> that says where it went, and <<revisions>> records the release it went into.
+
+=== TamboUI on the module path
+
+TamboUI {tamboui-version} keeps its exporters in packages that its core module does not export.
+The `tui` module's screenshots use them, so wherever that code runs on the module path, three options are needed.
+The root `pom.xml` has them as the `tamboui.exports` property:
+
+[source,text]
+----
+--add-exports=dev.tamboui.core/dev.tamboui.export=org.nasdanika.sdk.roadmap.runtime.tui
+--add-exports=dev.tamboui.core/dev.tamboui.export.svg=org.nasdanika.sdk.roadmap.runtime.tui
+--add-exports=dev.tamboui.core/dev.tamboui.export.text=org.nasdanika.sdk.roadmap.runtime.tui
+----
+
+The commander's jar runs on the class path, where they are not needed.

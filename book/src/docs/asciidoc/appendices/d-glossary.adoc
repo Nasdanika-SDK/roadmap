@@ -1,0 +1,70 @@
+[appendix]
+[#glossary]
+== Glossary
+
+[glossary]
+Binding:: A value that can be read now and followed as it changes: a supplier, a publisher that starts with the current value, and closeable. Not to be confused with resolving a diagram element to what implements it, or with a decision binding of the model tower.
+
+Catalog:: Definitions published together as a resource that other models refer to: kinds, changes, dimensions, examples, stakeholders.
+
+Channel:: A way of delivering a view: e-mail, a site, a repository, MCP, print. A channel accepts formats.
+
+Change:: A change to a model as data: a selector that finds what to change, and a value, possibly computed. A plan that can be reviewed before it is applied.
+
+Coalescing:: Keeping only the latest value for a subscriber that is slower than its source, where a stream would hold the source back.
+
+Context:: Where a widget renders: Markdown being written, an area of a terminal. Its type is the format. A derived context is one made from another for a part of the output: a deeper heading level, a sub-area, a buffer.
+
+Facet:: What a waypoint carries besides its lineage, asked for by type.
+
+Floor:: A model of the model tower, which builds on the models below it.
+
+Format:: A way of writing a representation down: Markdown, AsciiDoc, HTML, SVG.
+
+Gradient ascent:: How the next step is chosen: from where things stand, the step with the most value for its time and effort, counting what it makes cheaper later.
+
+Graduation:: The move of a module from this repository to the runtime, when its identity is settled, it is documented, and something other than itself uses it.
+
+Item:: A thing on the roadmap, with an id, a status, what it depends on and how to help.
+
+Kind (model):: A classification of an element as data, which may carry changes that configure what it classifies.
+
+Kind (widget):: A capability interface a view is written against, such as `Table`, provided per type of context.
+
+Lineage:: The waypoints an execution passed through to reach a waypoint.
+
+Micro-model:: A small model in a module of its own.
+
+Nano-model:: A small aspect in one Xcore file, in a package of the core module.
+
+NBOK:: The Nasdanika Body of Knowledge: the books, stories and example code about Nasdanika. This book is part of it.
+
+North Star:: Agentic work on bounded, typed models, with state in Git and the safety of a transaction.
+
+Occupancy:: The recorded fact that a subject is in a region: a box in dimensions, of which time is one.
+
+Polymorphic user interface:: A user interface assembled from views chosen by the class of what they show and by the format asked for.
+
+Provider:: An implementation behind an interface that views are written against: TamboUI is a provider of the terminal context.
+
+Pump:: The runtime's queue of work drained by one thread at a time. The realm of bindings and of a terminal's frame loop.
+
+Realm:: A space of state that is reached only through commands, so that its rules hold.
+
+Resolve:: To find what implements an element of a diagram. Kept apart from "bind", which is for values.
+
+Sketch:: Code in this repository, built and tested, and not settled.
+
+Surface:: A context that is an area: a terminal in cells, a diagram page in pixels.
+
+Technology model:: A model of what a system or a format holds, in its own terms, for reading and writing.
+
+Viewpoint:: A way of looking that frames concerns. A view is what is built from a viewpoint for some elements.
+
+Volume:: The runtime's file abstraction: a tree of entries with content, wherever it is. A panel of the commander is a volume.
+
+Waypoint:: Where an execution is and how it got there. A value, like a commit: advancing makes a new one.
+
+Widget:: Something that renders itself into a context. A value, built before any context exists.
+
+Wire:: A connection drawn between two elements, where one follows the other's value.

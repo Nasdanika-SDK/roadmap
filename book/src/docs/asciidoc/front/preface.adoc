@@ -1,0 +1,84 @@
+[preface]
+[#preface]
+== Preface
+
+A roadmap is usually a slide: boxes on a timeline, true on the day it was drawn.
+This one is a repository.
+It has a book, the one you are reading, and it has code: the modules that may become part of the Nasdanika SDK, the tests that show how to use them, and the models that are to be migrated.
+The code is built on a released runtime, {runtime-version}, so whatever has a module here can be tried today, and whatever has only a chapter is a statement of intent.
+
+=== What it is for
+
+*To say in one place where Nasdanika is going.*
+Until now the vision and the plans lived in several places: the nasdanika.com site, a growing file of dated decisions, the readmes of fifty-odd model repositories, and design documents for Waypoint, OpGraph and the Nasdanika Semantic Mapping Language.
+This book gathers what is public in them, and the places it replaces will point here.
+
+*To announce intent early, with something to run.*
+A proof of concept in this repository is not a release.
+It is there so that someone who needs the thing can see what it would be, take it apart, and say what is wrong with it while changing it is still cheap.
+
+*To make it possible to take part.*
+Some readers will want an item enough to contribute to it, or to sponsor it.
+Others will take a piece and build their own solution on it, which the license allows and which is welcome.
+<<taking-part>> says how.
+
+*To ground AI assistants.*
+An assistant that has read this book and the repository can build on the roadmap rather than on its guess of what a Nasdanika module looks like.
+<<assistants>> shows how to ask.
+
+=== How to read it
+
+Start with <<direction>>, which says what the destination is and how the next step is chosen.
+After that the book is a reference: go to the item you care about.
+<<items>> lists every item with its status and the chapter that describes it.
+
+Three labels say how real something is:
+
+* [.available]#AVAILABLE#: in a released runtime. This book mentions such things only as the ground the roadmap stands on. The {sdk-book}[SDK book] describes them.
+* [.sketch]#SKETCH#: there is code in this repository, built and tested, and it is not settled. Names, packages and behavior may change before it graduates, and it may not graduate at all.
+* [.planned]#PLANNED#: designed, or only intended, and not built.
+
+A chapter about something with code has the same shape each time: why, what it is, how it is used, with listings from the tests, what is not there yet, and how to help.
+
+=== How it is kept
+
+The roadmap changes as work is done and as ideas arrive, and it is kept by two rules.
+
+The first is that the chapters say what holds now, and <<revisions>> says when and why it came to hold.
+A chapter is rewritten when a decision changes it, and the decision gets a dated entry, so nothing changes silently and nobody has to read the history to learn the present.
+
+The second is how the next step is chosen, which I call gradient ascent: from where things stand, take the step with the most value for its time and effort, counting what it makes cheaper later, and then look again from the new position.
+<<direction>> has more on it.
+
+The book is built on a runtime release and carries its version, {revnumber}.
+The date on the title page says when this copy was built.
+A module graduates from the roadmap to the runtime by dropping `roadmap` from its names: `org.nasdanika.sdk.roadmap.runtime.widget` becomes `org.nasdanika.sdk.runtime.widget`.
+When it does, its chapter leaves this book and its tests become the examples of the runtime's books.
+
+[NOTE]
+.A first cut
+====
+This edition is the first cut of the book.
+It was assembled with an AI assistant from the roadmap's earlier files, the nasdanika.com site, the model repositories and the experiments of November 2026.
+I have reviewed it, and I did not go into the details. That is by design.
+The intent is generally correct, and for a roadmap that is what has to be right.
+What it says about the behavior of code is backed by tests that run when the book is built.
+What it says about plans, priorities and reasons is a reading of those sources: right in direction, and not checked line by line.
+
+A section gets its in-depth review at one of two moments: when it is time for it to graduate from the roadmap, or when it is elaborated while it stays in the roadmap.
+Until then, read a section as a statement of intent.
+====
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+Editor's notes such as this one mark what is known to need a decision or a check.
+They are shown in working builds and left out of published editions.
+The listings are not yet held to 96 characters a line, so the PDF wraps the long ones.
+====
+endif::[]
+
+=== What is not here
+
+Stories and their backlog are in the https://github.com/Nasdanika-SDK/stories[stories] repository.
+What is learned about third-party technologies along the way, such as how TamboUI exports a screen, goes to the https://github.com/Nasdanika-SDK/field-notes[Nasdanika Field Notes], where it is proved by a test that needs no Nasdanika code.

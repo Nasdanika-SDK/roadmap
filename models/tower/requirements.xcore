@@ -1,0 +1,204 @@
+@Ecore(nsURI="https://requirements.models.nasdanika.org", nsPrefix="org.nasdanika.models.requirements")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.requirements
+
+import org.eclipse.emf.ecore.EObject
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.work.Workable
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* Base (ModelElement, Property) is imported from the tower rather than
+ * redefined; collapses into nxcore on base extraction. */
+
+/* ---- Kinds (instance data, not subclasses) ---- */
+
+/*
+ * A kind of requirement: functional, quality attribute (performance,
+ * security, usability...), constraint, interface, business rule, user
+ * story. Organizations and notations define their own catalogs; a
+ * quality-attribute taxonomy (ISO 25010) loads as a kind tree.
+ * superType enables taxonomy: a latency requirement is a kind of
+ * performance requirement is a kind of quality attribute.
+ */
+class RequirementKind extends ModelElement {
+    refers RequirementKind superType
+}
+
+/* ---- Satisfier: the extension point of this floor ---- */
+
+/*
+ * An element that can carry requirements and claim to satisfy
+ * requirements: an architecture element, an asset, an agent, a
+ * capability provider - or a requirement itself. Extends Workable, so
+ * everything at and above this floor is transitively workable, governed,
+ * staged, access controlled, and engageable. The floor above
+ * (architecture) re-parents AbstractElement to this class.
+ */
+abstract class Satisfier extends Workable {
+    /*
+     * Requirements ON this element: what must be true of it. For a
+     * Requirement, contained requirements are its refinement (SysML
+     * refine; DOORS module hierarchy).
+     */
+    contains AbstractRequirement[] requirements
+    /*
+     * Satisfaction claims BY this element: which requirements (its own
+     * or, via references, another model's) it satisfies, and why.
+     */
+    contains Satisfaction[] satisfactions
+}
+
+/* ---- Requirements ---- */
+
+/*
+ * Common base for defined and referenced requirements, so containment,
+ * satisfaction, and derivation treat local and federated requirements
+ * uniformly - the AbstractWork / WorkReference pattern.
+ */
+abstract class AbstractRequirement extends ModelElement {
+    /* Satisfaction claims targeting this requirement; coverage is a query over this list. */
+    refers Satisfaction[] satisfiedBy opposite requirement
+    /* URI of the source this requirement was loaded from: Word paragraph, Excel row, Confluence page, ReqIF spec object, tracker item. */
+    String origin
+}
+
+/*
+ * A requirement: a normative statement about the element that carries
+ * it. A Satisfier itself, so requirements nest (refinement) and a
+ * derived requirement can record satisfaction of the requirement it
+ * flows down from. Workable through the tower: elaboration and
+ * implementation work attach here, which is the typed reason this floor
+ * sits on work. Status, approval signatures, and assignment arrive
+ * through the tower (lifecycle, seal, role), not as attributes.
+ *
+ * SAME-NAME SHADOW: extends (shadows) the governance model's
+ * Requirement, the thin framework-clause class (reference id, children),
+ * per the shadow-chain rule and the decision binding model's Alternative
+ * precedent. Additive-only: this class adds kind, statement, criteria,
+ * verification, satisfaction; it removes nothing. The payoff is
+ * polymorphism downward: governance Policy.satisfies is typed against
+ * the thin class, so a policy can cite a full requirement authored at
+ * this floor without governance ever depending upward. The inherited
+ * children containment duplicates Satisfier.requirements for the
+ * framework-mirroring case; prefer requirements, treat children as the
+ * legacy clause hierarchy pending governance re-wire.
+ */
+class Requirement extends org.nasdanika.models.governance.Requirement, AbstractRequirement, Satisfier {
+    refers RequirementKind kind
+    /*
+     * The normative statement, EARS-friendly by convention:
+     * "WHEN <trigger> the <system> SHALL <response>". The inherited
+     * name/description carry title and discussion; statement is the
+     * testable sentence.
+     */
+    String statement
+    /* Why this requirement exists; distinct from sources (where it came from). */
+    String rationale
+    /* Smaller is more important; absent means unprioritized. MoSCoW and similar schemes are a kind or property catalog concern. */
+    Integer priority
+    /*
+     * Where this requirement comes from: a stakeholder or persona, a
+     * regulation clause, a threat, a bound decision. Typed as EObject
+     * because sources live across micro-models without a shared base
+     * yet; narrow on base convergence (SysML trace, DOORS source link).
+     */
+    refers EObject[] sources
+    /*
+     * Requirements this one is derived from (SysML derive): flow-down
+     * across levels and, via RequirementReference, across federated
+     * models - a subsystem's requirements derive from the system's the
+     * way code depends on a Maven artifact.
+     */
+    refers AbstractRequirement[] derivedFrom
+    contains AcceptanceCriterion[] acceptanceCriteria
+    contains Verification[] verifications
+}
+
+/*
+ * A reference to a requirement defined in another (published, federated)
+ * model: flow-down without copying. A supplier satisfies, derives from,
+ * or verifies against a customer's published requirement by citing it.
+ */
+class RequirementReference extends AbstractRequirement {
+    refers Requirement target
+}
+
+/* ---- Acceptance and verification ---- */
+
+/*
+ * Verification method vocabulary per MIL-STD-961 / INCOSE: fixed for
+ * decades, hence an enum (the TemporalConstraint argument).
+ */
+enum VerificationMethod {
+    INSPECTION
+    ANALYSIS
+    DEMONSTRATION
+    TEST
+}
+
+/*
+ * A single testable condition of satisfaction. Kept as contained records
+ * rather than a text blob so generators, test scaffolding, and agents
+ * consume criteria individually - the spec-driven development contract.
+ */
+class AcceptanceCriterion extends ModelElement {
+    String statement
+    VerificationMethod method
+}
+
+/*
+ * A dated verification record: the requirement (or a subset of its
+ * criteria) was checked by a method, with a verdict and evidence.
+ * Evidence may be a test run URI, an analysis document, or a signed
+ * lifecycle sojourn; who verified is attributable through the tower
+ * (IAM), and a signed verification is non-repudiable via seal.
+ */
+class Verification extends ModelElement {
+    VerificationMethod method
+    /* Criteria covered by this verification; empty means the requirement as a whole. */
+    refers AcceptanceCriterion[] criteria
+    Date date
+    Boolean passed
+    /* Evidence elements: test runs, analyses, documents, signed sojourns. Typed as EObject pending base convergence. */
+    refers EObject[] evidence
+}
+
+/* ---- Satisfaction ---- */
+
+/*
+ * A reified satisfaction claim, contained in its satisfier (the
+ * Relationship pattern): this element satisfies that requirement, for
+ * this reason. Claim and proof are separate on purpose: satisfaction is
+ * asserted by design, verification is established by evidence; "satisfied
+ * but never verified" and "verified against no satisfier" are both
+ * findings a query can surface.
+ */
+class Satisfaction extends ModelElement {
+    refers AbstractRequirement requirement opposite satisfiedBy
+    /* How the containing element satisfies the requirement. */
+    String rationale
+    /* Partial satisfaction: the requirement needs other satisfiers too (DOORS partial links). */
+    Boolean partial
+}
+
+/* ---- Root ---- */
+
+/*
+ * Root container for a requirements model: kind catalogs plus
+ * requirements, directly or under satisfier elements. Domains federate
+ * by reference, the same way work and product management domains do.
+ */
+class RequirementDomain extends Satisfier {
+    contains RequirementKind[] requirementKinds
+}
+

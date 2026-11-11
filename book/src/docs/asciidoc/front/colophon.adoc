@@ -1,0 +1,33 @@
+[colophon]
+== Colophon
+
+*Nasdanika SDK Roadmap: What Comes Next, and How to Take Part*
+
+Edition {revnumber}, built on {revdate}.
+
+This book is published in three formats, and each is rebuilt whenever the roadmap changes:
+
+* a web page, {site-url};
+* a PDF, {pdf-url};
+* an EPUB, {epub-url}.
+
+It is also on Leanpub, {leanpub-url}, as part of the Nasdanika Body of Knowledge.
+Its source, with the modules, the tests and the models it describes, is at {roadmap-repo}.
+
+This edition is built on Nasdanika SDK Runtime {runtime-version}.
+Every code listing in it is a region of a source file or a test in the repository, compiled and tested against that version of the runtime when the book is built, and every terminal screenshot is what a test drew.
+
+Copyright (C) 2026 Pavel Vlasov.
+
+The text and figures of this book are licensed under the https://creativecommons.org/licenses/by/4.0/[Creative Commons Attribution 4.0 International License] (CC BY 4.0).
+You may share and adapt them for any purpose, commercial purposes included, provided you give appropriate credit, provide a link to the license, and indicate if you made changes.
+A suggested credit: "Pavel Vlasov, _Nasdanika SDK Roadmap_, licensed under CC BY 4.0", with a link to {roadmap-repo}.
+
+The code and the models are licensed under the Eclipse Public License 2.0, the license of the runtime.
+In addition, you may use the code of this book's listings in your own programs and documentation without asking for permission and without attribution.
+
+Neither license covers the Nasdanika name or logo: CC BY 4.0 grants no trademark rights.
+
+Eclipse, EMF and Xtext are trademarks of the Eclipse Foundation. Java and OpenJDK are trademarks or registered trademarks of Oracle and its affiliates. OpenTelemetry is a project of the Cloud Native Computing Foundation. Other names may be trademarks of their owners. Their use here identifies the technologies the roadmap builds on and implies no endorsement.
+
+Typeset with Asciidoctor PDF in Noto Serif, Noto Sans and M+ 1mn. Terminal screenshots exported by TamboUI.

@@ -1,0 +1,271 @@
+@Ecore(nsURI="https://DecisionBinding.models.nasdanika.org", nsPrefix="org.nasdanika.models.decision.binding")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.decision.binding
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.role.Role
+import org.nasdanika.models.iam.Subject
+import org.nasdanika.models.lifecycle.Staged
+import org.nasdanika.models.decision.analysis.Comparand
+import org.nasdanika.models.decision.analysis.Criterion
+import org.nasdanika.models.decision.analysis.Analysis
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+
+/* ============================ Extension point ================================ */
+
+/*
+ * The aspect extension point of this floor: an element that carries its
+ * own variation points and the bindings that resolved them - an
+ * architecture element with its ADRs attached where drift is detectable,
+ * a control with its treatment choice on file. Extends Comparand, so
+ * every element above this floor is also analyzable. The aspect costs
+ * nothing until the first variation point is declared.
+ */
+abstract class VariableElement extends Comparand {
+    contains VariationPoint[] variationPoints
+    contains Binding[] bindings
+}
+
+/* ============================== Decision space =============================== */
+
+/*
+ * Root object: the design space of an endeavor. A graph of variation points
+ * connected through alternative transitions. Entry points are variation points
+ * with no incoming transitions.
+ */
+class DecisionSpace extends Staged {
+    contains VariationPoint[] variationPoints
+    /* Criteria shared across the space; variation points reference them. */
+    contains Criterion[] criteria
+    contains Role[] roles
+    contains Embodiment[] embodiments
+    contains Exploration[] explorations
+    /*
+     * Analyses over the space's alternatives and embodiments (as
+     * comparands): the MCDA record of forward narrowing and pull-mode
+     * evaluation.
+     */
+    contains Analysis[] analyses
+    refers derived VariationPoint[] entryPoints get {
+        // variation points with no incoming transitions
+        null
+    }
+}
+
+/* =============================== Variation point ============================= */
+
+enum VariationPointState {
+    identified
+    open
+    tentative
+    bound
+    superseded
+    retired
+}
+
+/*
+ * How a decision can be bound: analytically from existing inputs, on arrival
+ * of a named input, or empirically by measurement (evaluation harness,
+ * cost/quality/latency observation).
+ */
+enum BindingMode {
+    bindNow
+    bindOnTrigger
+    bindByMeasurement
+}
+
+/*
+ * When the binding takes effect in the lifecycle of the product:
+ * design, build, deployment, or run time. Binding time is itself a decision.
+ */
+enum BindingTime {
+    design
+    build
+    deployment
+    run
+}
+
+class VariationPoint extends Staged {
+    VariationPointState state
+    BindingMode bindingMode
+    BindingTime bindingTime
+    /* Condition or input required to bind, e.g. "eval report on candidate model set" */
+    String bindingTrigger
+    contains Responsibility[] responsibilities
+    /* Criteria applicable at this variation point; may reference shared criteria of the space */
+    refers Criterion[] criteria
+    contains Alternative[] alternatives opposite variationPoint
+    /* Incoming transitions: alternatives (possibly of several upstream variation points) that open this one */
+    refers Transition[] incomingTransitions opposite target
+}
+
+/* ================================ Alternative ================================ */
+
+/*
+ * A candidate resolution of a variation point. Extends (shadows) the
+ * decision analysis model's Alternative, so it can be judged, evaluated,
+ * and appear in results without further ceremony; evaluations and
+ * judgments live in the analyses, referencing the alternative as a
+ * comparand.
+ */
+class Alternative extends org.nasdanika.models.decision.analysis.Alternative {
+    container VariationPoint variationPoint opposite alternatives
+    contains Parameter[] parameters
+    /* Outbound transitions: further variation points this alternative opens if chosen */
+    contains Transition[] outgoingTransitions opposite source
+}
+
+/*
+ * Alternatives may be parameterized: one alternative, a family of configurations.
+ */
+class Parameter extends ModelElement {
+    String ^type
+    String defaultValue
+}
+
+/*
+ * A directed edge from an alternative to a variation point it opens.
+ * A variation point may have multiple incoming transitions, e.g. a database
+ * choice and an operating system choice jointly opening a certification decision.
+ */
+class Transition extends ModelElement {
+    container Alternative source opposite outgoingTransitions
+    refers VariationPoint target opposite incomingTransitions
+    /* Optional guard: parameter values or external conditions under which this transition applies */
+    String condition
+}
+
+/* =============================== Responsibility ============================== */
+
+/**
+ * TODO - refactor to role
+ */
+enum RACI {
+    responsible
+    accountable
+    consulted
+    informed
+}
+
+/*
+ * Assignment of a role to a variation point. Validation rule (to be implemented
+ * as a constraint): exactly one accountable responsibility per variation point.
+ */
+class Responsibility extends ModelElement {
+    refers Role role
+    RACI kind
+}
+
+/* ========================= Embodiment and Binding ============================ */
+
+/*
+ * A (partial or complete) set of bindings over a decision space: one point in
+ * the design space. Several embodiments of one decision space are product line
+ * members: a premium tier and a standard tier share the space and differ only
+ * in bindings. Embodiments are produced by hand, by forward enumeration, by
+ * backward resolution against a region, or by pull-based exploration.
+ * A Comparand: embodiments are evaluated and narrowed by analyses over
+ * them (DecisionSpace.analyses), not by evaluations of their own.
+ */
+class Embodiment extends Comparand {
+    contains Binding[] bindings
+}
+
+/*
+ * The act and record of binding one variation point: which alternative, with
+ * which parameter values, by whom, on what rationale and analysis, and under
+ * what conditions it shall be revisited. Signable via the tower base: a
+ * signed binding is non-repudiable provenance for the floors above.
+ */
+class Binding extends Staged {
+    refers VariationPoint variationPoint
+    refers Alternative selected
+    contains ParameterValue[] parameterValues
+    /* The authority that bound: a person, a service account, an agent. */
+    refers Subject boundBy
+    Date boundOn
+    String rationale
+    /*
+     * The analysis that informed this binding, when there is one. Absent
+     * means a fiat or default binding - a legitimate record, visibly
+     * unanalyzed (bind-without-analysis).
+     */
+    refers Analysis analysis
+    /* Condition that reopens the decision, e.g. "quarterly model landscape review" */
+    String revisitTrigger
+    /*
+     * Rebinding lineage: the binding this one replaces. Superseded bindings are
+     * kept, with their rationale, so the path can be retraced and the history
+     * of a decision inspected: version control for decisions. This is what
+     * makes rebinding cheap when the situation changes (a new model or
+     * building block becomes available): retrace to the variation point, add
+     * the alternative, re-evaluate against criteria already on file, rebind.
+     */
+    refers Binding supersedes
+}
+
+class ParameterValue {
+    refers Parameter parameter
+    String value
+}
+
+/* ============================ Execution: exploration ========================= */
+
+/*
+ * A region of the design space expressed as bounds on criteria: the input of
+ * backward execution ("only embodiments under X dollars per month with p95
+ * latency under Y") and the optional target of pull-based exploration.
+ */
+class DesignSpaceRegion extends ModelElement {
+    contains CriterionBound[] bounds
+}
+
+class CriterionBound {
+    refers Criterion criterion
+    /* String-typed to admit scalars, vectors, enumerated values */
+    String lowerBound
+    String upperBound
+}
+
+/*
+ * Strategy of the embodiment stream generator in pull mode.
+ * The design space is mostly discrete with continuous parameters mixed in, so
+ * adaptive is mixed-space search (Bayesian, evolutionary) rather than literal
+ * gradient descent; the generator needs a feedback edge, as results of
+ * evaluated points steer the choice of the next ones.
+ */
+enum ExplorationStrategy {
+    /* Forward enumeration of all valid combinations */
+    exhaustive
+    /* Random or quasi-random sampling of the space */
+    sample
+    /* Systematic sweep over a parameter grid */
+    sweep
+    /* Feedback-driven movement toward better regions */
+    adaptive
+}
+
+/*
+ * A demand-driven exploration of the decision space: produces candidate
+ * embodiments as stream elements, paced by the evaluation budget
+ * (backpressure as cost control).
+ */
+class Exploration extends ModelElement {
+    ExplorationStrategy strategy
+    contains DesignSpaceRegion region
+    /* Evaluation budget: max eval runs, max spend, max wall-clock */
+    String budget
+    contains Embodiment[] produced
+}
+

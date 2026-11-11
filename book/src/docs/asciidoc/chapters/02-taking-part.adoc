@@ -1,0 +1,82 @@
+[#taking-part]
+== Taking Part
+
+A roadmap that is a repository can be used, and not only read.
+This chapter says what a reader can do with it, from the least commitment to the most.
+
+=== Try it
+
+Everything with a module here builds with one command, on Java 25 and Maven, against the released runtime from Maven Central:
+
+[source,text]
+----
+git clone https://github.com/Nasdanika-SDK/roadmap
+cd roadmap
+mvn verify
+----
+
+The build compiles the modules, runs their tests, generates the nano-models from Xcore, and renders this book with the listings and screenshots the tests produced.
+<<building>> has the details.
+
+Some things can be used as they are.
+Nasdanika Commander, in <<commander>>, is a file manager for a terminal, and after the build it runs with `java -jar`.
+
+=== Take a piece
+
+The code is under the Eclipse Public License 2.0, and the text under CC BY 4.0.
+Taking a module, a class or an idea and building your own solution on it is a use the roadmap is meant for.
+You do not have to wait for an item to graduate, and you do not have to agree with where Nasdanika takes it afterwards.
+
+Two cautions.
+What is here is a sketch, so its names and behavior will change, and a copy will not follow.
+And a module's package has `roadmap` in it for that reason: nothing here is published to Maven Central, so that nobody depends on a version of something that was never meant to be stable.
+=== Contribute
+
+A contribution to an item is a pull request to this repository, in the shape the repository already has:
+
+* *code in the module the item belongs to,* or a new module beside it, with a `module-info.java`, depending on the runtime's modules through its bill of materials;
+* *tests that show how the code is used,* since they are the documentation: a test is named for what it shows, and the regions a chapter would quote are tagged;
+* *the chapter,* changed to say what now holds, with a dated entry in <<revisions>> when a decision changed.
+
+A model is contributed the same way: an Xcore file with a header that says what the model is and why, in `models/`, and a row in the chapter that lists it.
+A model does not have to generate code to be worth having here.
+A sketch that can be read is the first step, and for many models it is the step that settles the words.
+
+=== Sponsor
+
+Development is a continuum.
+Building something is one part of it, and using it, testing it and polishing it until it can be relied on is another, usually the longer one.
+A sketch in this repository has had the first part and little of the second.
+
+Sponsoring an item means putting resources of your own into moving it along that continuum.
+Most often those are your people and your cases: a team that takes what the author, or somebody helping him, has built, uses it on real work, tests it where the author's tests do not reach, and polishes what it finds rough.
+It does not have to mean paying anyone.
+
+Some items are large, and some matter to one organization long before they would reach the top of the queue by value for effort.
+Sponsoring is a way to move such an item: the work is done in the open, in this repository, under the same licenses, and what the sponsor gets is the item sooner and shaped by their case.
+The way to start is an issue that names the item and says what you can bring to it.
+
+=== What an item says
+
+Each item in this book states the same things, so that items can be compared and so that someone who wants to help knows where to begin.
+
+Capability:: What a user will be able to do that they cannot do now.
+Demonstration:: The example that shows it, in a test or in the Nasdanika International Banking System.
+Status:: [.sketch]#SKETCH# or [.planned]#PLANNED#, and where the code is if there is any.
+Depends on:: What has to exist first, in the runtime or in this roadmap.
+Value and effort:: Why it is worth doing and how large it is, in words. These decide the order.
+How to help:: What a contributor or a sponsor could take on.
+
+<<items>> lists the items.
+Later the items may become a model themselves, rendered into this book through the widget module, with the tables and the dependency diagrams generated.
+The first step toward that is in <<widgets>>: the table of runtime items there is rendered by the code it describes.
+
+=== What makes an item graduate
+
+A module moves from this repository to the runtime, and to Maven Central, when three things hold.
+
+. *Its identity is settled.* Its names, and for a model its namespace URI, are the ones it will keep. Maven Central is permanent, so a name published there is a name forever.
+. *It is documented.* It has a book, or a chapter of one, whose listings are its tests.
+. *It has a consumer that is not itself.* Another module, an example in the reference application, or a user who asked for it.
+
+Until then it stays here, where it can change.

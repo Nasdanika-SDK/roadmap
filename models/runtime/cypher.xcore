@@ -1,0 +1,695 @@
+@Ecore(nsURI="https://cypher.models.nasdanika.org", nsPrefix="org.nasdanika.models.cypher")
+@GenModel(
+	modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.cypher
+
+
+import java.util.Map
+import org.nasdanika.models.nxcore.Marked
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.SourceEvaluator
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ===========================================================================
+ * ROOT AND STATEMENTS
+ * =========================================================================== */
+
+/*
+ * Which spelling of the language a source was authored in. Recorded rather than
+ * inferred, because the same text can be valid in several of them with different
+ * meanings, and because a conformance report needs to say what it was measured
+ * against.
+ */
+enum Dialect {
+    /* openCypher 9, the baseline this model tracks and the one the TCK tests. */
+    OPEN_CYPHER_9
+    /*
+     * The openCypher 2024 series, which added label expressions, quantified path
+     * patterns and SHORTEST while aligning with GQL. The grammar's on-ramp to the
+     * standard, and the reason label matching is an expression tree here.
+     */
+    OPEN_CYPHER_2024
+    /* Neo4j's own Cypher, which has diverged since openCypher 9. */
+    NEO4J
+    /* ISO/IEC 39075 GQL. */
+    GQL
+    /* Memgraph, Apache AGE, Neptune openCypher and everything else. */
+    OTHER
+}
+
+/*
+ * The contents of a .cypher resource: an ordered list of statements plus the text
+ * they were parsed from. The text is kept so that a resource which was only
+ * partly understood can still be saved unchanged, and so that a statement can be
+ * shown to a reader exactly as its author wrote it.
+ */
+class CypherSource extends ModelElement {
+    /* The verbatim source, retained for lossless save and for display. */
+    String source
+    /* False when at least one statement is an UnparsedStatement. */
+    boolean parsed
+    Dialect dialect
+    contains Statement[] statements
+}
+
+/*
+ * The shared base of every AST node. Marked gives each node the NxCore marker
+ * list, which is where line, column and source location live, so diagnostics and
+ * generated documentation can point at the character a construct came from.
+ */
+abstract class CypherElement extends Marked {
+}
+
+/*
+ * One statement, normally one semicolon-delimited unit of a .cypher file.
+ */
+abstract class Statement extends CypherElement {
+}
+
+/*
+ * A statement the parser could not handle. Keeping the text and the error is what
+ * makes per-statement tolerance work: one unusual construct costs one statement,
+ * not the whole file.
+ */
+class UnparsedStatement extends Statement {
+    String text
+    String error
+}
+
+/*
+ * A query: either a single linear sequence of clauses or a union of them.
+ * EXPLAIN and PROFILE are recorded as flags rather than as wrapper statements,
+ * since they change how a query is executed and not what it means.
+ */
+abstract class Query extends Statement {
+    boolean explain
+    boolean profile
+}
+
+/*
+ * A linear query: clauses applied in order, each consuming the rows the previous
+ * one produced. That ordering is the whole execution model of Cypher and is why
+ * the clause list is ordered containment rather than a set of features.
+ */
+class SingleQuery extends Query {
+    contains Clause[] clauses
+}
+
+/*
+ * UNION and UNION ALL over two or more operands. Flattened rather than nested to
+ * the left, because Cypher's union is associative and a flat list is what both
+ * readers and planners want.
+ */
+class Union extends Query {
+    /* UNION ALL when true, UNION (distinct) when false. */
+    boolean all
+    contains Query[] operands
+}
+
+/* ===========================================================================
+ * CLAUSES
+ * =========================================================================== */
+
+abstract class Clause extends CypherElement {
+}
+
+/*
+ * MATCH and OPTIONAL MATCH. The pattern is the interesting part: it is a graph
+ * pattern to be matched, which is the same thing a transformation language calls
+ * a match morphism, and it is what makes a Cypher write statement analyzable in a
+ * way a script never is.
+ */
+class MatchClause extends Clause {
+    boolean optional
+    contains Pattern pattern
+    contains Expression where
+}
+
+/*
+ * The shared shape of RETURN and WITH: a projection, optionally distinct,
+ * optionally ordered, skipped and limited. Keeping them one class makes the
+ * evaluator's projection code single-sourced, which matters because this is where
+ * aggregation is detected and where the pipeline breaks.
+ */
+abstract class ProjectionClause extends Clause {
+    boolean distinct
+    /* RETURN * and WITH *: project everything currently in scope. */
+    boolean all
+    contains ProjectionItem[] items
+    contains SortItem[] order
+    contains Expression skip
+    contains Expression limit
+}
+
+/*
+ * The final projection of a query. What a RETURN produces is a table of values,
+ * not a graph: Cypher has no CONSTRUCT clause, which is the most consequential gap
+ * when Cypher is used to produce model contents rather than to answer a question.
+ * See readme.md for how that is addressed.
+ */
+class ReturnClause extends ProjectionClause {
+}
+
+/*
+ * An intermediate projection which also opens a new scope. WITH is where a Cypher
+ * query is segmented, and the optional WHERE after it is the only way to filter on
+ * an aggregate.
+ */
+class WithClause extends ProjectionClause {
+    contains Expression where
+}
+
+class ProjectionItem extends CypherElement {
+    contains Expression expression
+    /* The AS name, or null when the expression's own text is the column name. */
+    String alias
+}
+
+enum SortDirection {
+    ASCENDING
+    DESCENDING
+}
+
+class SortItem extends CypherElement {
+    contains Expression expression
+    SortDirection direction
+}
+
+/*
+ * UNWIND: turns a list into rows. The cheapest way to feed external data into a
+ * query, and the clause a generated or parameterized query uses most.
+ */
+class UnwindClause extends Clause {
+    contains Expression expression
+    String variable
+}
+
+/*
+ * CREATE. A created object goes into the resource contents unless something in the
+ * same statement contains it, which is how the Draw.io loader already behaves and
+ * how an EMF resource already works. Because the pipeline is lazy, attachment
+ * happens at commit rather than at creation: created objects are pending until the
+ * statement completes, so a failed statement leaves nothing behind and the recorded
+ * change is one coherent change rather than a create followed by a move.
+ */
+class CreateClause extends Clause {
+    contains Pattern pattern
+}
+
+/*
+ * MERGE: match the pattern or create it, with actions that fire on whichever
+ * happened. Against a model whose identity is the NxCore URI scheme this is the
+ * natural idempotent upsert, and it is what makes repeated application of the same
+ * authored statement safe.
+ */
+class MergeClause extends Clause {
+    contains PatternPart pattern
+    contains MergeAction[] actions
+}
+
+enum MergeActionKind {
+    ON_CREATE
+    ON_MATCH
+}
+
+class MergeAction extends CypherElement {
+    MergeActionKind kind
+    contains SetClause ^set
+}
+
+/*
+ * SET: assign properties, replace or merge property maps, add labels.
+ */
+class SetClause extends Clause {
+    contains SetItem[] items
+}
+
+abstract class SetItem extends CypherElement {
+}
+
+/* n.prop = expression */
+class SetProperty extends SetItem {
+    contains PropertyAccess property
+    contains Expression value
+}
+
+/* n = map (replace) or n += map (merge). */
+class SetVariable extends SetItem {
+    String variable
+    contains Expression value
+    /* True for +=, false for =. */
+    boolean merge
+}
+
+/* n:Label:OtherLabel */
+class SetLabels extends SetItem {
+    String variable
+    String[] labels
+}
+
+/*
+ * REMOVE: the inverse of the additive half of SET.
+ */
+class RemoveClause extends Clause {
+    contains RemoveItem[] items
+}
+
+abstract class RemoveItem extends CypherElement {
+}
+
+class RemoveProperty extends RemoveItem {
+    contains PropertyAccess property
+}
+
+class RemoveLabels extends RemoveItem {
+    String variable
+    String[] labels
+}
+
+/*
+ * DELETE and DETACH DELETE. The distinction maps cleanly onto EMF: plain DELETE
+ * refuses to strand references, DETACH DELETE is EcoreUtil.delete with cross
+ * references cleaned up.
+ */
+class DeleteClause extends Clause {
+    boolean detach
+    contains Expression[] expressions
+}
+
+/*
+ * FOREACH: the only place openCypher 9 allows updating clauses inside an
+ * expression-driven iteration.
+ */
+class ForeachClause extends Clause {
+    String variable
+    contains Expression expression
+    contains Clause[] clauses
+}
+
+/*
+ * CALL, in both of its forms: a procedure call with YIELD, and (an extension
+ * beyond openCypher 9) a subquery. A procedure call is the extension point where
+ * an engine exposes host capabilities to a query, which for a Nasdanika engine is
+ * how a query reaches capabilities, evaluators and loaded resources.
+ */
+class CallClause extends Clause {
+    /* The dotted namespace of a procedure, e.g. db, apoc, nasdanika. */
+    String[] namespace
+    String name
+    contains Expression[] arguments
+    contains ProjectionItem[] yieldItems
+    contains Expression where
+    /* CALL { ... }: post openCypher 9. */
+    contains Query subquery
+}
+
+/* ===========================================================================
+ * PATTERNS
+ * =========================================================================== */
+
+/*
+ * A comma-separated list of pattern parts. Several parts in one MATCH is a join,
+ * and an unconstrained join is how a short query accidentally becomes a cartesian
+ * product, which is the main way a generated query hurts you.
+ */
+class Pattern extends CypherElement {
+    contains PatternPart[] parts
+}
+
+enum PathSelector {
+    /* The plain case: every match. */
+    NONE
+    SHORTEST
+    ALL_SHORTEST
+}
+
+/*
+ * One pattern, optionally bound to a path variable and optionally wrapped in a
+ * shortest-path selector.
+ */
+class PatternPart extends CypherElement {
+    /* p in p = (a)-[:knows]->(b) */
+    String variable
+    PathSelector selector
+    contains PatternElement element
+}
+
+abstract class PatternElement extends CypherElement {
+}
+
+/*
+ * (variable:Label {property: value}). Against an EMF graph, labels are the EClass
+ * name and the names of all of its supertypes, so a pattern can match at any level
+ * of the type hierarchy without the query knowing the hierarchy.
+ */
+class NodePattern extends PatternElement {
+    String variable
+    /* Null matches any label. openCypher 9's :A:B loads as a Conjunction. */
+    contains LabelExpression labelExpression
+    /* A MapLiteral or a Parameter. */
+    contains Expression properties
+}
+
+/*
+ * How a pattern selects labels or relationship types.
+ *
+ * openCypher 9 needs almost none of this: a node pattern carries a conjunction of
+ * label names and a relationship pattern carries a disjunction of type names, which
+ * two string lists would have expressed. The tree is here anyway because it is the
+ * one part of the language where the direction of travel is known to be
+ * non-additive. openCypher 2024.2 introduced label expressions with &, |, ! and %,
+ * and GQL has them, so a String[] would have to be replaced rather than extended,
+ * and label matching appears in every query ever written against this model.
+ *
+ * Everything else the 2024 series added is additive (quantified path patterns are
+ * one new PatternElement subclass, SHORTEST is one more PathSelector literal) and is
+ * deliberately left for when it is needed.
+ */
+abstract class LabelExpression extends CypherElement {
+}
+
+/* A single label or relationship type name. */
+class LabelName extends LabelExpression {
+    String name
+}
+
+/* :A:B in openCypher 9, :A&B in 2024.2 and later. */
+class LabelConjunction extends LabelExpression {
+    contains LabelExpression[] operands
+}
+
+/* :A|B */
+class LabelDisjunction extends LabelExpression {
+    contains LabelExpression[] operands
+}
+
+/* :!A */
+class LabelNegation extends LabelExpression {
+    contains LabelExpression operand
+}
+
+/* :% - any label. Distinct from a null expression, which is "label not constrained". */
+class LabelWildcard extends LabelExpression {
+}
+
+/*
+ * A pattern element extended by one relationship and one node: (left)-[rel]->(right).
+ * Left-nested so that a chain of any length has one shape.
+ */
+class RelationshipChain extends PatternElement {
+    contains PatternElement left
+    contains RelationshipPattern relationship
+    contains NodePattern right
+}
+
+enum Direction {
+    OUTGOING
+    INCOMING
+    /* -[]-: matches either direction. */
+    UNDIRECTED
+}
+
+/*
+ * The relationship half of a pattern. Against an EMF graph a relationship type is
+ * an EReference name. EReferenceConnection carries the reference and its index and
+ * is Comparable, so matches come back in model order by default and r.index is
+ * available for a query that wants to say so; a property graph has neither.
+ */
+class RelationshipPattern extends PatternElement {
+    String variable
+    /* Null matches any type. openCypher 9's [:knows|:follows] loads as a Disjunction. */
+    contains LabelExpression typeExpression
+    Direction direction
+    contains Expression properties
+    /* True for *, *2, *1..5 and friends. */
+    boolean variableLength
+    /* Lower bound of a variable length pattern, -1 when unspecified. */
+    int minHops = "-1"
+    /* Upper bound of a variable length pattern, -1 when unbounded. */
+    int maxHops = "-1"
+}
+
+/* ===========================================================================
+ * EXPRESSIONS
+ * =========================================================================== */
+
+abstract class Expression extends CypherElement {
+}
+
+class Variable extends Expression {
+    String name
+}
+
+/*
+ * $name. Parameters are the boundary between an authored statement and its
+ * bindings, which is what lets one statement be a reusable, reviewable artifact
+ * rather than a string built at runtime. An engine should refuse concatenated
+ * statements as an input path for the same reason JDBC did.
+ */
+class Parameter extends Expression {
+    String name
+}
+
+abstract class Literal extends Expression {
+}
+
+class StringLiteral extends Literal {
+    String value
+}
+
+class IntegerLiteral extends Literal {
+    long value
+}
+
+class FloatLiteral extends Literal {
+    double value
+}
+
+class BooleanLiteral extends Literal {
+    boolean value
+}
+
+class NullLiteral extends Literal {
+}
+
+class ListLiteral extends Literal {
+    contains Expression[] elements
+}
+
+class MapLiteral extends Literal {
+    contains MapEntry[] entries
+}
+
+class MapEntry extends CypherElement {
+    String key
+    contains Expression value
+}
+
+/*
+ * n.property, and also map.key. Held as its own class rather than as a binary
+ * operator because property access is the thing static analysis most wants to
+ * enumerate: which properties does this statement read, and which does it write.
+ */
+class PropertyAccess extends Expression {
+    contains Expression target
+    String propertyKey
+}
+
+/*
+ * n:Label, as a predicate rather than as part of a pattern.
+ */
+class LabelCheck extends Expression {
+    contains Expression target
+    contains LabelExpression labelExpression
+}
+
+enum BinaryOperator {
+    /* Arithmetic, and string and list concatenation. */
+    PLUS
+    MINUS
+    MULTIPLY
+    DIVIDE
+    MODULO
+    POWER
+    /* Comparison. */
+    EQUAL
+    NOT_EQUAL
+    LESS
+    LESS_OR_EQUAL
+    GREATER
+    GREATER_OR_EQUAL
+    /* Boolean. */
+    AND
+    OR
+    XOR
+    /* Membership and string predicates. */
+    IN
+    STARTS_WITH
+    ENDS_WITH
+    CONTAINS
+    /* The regular expression operator, =~ */
+    MATCHES
+}
+
+class BinaryExpression extends Expression {
+    BinaryOperator operator
+    contains Expression left
+    contains Expression right
+}
+
+enum UnaryOperator {
+    NOT
+    /* Unary minus. */
+    NEGATE
+    IS_NULL
+    IS_NOT_NULL
+}
+
+class UnaryExpression extends Expression {
+    UnaryOperator operator
+    contains Expression operand
+}
+
+/*
+ * A function call, including aggregating functions. Whether a function aggregates
+ * is a property of the function rather than of the syntax, which is why there is
+ * no separate aggregation class: the engine's function registry decides, and that
+ * registry is the other extension point besides procedures.
+ */
+class FunctionInvocation extends Expression {
+    String[] namespace
+    String name
+    /* count(DISTINCT x) */
+    boolean distinct
+    /* count(*) */
+    boolean star
+    contains Expression[] arguments
+}
+
+class CaseExpression extends Expression {
+    /* The simple form's subject: CASE x WHEN ... . Null for the generic form. */
+    contains Expression subject
+    contains CaseAlternative[] alternatives
+    contains Expression elseExpression
+}
+
+class CaseAlternative extends CypherElement {
+    contains Expression condition
+    contains Expression result
+}
+
+/* [x IN list WHERE predicate | projection] */
+class ListComprehension extends Expression {
+    String variable
+    contains Expression list
+    contains Expression where
+    contains Expression projection
+}
+
+/* [(a)-[:knows]->(b) WHERE ... | b.name] */
+class PatternComprehension extends Expression {
+    String variable
+    contains PatternElement pattern
+    contains Expression where
+    contains Expression projection
+}
+
+enum Quantifier {
+    ALL
+    ANY
+    NONE
+    SINGLE
+}
+
+/* all(x IN list WHERE predicate) and its siblings. */
+class QuantifiedExpression extends Expression {
+    Quantifier quantifier
+    String variable
+    contains Expression list
+    contains Expression where
+}
+
+/*
+ * EXISTS. The pattern form is openCypher 9; the subquery form is an extension.
+ */
+class ExistsExpression extends Expression {
+    contains PatternElement pattern
+    contains Query subquery
+}
+
+/* list[index] */
+class Subscript extends Expression {
+    contains Expression target
+    contains Expression index
+}
+
+/* list[from..to], either bound optional. */
+class SliceExpression extends Expression {
+    contains Expression target
+    contains Expression from
+    contains Expression to
+}
+
+/* ===========================================================================
+ * EVALUATOR
+ * =========================================================================== */
+
+/*
+ * A Cypher statement used as a computed value, condition or transition: the point
+ * of contact between this model and the rest of the tower. Anything that accepts an
+ * NxCore Evaluator accepts one of these, and nothing above needs to depend on this
+ * model to do so.
+ *
+ * The inherited SourceEvaluator carries the statement either inline (script) or by
+ * reference (scriptRef, typically a .cypher resource). statement holds the parsed
+ * form once it has been loaded.
+ *
+ * Unlike a Groovy evaluator, this one can answer the questions the tower asks of an
+ * Evaluator before running it. It is analyzable: which labels, properties and
+ * relationship types a statement reads and writes is derivable from the AST, so two
+ * statements can be compared for overlap without executing either. It is pure when
+ * readOnly holds, because the language has no I/O, no reflection and no host access
+ * except through procedures, which the engine's registry controls. It is not
+ * reversible, but executing it against a model with a change recorder attached
+ * materializes a reversible ChangeDescription, which is the form the rest of the
+ * tower prefers to carry.
+ */
+class CypherEvaluator extends SourceEvaluator {
+    /* The parsed statement. Derived from the inherited source when not set directly. */
+    contains Statement statement
+    /*
+     * When true the engine rejects CREATE, MERGE, SET, REMOVE, DELETE and any
+     * procedure not declared read-only. This is the flag a data pack loader checks,
+     * and the default is the safe one.
+     */
+    boolean readOnly = "true"
+    /*
+     * Maximum number of rows the engine will produce before failing. A guard rather
+     * than a tuning knob: an unconstrained join in a generated query is a hang, and
+     * a hang in a documentation build is indistinguishable from a broken build.
+     * -1 means the engine's default.
+     */
+    int rowLimit = "-1"
+    /* Evaluation timeout in milliseconds, -1 for the engine's default. */
+    int timeout = "-1"
+
+    /*
+     * Resolves an engine as a capability, evaluates the statement against the
+     * bindings (which supply the graph, the parameters, or both) and coerces the
+     * result. Same shape as the other NxCore evaluators: the model declares, the
+     * support class delegates, and the engine is a dependency rather than a design
+     * commitment.
+     */
+    //@GenModel(body="return org.nasdanika.models.cypher.util.CypherSupport.evaluate(this, resultType, bindings);")
+    //op <T> T evaluate(Class<T> resultType, java.uitil.Map<String, Object> bindings)
+}

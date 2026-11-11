@@ -1,0 +1,94 @@
+[appendix]
+[#revisions]
+== Revisions
+
+The chapters say what holds now.
+This appendix says when it came to hold, newest first.
+An entry has a date, what was decided, and the chapters it changed.
+Nothing in a chapter changes without an entry here, and an entry is never rewritten: a later decision gets a later entry.
+
+The entries before 2026-11-11 summarize decisions made while the roadmap was a private file of dated sections.
+They are here so that the first cut of the book has its history, and only what is public in them is carried over.
+
+[cols="1,5,2",options="header"]
+|===
+|Date |Decision |Chapters
+
+|2026-11-11
+|The roadmap becomes a repository in the SDK organization: this book, modules built on runtime 2026.11.0, and model sketches. Bindings, waypoints, widgets, the terminal and the commander get code. The Maven group is `org.nasdanika.sdk.roadmap`, and a module graduates by dropping `roadmap` from its names.
+|All
+
+|2026-11-10
+|Bindings are a supplier and a publisher that emits the current value on subscription, closeable, in `common` beside `Flows`, and are not specific to widgets. "Resolve" or "select" is the word for finding what implements a diagram element, and "binding" is kept for values.
+|<<bindings>>, <<drawn-screens>>
+
+|2026-11-10
+|Values reach telemetry through a sanitizer, later: as they are, masked, encrypted or tokenized.
+|<<designed-and-waiting>>
+
+|2026-11-10
+|Bindings between processors make reactive compute graphs, which settle by lineage. Waypoint becomes part of the runtime: its core without a reactive library, with telemetry folded in, and with Git, EMF Transaction and the mapping language outside.
+|<<waypoints>>, <<designed-and-waiting>>
+
+|2026-11-10
+|The public roadmap becomes a book in AsciiDoc with chapters by area and dated revisions. Roadmaps and architecture repositories may depend on each other as builds do.
+|<<preface>>, <<designed-and-waiting>>
+
+|2026-11-09
+|Widgets: a `widget` module with `Widget<R, C>` and kinds asked for by context type, not by instance. The first kinds are text, link, section, lists and table. Diagnostics go through the context. Markdown is in the module, HTML with Bootstrap beside the HTML models, and TamboUI in `tui`.
+|<<widgets>>
+
+|2026-11-09
+|AsciiDoc is a format of several files: sections are derived contexts, and the context decides by a policy which become files, by level first. Links refer to ids. The first consumer of widgets is the documentation of Meta.
+|<<widgets>>
+
+|2026-11-09
+|Terminal widgets are written against `TerminalContext`, with TamboUI as its provider, and `TerminalContext` extends `SurfaceContext`, which a Draw.io context can share. Terminal screenshots are TamboUI's own SVG export.
+|<<widgets>>, <<terminal>>
+
+|2026-11-09
+|A command tree is saved as a model and rendered by widgets, for any picocli application. Model auto-save is built on change recording.
+|<<runtime-models>>, <<designed-and-waiting>>
+
+|2026-11-05
+|A terminal user interface on TamboUI, in a `tui` module, with `cli` free of it. For technical people the terminal comes before the browser.
+|<<terminal>>
+
+|2026-11-05
+|Nasdanika Commander: two panels over volumes, in a `commander` module, with the classic keys and a key bar, and with move, new directory, directory copy and delete, and an overwrite prompt in its first version. Later: any tree, commands by type, a navigator with details, extensions.
+|<<commander>>
+
+|2026-11-05
+|Logical colors are the only colors a terminal view names, mapped to the terminal's palette.
+|<<widgets>>, <<terminal>>
+
+|2026-11-05
+|Screens drawn in Draw.io, after the release: draw, run with nothing bound, then bind. One-way mapping through the capability framework with selection annotations, two shape libraries, flows that connect screens, and documentation from the drawing.
+|<<drawn-screens>>
+
+|2026-11-05
+|The runtime release is 2026.11.0. An installation is extended only through the mirrors an organization has configured.
+|<<direction>>, <<designed-and-waiting>>
+
+|2026-10-30
+|Meta has a text syntax. A request for a view is a point in coordinates: the class and kind of the element, the kind of representation element, the format, the channel.
+|<<core-nano-models>>
+
+|2026-10-29
+|The enterprise model becomes a nano-model in core: stakeholders, concerns, viewpoints, formats and channels. A document is a view and a section a representation.
+|<<core-nano-models>>
+
+|2026-10-28
+|A view covers the features it shows and passes the rest to less specific views.
+|<<designed-and-waiting>>
+
+|2026-10-27
+|Content digests as identifiers of model elements. Nasdanika Field Notes for what is learned about third-party technologies. The look of the books and the NBOK appendix are artifacts of the runtime that other repositories unpack.
+|<<designed-and-waiting>>, <<building>>
+
+|2026-10-25
+|The plan is compacted: decisions that hold, a queue ranked by value for effort, and dated sections after it. The reflective viewer becomes the polymorphic user interface. Draw.io is rendered by its own viewer.
+|<<direction>>
+|===
+
+Earlier decisions, from September and October 2026, shaped the runtime that is released, and the SDK book argues them: one identity per module, the foundation of Java, EMF core and the OpenTelemetry API, flows on the JDK, volumes, telemetry per unit of work, and the three planes.

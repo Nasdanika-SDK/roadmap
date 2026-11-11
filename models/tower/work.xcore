@@ -1,0 +1,164 @@
+@Ecore(nsURI="https://work.models.nasdanika.org", nsPrefix="org.nasdanika.models.work")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.work
+
+import org.eclipse.emf.ecore.EObject
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.governance.Governed
+import org.nasdanika.models.nxcore.Period
+import org.nasdanika.models.lifecycle.Staged
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* Base (ModelElement, Property) is imported from the model below in the
+ * tower rather than redefined; collapses into nxcore on base extraction. */
+
+/* ---- Types (instance data, not enums) ---- */
+
+/*
+ * A kind of work: epic, story, task, bug, spike, change request.
+ * Organizations define their own; integration models map them to tracker
+ * types. superType enables taxonomy: a bug is a kind of task.
+ */
+class WorkType extends ModelElement {
+    refers WorkType superType
+    /* Hierarchy level hint, as in Jira: 1 epic, 0 standard, -1 sub-task. */
+    Integer level
+}
+
+/*
+ * A kind of dependency between work: blocks, duplicates, relates, requires.
+ * Mirrors Jira link types; the temporal constraint on Dependency carries the
+ * scheduling semantics these types lack.
+ */
+class DependencyType extends ModelElement {
+    /* Label from the dependent side, e.g. "is blocked by". */
+    String inverseName
+}
+
+/* ---- Workable ---- */
+
+/*
+ * Anything work can be attached to: a capability, an agent, an MCP server,
+ * a control, a document, or work itself. Domain models extend this class
+ * (directly or via the upgrade classes below) so that "what work exists on
+ * this element" and "what element is this work about" are queries, not
+ * free-text links in a tracker.
+ */
+abstract class Workable extends Governed {
+    contains AbstractWork[] work
+}
+
+/* ---- Work ---- */
+
+/*
+ * Common base for defined and referenced work, so containment and
+ * dependencies treat local and federated work uniformly.
+ */
+abstract class AbstractWork extends ModelElement {
+    contains Dependency[] dependencies
+    
+}
+
+/*
+ * A unit of work. Leaf work is a work item; work containing work is an epic,
+ * summary task, or work package. State comes from the lifecycle aspect,
+ * assignment from the role aspect, risk and controls from the governance
+ * aspect.
+ */
+class Work extends AbstractWork, Workable, Period, Staged {
+    refers WorkType ^type
+    /* Estimate in the unit the organization uses: points, hours, days. */
+    String estimate
+    /* Actual effort spent, same unit as estimate. */
+    String actual
+    Date due
+    /* Smaller is more important; absent means unprioritized. */
+    Integer priority
+    /* 0..100; derived roll-up for non-leaf work is a tooling concern. */
+    Integer percentComplete
+    /*
+     * Elements affected by this work, beyond the element containing it:
+     * Jira components / affected versions crosswalk. Containment says what
+     * the work is done ON (one home); impacts says what it touches (many,
+     * cross-model, no ownership of the target required). Typed as EObject
+     * because impacted elements live in other micro-models without a shared
+     * base yet; narrow to Ncore ModelElement on base convergence. Promote to
+     * a contained Impact class with ImpactType if kinds become necessary.
+     */
+    refers EObject[] impacts
+}
+
+/*
+ * A reference to work defined in another (published, federated) model:
+ * the product management model reference pattern. Allows a team's backlog
+ * to cite, depend on, or roll up work owned by another team without
+ * copying it.
+ */
+class WorkReference extends AbstractWork {
+    refers Work target
+}
+
+/* ---- Dependencies ---- */
+
+/*
+ * Scheduling constraint vocabulary per PMBOK / ISO 21500. NONE means the
+ * dependency is semantic only (relates, duplicates).
+ */
+enum TemporalConstraint {
+    NONE
+    /* Predecessor must finish before this starts: the default in scheduling tools. */
+    FINISH_TO_START
+    START_TO_START
+    FINISH_TO_FINISH
+    START_TO_FINISH
+}
+
+/*
+ * A directed dependency from the containing work to a predecessor:
+ * issue-tracker semantics via type, scheduling semantics via constraint
+ * and lag. Target may be a WorkReference, so dependencies cross model
+ * boundaries.
+ */
+class Dependency extends ModelElement {
+    refers DependencyType ^type
+    /* The work this work depends on (predecessor / blocker). */
+    refers AbstractWork target
+    TemporalConstraint constraint
+    /* Lead or lag, e.g. "2d", "-1w". */
+    String lag
+}
+
+/* ---- Root ---- */
+
+/*
+ * Root container for a work model: type taxonomies plus work, directly or
+ * under workable elements. Multiple domains federate by reference, the same
+ * way product management domains do.
+ */
+class WorkDomain extends Workable {
+    contains WorkType[] workTypes
+    contains DependencyType[] dependencyTypes
+}
+
+/*
+ * No aspect upgrade classes: in the tower, Workable extends GovernedElement
+ * and (once governance is rewired onto lifecycle and iam) is transitively
+ * staged, access controlled, and engageable. Upgrade classes remain the
+ * escape hatch in the OTHER direction: a higher floor may define a
+ * same-name shadow (e.g. work-level Realm extends iam.Realm, Workable),
+ * legal now that all micro-models share one base; authoring surfaces
+ * resolve the most specific class, so adding the dependency upgrades
+ * authored models in place. Shadows must be additive-only: no new
+ * required features, no tightened constraints.
+ */
+

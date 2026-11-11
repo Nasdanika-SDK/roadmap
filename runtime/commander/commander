@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs Nasdanika Commander from this module's target directory, after "mvn package".
+#   ./commander [left directory] [right directory]
+exec java -jar "$(dirname "$0")"/target/commander-*.jar "$@"

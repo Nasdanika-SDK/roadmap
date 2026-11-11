@@ -1,0 +1,252 @@
+[#commander]
+== Nasdanika Commander
+
+[horizontal]
+Capability:: Two panels over volumes with the classic keys: navigate, view, edit, copy, move, create and delete. Over the local file system it is a file manager for wherever the usual one is not installed. Over other volumes it is a way into whatever they hold.
+Demonstration:: `CommanderTests` and `TerminalLoopTests` in `runtime/commander`. After the build, `java -jar` runs it.
+Status:: [.sketch]#SKETCH# in `runtime/commander`: a working prototype with the minimum for daily file work.
+Depends on:: <<terminal>>, the runtime's `volume` module, TamboUI {tamboui-version} and JLine.
+Value and effort:: High for medium. It is used by its author first, and it is the first real consumer of the terminal modules.
+How to help:: Use it for a day and report what you reached for and did not find. A volume of your own is the most interesting contribution: see <<commander-volumes>>.
+
+=== Why
+
+Anyone who used Norton Commander or FAR knows the screen: two panels, a bar of function keys, and hands that do not leave the keyboard.
+That knowledge is decades old and still in the fingers, so the keys are kept as they were.
+
+The reason to build one more is what the panels show.
+A panel here is a `Volume`, the runtime's small file abstraction, and a directory on disk is only one kind of volume.
+A zip file, a repository on a server, the modules of a running JVM and the elements of a model can all be volumes.
+Wherever a volume exists, the commander is already its user interface, with no page to write and no server to run.
+
+=== Running it
+
+[source,text,subs="attributes"]
+----
+mvn -q package
+java -jar runtime/commander/target/commander-{revnumber}.jar [left directory] [right directory]
+----
+
+Both panels start in the current directory unless told otherwise.
+The jar's manifest names its dependencies in `target/lib`, which the build fills, and `commander` and `commander.cmd` beside the module's `pom.xml` run the same line.
+
+.Two panels over two directories
+image::panels.svg[Two panels,pdfwidth=100%]
+
+[cols="1,1,3",options="header"]
+|===
+|Key |Letter |What it does
+
+|kbd:[Tab] | |The other panel
+|kbd:[Enter] | |Open a directory, view a file
+|kbd:[Backspace] | |Up one directory
+|kbd:[F1] |`h` |The keys
+|kbd:[F3] |`v` |View a file
+|kbd:[F4] |`e` |Edit a file. kbd:[F2] or kbd:[Ctrl+S] saves, kbd:[Esc] closes
+|kbd:[Shift+F4] |`n` |Create a file and edit it
+|kbd:[F5] |`c` |Copy to the other panel
+|kbd:[F6] |`m` |Move or rename
+|kbd:[F7] |`k` |Create a directory
+|kbd:[F8] |`d` |Delete
+|kbd:[Ctrl+R] |`r` |Read the panels again
+|kbd:[F10] |`q` |Quit
+|===
+
+Every command has a letter, for terminals that keep function keys for themselves.
+
+=== The application is not the terminal
+
+`Commander` takes key events and draws frames, and knows nothing about where either comes from.
+
+[source,java]
+----
+include::{commander-main}/Commander.java[tag=handle,indent=0]
+----
+<1> A failure, such as a file that cannot be read, becomes the status line. It never ends the application.
+
+[source,java]
+----
+include::{commander-main}/CommanderMain.java[tag=main,indent=0]
+----
+<1> The local file system as one volume: its root where there is one, and its drives mounted by name where there are several.
+<2> The terminal backend is named, so the same line works on the class path and on the module path.
+<3> The loop does one thing: hand keys to the commander and let it draw.
+
+Because of that split, a test is the application's second terminal.
+It presses keys and reads the screen from a buffer:
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=setup,indent=0]
+----
+<1> A file with Windows line endings, to see that editing keeps them.
+<2> Each panel is a volume over a directory.
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=driver,indent=0]
+----
+<1> A frame over a buffer, with no terminal.
+<2> The screenshots of this chapter.
+
+=== Viewing and editing
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=view,indent=0]
+----
+<1> Down to `plan.md`, and view it.
+<2> Typing does nothing in the viewer.
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=edit,indent=0]
+----
+<1> Edit `plan.md`.
+<2> Save.
+<3> The file had Windows line endings, and it still has them.
+
+.The editor, with a change not yet saved
+image::editor.svg[The editor,pdfwidth=100%]
+
+The editor is deliberately small, and three rules keep it safe.
+
+[source,java]
+----
+include::{commander-main}/Commander.java[tag=open,indent=0]
+----
+<1> The whole file is read through the volume.
+<2> A file that is not UTF-8 text is not opened: an editor that guesses an encoding damages files.
+<3> The line endings are remembered and put back on save.
+
+[source,java]
+----
+include::{commander-main}/Commander.java[tag=save,indent=0]
+----
+<1> Saving without a change writes nothing, so a file that was only looked at keeps its bytes and its date.
+<2> The volume writes. Over a directory it writes to a temporary file and moves it over the target, so a failure leaves the file as it was.
+
+A file is created with kbd:[Shift+F4], and it exists only once it is saved:
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=create,indent=0]
+----
+<1> Shift and F4, as a terminal reports it.
+<2> Named, and open in the editor, but not on disk yet.
+
+=== Copy, move and delete
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=copy,indent=0]
+----
+<1> Down to `plan.md`, and copy. A dialog asks where to, with the other panel's directory filled in.
+<2> Enter accepts it.
+
+.Copying to the other panel
+image::copy.svg[The copy dialog,pdfwidth=100%]
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=move,indent=0]
+----
+<1> Down to `readme.txt`, and move.
+<2> The name in the dialog is replaced, so the move is also a rename.
+<3> Gone from the source.
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=delete,indent=0]
+----
+<1> Delete, on a directory.
+<2> Escape answers no.
+<3> Enter answers yes, and the directory goes with what was in it.
+
+A target that exists is asked about before it is replaced, and an edited file is asked about before it is closed.
+
+The file work is written against the volume SPI and nothing else:
+
+[source,java]
+----
+include::{commander-main}/Volumes.java[tag=copy,indent=0]
+----
+<1> Content goes from one volume to the other. Neither needs to be a directory on disk.
+<2> A directory is copied with what is in it.
+
+[source,java]
+----
+include::{commander-main}/Volumes.java[tag=move,indent=0]
+----
+<1> A move that failed for a reason of its own, such as a target that exists, is reported.
+<2> Between volumes, and where a volume cannot move, a move is a copy and a delete.
+
+[#commander-volumes]
+=== A panel is a volume
+
+To show something in a panel, make it a volume.
+A read-only volume needs four methods.
+This one, from the tests, shows the modules of the running JVM, one text file each:
+
+[source,java]
+----
+include::{commander-test}/ModulesVolume.java[tag=volume,indent=0]
+----
+<1> No capabilities, so it is read-only, and the commander finds that out by asking.
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=read-only,indent=0]
+----
+<1> The left panel is the JVM.
+<2> Editing a read-only volume becomes viewing, and says so.
+<3> Copying *from* it works: a module's description is now a file in a directory.
+
+.The modules of a JVM on the left, a directory on the right
+image::jvm.svg[A JVM in a panel,pdfwidth=100%]
+
+Several volumes become one by mounting them under names, which is also how the drives of a Windows machine appear in one panel:
+
+[source,java]
+----
+include::{commander-test}/CommanderTests.java[tag=mounts,indent=0]
+----
+<1> A volume of two mounts, one read-only and one writable.
+<2> Into `work`, down to `plan.md`, and edit. Writing goes to the mount the path names.
+
+=== Through a real terminal
+
+The tests above call the application directly.
+One test runs it in its loop, on a JLine terminal that exists only in memory, and sends the bytes a terminal sends for the keys:
+
+[source,java]
+----
+include::{commander-test}/TerminalLoopTests.java[tag=loop,indent=0]
+----
+<1> A terminal of 100 by 24 whose screen is a byte buffer and whose keyboard is the test.
+<2> The same loop that `main` runs.
+<3> `ESC [ 1 ; 2 S`: F4 with the shift modifier, as xterm sends it.
+
+So the classic keys are known to arrive as the keys they are, at least in the encoding of xterm.
+
+=== What is not there yet
+
+A list for a tool that is meant to be used.
+
+* [.planned]#PLANNED# *Marking several entries,* with kbd:[Insert], and acting on all of them.
+* [.planned]#PLANNED# *Progress and cancel* for a long copy, and keeping the time of last change on a copy.
+* [.planned]#PLANNED# *Search* in a panel and in the viewer, and a viewer for files that are not text or are too large to hold.
+* [.planned]#PLANNED# *A navigator with details:* one panel and, beside it, what the selected entry is, instead of a second panel. For a model that is the more useful form.
+* [.planned]#PLANNED# *Any tree, with commands by type.* A panel over a generic volume of model elements or of the pages and shapes of a Draw.io file, where the commands offered depend on what is selected. Navigating a structure and acting on its elements is the polymorphic user interface in another form.
+* [.planned]#PLANNED# *Extensions through the capability framework:* syntax highlighting, commands, and an assistant that can be asked about what is selected.
+* [.planned]#PLANNED# *A command for scripts and agents* that runs an action on a path, so that what a person can do with a key, an agent can do with a line.
+* [.planned]#PLANNED# *As a command of `nsdk`,* with the volumes that the commands before it on the line produce, and in an organization's own command line with its own volumes.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+Tabs are inserted as tabs.
+How TamboUI's text area draws a tab, and whether the cursor stays where it should after one, has not been looked at on a real terminal.
+The panels build a list item per entry on every frame, which is fine for a directory of hundreds and has not been tried on one of tens of thousands.
+====
+endif::[]

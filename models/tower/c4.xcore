@@ -1,0 +1,123 @@
+@Ecore(nsURI="https://c4.models.nasdanika.org", nsPrefix="org.nasdanika.models.architecture.c4")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.architecture.c4
+
+import org.eclipse.emf.ecore.InternalEObject
+import org.nasdanika.common.DerivedSubsetEList
+import org.nasdanika.models.threat.Asset
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/*
+ * A human user of the software: customer, administrator, support agent,
+ * back-office operator. The other half of a C4 System Context diagram,
+ * and the only C4 abstraction that is not software. Externality
+ * (a customer versus an employee) is an ElementKind, not a subclass.
+ * This is the role sketch a context diagram needs; where an actual
+ * named person or organizational unit is meant, the org design model
+ * is the richer description and this element cites it as a
+ * relationship target or through uris.
+ */
+class Person extends Asset {
+}
+
+/*
+ * C4 level 1. Something that delivers value to its users, owned or
+ * consumed as a whole: the unit an organization funds, names, and puts
+ * an owner against. The System Context diagram is this element plus its
+ * People, plus the neighboring systems it talks to.
+ *
+ * Whether a system is in scope or a dependency is an ElementKind
+ * ("internal system", "external system", "SaaS"), not a flag, so an
+ * estate can hold as many scoping vocabularies as it has audiences.
+ * Systems that live in another team's published model appear as
+ * architecture ElementReferences and are never redeclared here.
+ */
+class SoftwareSystem extends Asset {
+    /*
+     * The system's containers: a filtered, live, modifiable view of
+     * elements. Adding a Container through this reference adds it to
+     * elements; adding a Person or a Code element to elements simply
+     * does not show up here. Elements of other types (a nested System,
+     * a Person, a plain architecture Element used as a grouping folder)
+     * remain first-class members of elements - the C4 view is a lens
+     * over the containment tree, never a second tree.
+     */
+    refers derived transient volatile Container[] containers get {
+        new DerivedSubsetEList<Container>(
+            typeof(Container),
+            this as InternalEObject,
+            C4Package.SYSTEM__CONTAINERS,
+            ArchitecturePackage.ELEMENT__ELEMENTS)
+    }
+}
+
+/*
+ * C4 level 2. A separately deployable and runnable unit that executes
+ * code or stores data: a server-side application, a single-page app, a
+ * mobile app, a database, a file system, a message broker. Not a Docker
+ * container - the C4 term predates it and is broader.
+ *
+ * The runtime technology ("Java 21, Spring Boot", "PostgreSQL 16") is an
+ * ElementKind, which makes "every container on an out-of-support
+ * runtime" a query over a taxonomy rather than a string match over a
+ * free-text field.
+ */
+class Container extends Asset {
+    /*
+     * The container's components: a filtered, live, modifiable view of
+     * elements, on the same terms as System.containers.
+     */
+    refers derived transient volatile Component[] components get {
+        new DerivedSubsetEList<Component>(
+            typeof(Component),
+            this as InternalEObject,
+            C4Package.CONTAINER__COMPONENTS,
+            ArchitecturePackage.ELEMENT__ELEMENTS)
+    }
+}
+
+/*
+ * C4 level 3. A grouping of related functionality behind a well-defined
+ * interface, not separately deployable: a controller, a service, a
+ * repository, a module, a build unit. The level at which most estate
+ * models actually land, because it is the coarsest granularity a build
+ * or a source tree still names explicitly.
+ */
+class Component extends Asset {
+    /*
+     * The component's code elements: a filtered, live, modifiable view
+     * of elements, on the same terms as System.containers.
+     */
+    refers derived transient volatile Code[] code get {
+        new DerivedSubsetEList<Code>(
+            typeof(Code),
+            this as InternalEObject,
+            C4Package.COMPONENT__CODE,
+            ArchitecturePackage.ELEMENT__ELEMENTS)
+    }
+}
+
+/*
+ * C4 level 4. The implementation inside a component: a class, an
+ * interface, a function, a stored procedure, a process definition, a
+ * transformation. C4 says this level is usually not worth drawing by
+ * hand and should be generated from the source - which is exactly what
+ * the estate models above this floor do, so Code is the class they
+ * re-parent their parsed artifacts to.
+ *
+ * Code nests through elements like every other level, so a class
+ * containing methods needs no further metamodel.
+ */
+class Code extends Asset {
+    
+}

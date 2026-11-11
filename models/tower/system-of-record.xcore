@@ -1,0 +1,115 @@
+@Ecore(nsURI="https://sor.models.nasdanika.org", nsPrefix="org.nasdanika.models.sor")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.sor
+
+import org.nasdanika.models.nxcore.NamedElement
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+
+@GenModel(documentation="Base class for all SoR model elements.")
+abstract class SorElement extends NamedElement {
+}
+
+@GenModel(documentation="Root container: the modeled portion of an organization's data estate.")
+class Estate extends SorElement {
+    contains SystemOfRecord[] systems
+    contains VocabularyMapping[] mappings
+}
+
+@GenModel(documentation="An authoritative holder of a class of records, e.g. the deposits system or the credit card system. References its architecture model element rather than duplicating it.")
+class SystemOfRecord extends SorElement {
+    @GenModel(documentation="URI of the corresponding architecture model element (system/container).")
+    String architectureElement
+    @GenModel(documentation="Free-form platform hint: z/OS, Cassandra, DB2, etc. May become an enum or a typed reference later.")
+    String platform
+    contains Dataset[] datasets
+}
+
+@GenModel(documentation="A named collection of records within a system: a VSAM dataset, a DB2 table space, a Cassandra keyspace, a file. Deliberately generic in the seed.")
+class Dataset extends SorElement {
+    contains RecordLayout[] layouts
+}
+
+@GenModel(documentation="The shape of a record. Abstract: Copybook and Table are the first specializations; PL/I includes, DSECTs, IMS segments, JSON schemas join as needed.")
+abstract class RecordLayout extends SorElement {
+    @GenModel(documentation="URI of the source artifact this layout was captured from (copybook member, DDL file), for provenance.")
+    String source
+}
+
+@GenModel(documentation="Abstract field. VocabularyMapping targets fields regardless of their concrete kind.")
+abstract class Field extends SorElement {
+}
+
+/* ---------- COBOL specialization ---------- */
+
+@GenModel(documentation="A COBOL copybook: a hierarchical record layout of data items.")
+class Copybook extends RecordLayout {
+    contains DataItem[] items
+}
+
+@GenModel(documentation="COBOL USAGE clause values (subset; extend as needed).")
+enum Usage {
+    DISPLAY
+    BINARY = 1
+    COMP = 2
+    COMP_1 = 3
+    COMP_2 = 4
+    COMP_3 = 5
+    COMP_5 = 6
+    PACKED_DECIMAL = 7
+    POINTER = 8
+}
+
+@GenModel(documentation="A COBOL data item. Group items contain children and have no picture; elementary items have a picture and no children. Example: 05 TRAN-AMT PIC S9(9)V99 COMP-3.")
+class DataItem extends Field {
+    @GenModel(documentation="Level number: 01..49, 66, 77, 88.")
+    int level
+    @GenModel(documentation="PIC clause, e.g. S9(9)V99, X(20). Empty for group items.")
+    String picture
+    Usage usage
+    @GenModel(documentation="OCCURS count; 0 means no OCCURS clause.")
+    int occurs
+    @GenModel(documentation="OCCURS DEPENDING ON target, by name, within the same layout.")
+    String dependingOn
+    @GenModel(documentation="REDEFINES target: this item occupies the same storage as the referenced item. The reason field-per-row spreadsheets cannot represent copybooks faithfully.")
+    refers DataItem redefines
+    contains DataItem[] items
+}
+
+/* ---------- Relational / columnar specialization ---------- */
+
+@GenModel(documentation="A flat tabular layout: DB2 table, Cassandra column family. Richer SQL structure belongs to the SQL source metamodel; this is the lineage-level view.")
+class Table extends RecordLayout {
+    contains Column[] columns
+}
+
+class Column extends Field {
+    @GenModel(documentation="Platform type name as declared: DECIMAL(11,2), varint, text.")
+    String dataType
+    boolean nullable
+}
+
+/* ---------- Vocabulary mapping ---------- */
+
+@GenModel(documentation="Maps one business vocabulary term to the physical fields that hold it across systems. Many-to-many and context-qualified: Transaction.amount maps to TRAN-AMT (deposits, COMP-3, scale 2) and to a differently scaled field in the cards system.")
+class VocabularyMapping extends SorElement {
+    @GenModel(documentation="URI of the vocabulary element. Becomes a typed reference via the binding model later.")
+    String term
+    refers Field[] fields
+    @GenModel(documentation="Qualifier for when this mapping applies: product line, line of business, era of the estate.")
+    String context
+    @GenModel(documentation="Transformation notes: scaling, sign handling, code page, enumeration recoding. Markdown.")
+    String transformation
+}
+

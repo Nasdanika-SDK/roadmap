@@ -1,0 +1,129 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/document", nsPrefix="org.nasdanika.sdk.roadmap.models.core.document")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Documents: structure in the model, text in a named format.
+ *
+ * Replaces Section and Content of Documented in the core model. A document is a view and a section
+ * is a representation, from the enterprise nano-model, so a document says which viewpoint it was
+ * made from and each part says which model elements it shows.
+ *
+ * The model is a pivot, as the one in Pandoc is: Markdown and Word are read into it, and AsciiDoc,
+ * Markdown and HTML are written from it, N readers and N writers and not N by N converters. The
+ * model owns structure and the formats own text: a text block keeps its text in the format it was
+ * written in.
+ *
+ * A widget context can build this model where another writes Markdown, and a document can be
+ * played back through the widget kinds into any other context.
+ */
+package org.nasdanika.sdk.roadmap.models.core.document
+
+import org.nasdanika.sdk.roadmap.models.core.enterprise.Representation
+import org.nasdanika.sdk.roadmap.models.core.enterprise.RepresentationElement
+import org.nasdanika.sdk.roadmap.models.core.enterprise.View
+import org.nasdanika.sdk.runtime.models.core.Attributed
+
+class Document extends View {
+
+}
+
+/**
+ * A titled part of a document. Sections nest.
+ */
+class Section extends Representation, Attributed {
+
+	String title
+
+}
+
+/**
+ * A part of a section that is not a section.
+ */
+abstract class Block extends RepresentationElement, Attributed {
+
+}
+
+/**
+ * Text in a format: the id of a format from the enterprise nano-model, "markdown" when empty.
+ */
+class Text extends Block {
+
+	String text
+
+	String format
+
+}
+
+/**
+ * Text kept somewhere else, resolved against the resource of the document.
+ */
+class Include extends Block {
+
+	String location
+
+	String format
+
+}
+
+class Link extends Block {
+
+	String target
+
+	String label
+
+}
+
+class ItemList extends Block {
+
+	boolean ordered
+
+	contains Representation[] items
+
+}
+
+class Table extends Block {
+
+	String title
+
+	contains Representation[] header
+
+	contains Row[] rows
+
+}
+
+class Row {
+
+	contains Representation[] cells
+
+}
+
+/**
+ * Source code, a query, a configuration.
+ */
+class Listing extends Block {
+
+	String language
+
+	String text
+
+}
+
+/**
+ * An image or a diagram, by location.
+ */
+class Figure extends Block {
+
+	String location
+
+	String title
+
+	String alternativeText
+
+}

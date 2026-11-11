@@ -1,0 +1,496 @@
+@Ecore(nsURI="https://github.models.nasdanika.org", nsPrefix="org.nasdanika.models.github")
+@GenModel(
+	modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.github
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.NamedElement
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ===========================================================================
+ * PROVENANCE
+ * =========================================================================== */
+
+/*
+ * Something populated from the API, and therefore something with a history of
+ * being populated. Following the GitLab model, where the same problem was
+ * solved with per-feature timestamp attributes first and with Load records
+ * second; only the second is kept here.
+ */
+interface Loadable {
+    contains Load[] loads
+}
+
+/*
+ * One load of one thing: the containing element itself, or one of its
+ * references.
+ *
+ * Absence of a Load for a reference means "never loaded", which is a
+ * different fact from "loaded and empty", and the difference matters in every
+ * report built on a partial scan. An empty branches list with no Load beside
+ * it means nobody looked.
+ */
+class Load extends ModelElement {
+    /* Source system: the API base URL, optionally with the account used. */
+    String source
+    /* Name of the reference loaded. Empty means the containing element itself. */
+    String reference
+    Date start
+    Date end
+    /* Number of elements loaded. */
+    int size = "-1"
+    /* Set when the load failed or was truncated; the partial result is kept. */
+    String error
+    /*
+     * ETag returned by the API, so the next refresh can be a conditional
+     * request. A 304 costs no rate limit, which is the difference between
+     * rescanning a hundred repositories hourly and doing it once a day.
+     */
+    String etag
+    /* False when pagination stopped early: a page limit, a rate limit, an error. */
+    boolean complete = "true"
+}
+
+/* ===========================================================================
+ * ROOT
+ * =========================================================================== */
+
+/*
+ * A GitHub instance: github.com, or a GitHub Enterprise Server host. The root
+ * of the model, and the thing a model element's URI is relative to when more
+ * than one instance is in play, which is normal in an enterprise with a
+ * public presence and an internal server.
+ */
+class GitHub extends NamedElement, Loadable {
+    /* Web base URL, e.g. https://github.com. */
+    String url
+    /* API base URL, e.g. https://api.github.com. */
+    String apiUrl
+    /* True for GitHub Enterprise Server, which differs in available features. */
+    boolean enterpriseServer
+
+    @Nasdanika(logicalContainment="false")
+    contains AbstractAccount[] accounts keys login
+}
+
+/* ===========================================================================
+ * ACCOUNTS
+ * =========================================================================== */
+
+/*
+ * Common base for accounts, account references and whatever a federation
+ * needs to stand in for an account it does not hold. The Abstract / Reference
+ * pattern from the GitLab and product management models: a loaded model
+ * routinely mentions accounts it has not loaded, and a reference is how that
+ * is said without inventing a half populated User.
+ */
+interface AbstractAccount extends ModelElement {
+    /*
+     * The account identity: what appears in github.com/<login>. Declared here
+     * rather than on Account so that a reference to an unloaded account is
+     * still resolvable by login, and so that containment can key on it.
+     */
+    String login
+}
+
+/*
+ * A GitHub account: a user, an organization, or a bot. One class for what the
+ * API returns in a dozen shapes.
+ *
+ * name is the display name; login is the identity and the thing in URLs.
+ */
+abstract class Account extends NamedElement, AbstractAccount, Loadable {
+    /* GraphQL global node id: the rename-safe identity. */
+    String nodeId
+    /* REST numeric id. */
+    long databaseId = "-1"
+    String htmlUrl
+    String avatarUrl
+    String email
+    Date createdAt
+    Date updatedAt
+
+    /* Repositories owned by this account. */
+    @Nasdanika(logicalContainment="false")
+    contains AbstractRepository[] repositories keys fullName
+}
+
+class User extends Account {
+    String company
+    String location
+    /* The profile blurb. Longer documentation uses the inherited documentation feature. */
+    String bio
+    String blog
+    boolean siteAdmin
+    /* True for a bot account: dependabot, a GitHub App's actor, a service identity. */
+    boolean bot
+    /* Suspended or deleted upstream, but still referenced by history. */
+    boolean inactive
+}
+
+class Organization extends Account {
+    String billingEmail
+    /* Default permission granted to organization members on new repositories. */
+    PermissionLevel defaultRepositoryPermission
+
+    contains Team[] teams keys slug
+    /* Who belongs to this organization, and as what. */
+    contains Membership[] members
+}
+
+class AccountReference extends AbstractAccount {
+    refers Account target
+}
+
+enum MembershipRole {
+    MEMBER
+    ADMIN
+    BILLING_MANAGER
+    /* Team level: a member who can also manage the team. */
+    MAINTAINER
+}
+
+/*
+ * An account's membership of an organization or a team, reified so the role
+ * has somewhere to live. GitHub answers this across several endpoints with
+ * different shapes; there is only one concept.
+ */
+class Membership extends ModelElement {
+    refers AbstractAccount account
+    MembershipRole role = "MEMBER"
+    /* Publicly visible membership, as opposed to a private one. */
+    boolean publicized
+    /* Invited but not yet accepted. */
+    boolean pending
+}
+
+/*
+ * A team: the unit organizations actually grant access with, and the reason
+ * repository permissions are usually not attached to people.
+ *
+ * Teams nest, and nesting is inheritance of access, which is why the
+ * hierarchy has to be in the model for any access question to be answerable.
+ */
+class Team extends NamedElement, Loadable {
+    /* URL safe identity within the organization. */
+    String slug
+    String nodeId
+    long databaseId = "-1"
+    String htmlUrl
+    TeamPrivacy privacy = "VISIBLE"
+
+    refers Team parent
+    contains Team[] children keys slug
+    contains Membership[] members
+    /* Repositories this team has access to, and at what level. */
+    contains TeamAccess[] access
+}
+
+enum TeamPrivacy {
+    /* Visible to all organization members. */
+    VISIBLE
+    SECRET
+}
+
+/* ===========================================================================
+ * REPOSITORIES
+ * =========================================================================== */
+
+interface AbstractRepository extends ModelElement {
+    /*
+     * owner/name, the identity everyone reads and types. Declared here for the
+     * same reason login is: a reference to an unloaded repository still names
+     * it, and containment can key on it.
+     */
+    String fullName
+}
+
+enum Visibility {
+    PUBLIC
+    PRIVATE
+    /* Enterprise only: visible to all members of the enterprise. */
+    INTERNAL
+}
+
+/*
+ * A repository.
+ *
+ * Counts sit directly on the class rather than in a dated statistics record,
+ * because the Load beside them already says when they were taken. That is the
+ * payoff of treating provenance as data instead of sprinkling timestamps.
+ */
+class Repository extends NamedElement, AbstractRepository, Loadable {
+
+    String nodeId
+    long databaseId = "-1"
+    String description
+    String homepage
+    String htmlUrl
+    String cloneUrl
+    String sshUrl
+
+    Visibility visibility = "PUBLIC"
+    boolean archived
+    /* Disabled by GitHub, e.g. for a terms violation or a billing lapse. */
+    boolean disabled
+    /* A template repository, which is generated from rather than forked. */
+    boolean template
+    boolean fork
+    /* The repository this one was forked from, and the ultimate upstream. */
+    refers AbstractRepository parent
+    refers AbstractRepository source
+
+    /* Name of the default branch, e.g. main. Resolved to a Branch when branches are loaded. */
+    String defaultBranchName
+    refers Branch defaultBranch
+
+    /* SPDX identifier of the detected license, e.g. EPL-2.0. */
+    String license
+    String[] topics
+    /* The language with the most bytes, per GitHub's detection. */
+    String primaryLanguage
+
+    Date createdAt
+    Date updatedAt
+    /* Last push, which is the honest measure of activity; updatedAt moves when a star is added. */
+    Date pushedAt
+
+    /* Size in kilobytes, as GitHub reports it. */
+    long size = "-1"
+    int stargazers = "-1"
+    int watchers = "-1"
+    int forks = "-1"
+    /* Open issues, which GitHub counts including open pull requests. */
+    int openIssues = "-1"
+
+    contains LanguageUsage[] languages
+    contains Branch[] branches keys name
+    contains Tag[] tags keys name
+    contains Release[] releases
+    contains Collaborator[] collaborators
+    contains Contribution[] contributions
+    /* Parsed CODEOWNERS rules; see the class documentation. */
+    contains CodeOwnerRule[] codeOwners
+}
+
+class RepositoryReference extends AbstractRepository {
+    refers Repository target
+}
+
+/*
+ * Bytes of source per language, as GitHub detects them. A crude measure and
+ * the only comparable one available across an estate, which is why it is
+ * here: "how much TypeScript is there now" is a question with no other cheap
+ * answer.
+ */
+class LanguageUsage extends ModelElement {
+    String language
+    long bytes = "-1"
+}
+
+/*
+ * Commits by one account in one repository. GitHub's contributor statistics,
+ * kept because contribution spread across an estate is a governance question
+ * (bus factor, dormant ownership) and a reporting one.
+ */
+class Contribution extends ModelElement {
+    refers AbstractAccount account
+    int commits = "-1"
+    Date firstCommit
+    Date lastCommit
+}
+
+/* ===========================================================================
+ * ACCESS
+ * =========================================================================== */
+
+/*
+ * GitHub's five levels, in increasing order. Kept as an enumeration rather
+ * than a kind catalog because these are defined by the platform and change on
+ * GitHub's schedule, not on an organization's.
+ */
+enum PermissionLevel {
+    READ
+    TRIAGE
+    WRITE
+    MAINTAIN
+    ADMIN
+}
+
+/*
+ * How an account came to have a permission. The interesting one is TEAM,
+ * because effective permission is the maximum over several sources and no
+ * single endpoint shows the derivation.
+ */
+enum PermissionSource {
+    DIRECT
+    TEAM
+    ORGANIZATION
+    FORK
+}
+
+/* An account's access to the containing repository, with where it came from. */
+class Collaborator extends ModelElement {
+    refers AbstractAccount account
+    PermissionLevel permission = "READ"
+    PermissionSource source = "DIRECT"
+    /* Not a member of the owning organization. */
+    boolean outside
+    /* The team the permission came from, when source is TEAM. */
+    refers Team team
+}
+
+/* A team's access to a repository, held on the team side. */
+class TeamAccess extends ModelElement {
+    refers AbstractRepository repository
+    PermissionLevel permission = "READ"
+}
+
+/*
+ * One line of a CODEOWNERS file, parsed.
+ *
+ * A file rather than an API object, and in the model anyway, because
+ * ownership is a concept the platform implements through a file and every
+ * ownership question needs it. The GitLab model made the same call. Loaders
+ * parse it from the default branch; the URI handler below is what fetches it.
+ */
+class CodeOwnerRule extends ModelElement {
+    /* Path pattern, gitignore syntax, e.g. /docs/ or *.java. */
+    String pattern
+    /* Owning accounts and teams as written, e.g. @Nasdanika/core-team, resolved when loaded. */
+    String[] owners
+    refers AbstractAccount[] ownerAccounts
+    refers Team[] ownerTeams
+    /* Line number in the source file, for round-tripping and for error reporting. */
+    int line = "-1"
+}
+
+/* ===========================================================================
+ * REFS
+ * =========================================================================== */
+
+/*
+ * A name pointing at a commit. Branches and tags differ in what they mean,
+ * not in what they are, so they share this base.
+ *
+ * commitSha is a soft reference into the Git model rather than a contained
+ * commit: object storage is that model's job, and duplicating a commit here
+ * would create two truths about one SHA.
+ */
+abstract class Ref extends NamedElement {
+    /* Full ref name, e.g. refs/heads/main. name holds the short form. */
+    String refName
+    /* SHA the ref points at. Resolves into the Git model. */
+    String commitSha
+}
+
+class Branch extends Ref {
+    /* True for the repository's default branch. */
+    boolean ^default
+    boolean ^protected
+    contains BranchProtection protection
+    /* Commits ahead of and behind the default branch, when computed. */
+    int ahead = "-1"
+    int behind = "-1"
+}
+
+/*
+ * A tag. Annotated tags carry a tagger and a message and are themselves git
+ * objects; lightweight tags are just a name. The distinction matters for
+ * signed releases, so it is recorded.
+ */
+class Tag extends Ref {
+    boolean annotated
+    String message
+    refers AbstractAccount tagger
+    Date date
+    /* Set when a release was cut from this tag. */
+    refers Release release opposite tag
+}
+
+/*
+ * Branch protection: the rules that decide whether the history of a branch
+ * can be trusted.
+ *
+ * Worth modelling even though it is configuration, because it is the single
+ * most useful governance dataset GitHub holds, and because "which of our
+ * repositories require a review on the default branch" is a question that
+ * currently takes a script per audit.
+ */
+class BranchProtection extends ModelElement {
+    int requiredApprovingReviews = "-1"
+    boolean requireCodeOwnerReview
+    boolean dismissStaleReviews
+    boolean requireLinearHistory
+    boolean requireSignedCommits
+    boolean requireConversationResolution
+    boolean enforceAdmins
+    boolean allowForcePushes
+    boolean allowDeletions
+    /* Names of status checks that must pass. Checks themselves belong to the Actions model. */
+    String[] requiredStatusChecks
+    boolean requireUpToDateBranch
+    /* Accounts and teams allowed to push, when pushes are restricted. */
+    refers AbstractAccount[] pushAccounts
+    refers Team[] pushTeams
+}
+
+/* ===========================================================================
+ * RELEASES
+ * =========================================================================== */
+
+/*
+ * A GitHub release: a tag, plus notes, plus files.
+ *
+ * The notes live in the inherited documentation feature rather than in a
+ * "body" attribute, which is what NxCore's Documented is for and what lets
+ * generated and hand written notes sit in the same place.
+ *
+ * This class is the join point with the release model, where a Version
+ * carries the same tag and points at the coordinated release it shipped in.
+ * The two are not merged: this one records what GitHub holds, that one
+ * records what was planned and published across every registry.
+ */
+class Release extends NamedElement, Loadable {
+    String nodeId
+    long databaseId = "-1"
+    /* The tag this release is cut from, by name and, when loaded, by reference. */
+    String tagName
+    refers Tag tag opposite release
+    /* The branch or SHA the tag was created from, when the tag did not exist yet. */
+    String targetCommitish
+    boolean draft
+    /* GitHub's pre-release flag. For SemVer products this should agree with the version's pre-release identifiers. */
+    boolean preRelease
+    String htmlUrl
+    Date createdAt
+    Date publishedAt
+    refers AbstractAccount author
+    contains ReleaseAsset[] assets keys name
+}
+
+/*
+ * A file attached to a release. GitHub is a distribution channel here, and
+ * download counts are the only usage signal it gives, which makes them worth
+ * keeping despite being soft.
+ */
+class ReleaseAsset extends NamedElement {
+    String label
+    String contentType
+    long size = "-1"
+    int downloads = "-1"
+    String downloadUrl
+    Date createdAt
+    Date updatedAt
+    refers AbstractAccount uploader
+}

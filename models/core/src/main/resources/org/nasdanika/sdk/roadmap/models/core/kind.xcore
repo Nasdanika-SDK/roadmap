@@ -1,0 +1,85 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/kind", nsPrefix="org.nasdanika.sdk.roadmap.models.core.kind")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Kinds: classification as data.
+ *
+ * A class says what an element is, for good. A kind says what it is classified as, and that can
+ * be one of many, come from a catalog someone else publishes, and stop applying. A kind can also
+ * configure: it carries changes that apply to what it classifies, as the SKU of a vendor sets the
+ * memory of the machines classified with it. Changes apply in the order of the specialization of
+ * the kinds, linearized as C3 does it, and then in the order of the kinds of the host.
+ *
+ * The boundary: a kind sets values in the structure its host has and never adds to it. A kind that
+ * wants a feature that the class of the host does not have wants to be a class.
+ *
+ * The pattern of the nano-models is here in full: AbstractKind is what a list holds, Kind is the
+ * definition, KindCatalog publishes definitions, and KindReference uses one from a catalog. Since
+ * EMF containment can cross resources, a reference class is needed only where the user of a kind
+ * has something of its own to say about the use.
+ */
+package org.nasdanika.sdk.roadmap.models.core.kind
+
+import org.nasdanika.sdk.roadmap.models.core.change.Changing
+import org.nasdanika.sdk.roadmap.models.core.occupancy.Occupancy
+import org.nasdanika.sdk.runtime.models.core.ModelElement
+import org.nasdanika.sdk.runtime.models.core.NamedElement
+
+// tag::pattern[]
+/**
+ * An element classified with kinds, in an order that matters when kinds configure.
+ */
+interface Kinded {
+
+	contains AbstractKind[] kinds
+
+}
+
+/**
+ * What a list of kinds holds: a kind defined in place, or a reference to one in a catalog.
+ */
+abstract class AbstractKind extends ModelElement {
+
+}
+
+class Kind extends AbstractKind, Changing {
+
+	String name
+
+	/** The more general kinds. Several are allowed. */
+	refers Kind[] specializes
+
+}
+
+class KindReference extends AbstractKind {
+
+	refers Kind target
+
+}
+
+class KindCatalog extends NamedElement {
+
+	contains Kind[] kinds
+
+	contains KindCatalog[] catalogs
+
+}
+// end::pattern[]
+
+/**
+ * A classification that holds in a region, such as a period: an occupancy of its subject. Ending
+ * it removes the layer that the changes of the kind added, since changes are overlays and not
+ * mutations.
+ */
+class Classification extends Occupancy {
+
+	contains AbstractKind kind
+
+}

@@ -1,0 +1,160 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/occupancy", nsPrefix="org.nasdanika.sdk.roadmap.models.core.occupancy")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Where and when: a subject occupies a box in dimensions.
+ *
+ * Time is one dimension among others: a jurisdiction, a version, a sensitivity level, a floor
+ * number. A region is a box, at most one extent per dimension, and an occupancy is the recorded
+ * fact that a subject is in a region. Plans, the current state and history are one model read at
+ * different coordinates.
+ *
+ * Rules, from the design:
+ *   - A dimension that a region does not mention is unconstrained, not unknown.
+ *   - Whether a bound is inclusive is stored, never assumed.
+ *   - Shapes are unions of boxes: two occupancies, not a polygon.
+ *   - Occupancies are records. A correction is a new occupancy that names its predecessors.
+ *
+ * An occupancy is Related, so it can have transitions to other occupancies, and a transition is
+ * Changing, so it can say what changes in what moves.
+ */
+package org.nasdanika.sdk.roadmap.models.core.occupancy
+
+import org.nasdanika.sdk.roadmap.models.core.change.Changing
+import org.nasdanika.sdk.roadmap.models.core.related.Related
+import org.nasdanika.sdk.roadmap.models.core.related.Relationship
+import org.nasdanika.sdk.runtime.models.core.Evaluator
+import org.nasdanika.sdk.runtime.models.core.ModelElement
+import org.nasdanika.sdk.runtime.models.core.NamedElement
+
+/**
+ * What a region is measured along: a dimension, or a reference to one in a catalog.
+ */
+abstract class AbstractDimension extends NamedElement {
+
+}
+
+/**
+ * An ordered axis: calendar time, a version line, a sensitivity ladder.
+ */
+class Dimension extends AbstractDimension {
+
+	/** The unit, where the dimension is measured: UCUM notation. Empty for named positions. */
+	String unit
+
+	/** How text values are ordered: "iso8601", "maven-version", "natural". Resolved as a capability. */
+	String comparator
+
+	/** Named positions in order, for a dimension that is not measured: public, internal, restricted. */
+	contains Position[] positions
+
+	/** Orders two coordinates, where neither a comparator nor positions do. */
+	contains Evaluator comparison
+
+}
+
+class Position extends NamedElement {
+
+	/** The order. Gaps are deliberate, since positions get inserted. */
+	int ordinal
+
+}
+
+class DimensionReference extends AbstractDimension {
+
+	refers Dimension target
+
+}
+
+class DimensionCatalog extends NamedElement {
+
+	contains AbstractDimension[] dimensions
+
+}
+
+/**
+ * How a coordinate that is not exactly known is known.
+ */
+enum Indeterminacy {
+	EXACT
+	BEFORE
+	AFTER
+	NOW
+	UNKNOWN
+}
+
+/**
+ * A point on a dimension, as text the dimension interprets, or as a named position.
+ */
+class Coordinate extends ModelElement {
+
+	refers AbstractDimension dimension
+
+	String value
+
+	refers Position position
+
+	Indeterminacy indeterminacy
+
+}
+
+/**
+ * A range on one dimension. Without a start it is unbounded below, and without an end unbounded above.
+ */
+class Extent extends ModelElement {
+
+	refers AbstractDimension dimension
+
+	contains Coordinate start
+
+	contains Coordinate end
+
+	boolean startExclusive
+
+	boolean endExclusive
+
+}
+
+/**
+ * A box: at most one extent per dimension.
+ */
+class Region extends ModelElement {
+
+	contains Extent[] extents
+
+}
+
+/**
+ * The recorded fact that a subject is in a region.
+ */
+class Occupancy extends Region, Related {
+
+	container Situated subject opposite occupancies
+
+	/** The occupancies this one supersedes. What nothing supersedes is current. */
+	refers Occupancy[] predecessors
+
+}
+
+/**
+ * An element that is somewhere, at some time.
+ */
+interface Situated {
+
+	contains Occupancy[] occupancies opposite subject
+
+}
+
+/**
+ * A move from one occupancy to another, with the changes it makes to what moves.
+ */
+class Transition extends Relationship, Changing {
+
+}

@@ -1,0 +1,417 @@
+@Ecore(nsURI="https://expression.models.nasdanika.org", nsPrefix="org.nasdanika.models.expression")
+@GenModel(
+    modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * DRAFT. A closed, minimal algebra of boolean expressions over bound values,
+ * intended to be PUSHED DOWN to a data source.
+ *
+ * Ships with core, because it is foundational: the graph content provider
+ * contract is written in terms of it, and the Cypher engine, the rules
+ * engine and any future provider all speak it.
+ *
+ * WHAT THIS IS NOT
+ *
+ * It is not an expression language and it is not the Cypher expression AST.
+ * The Cypher AST is faithful to its source: round-trippable, markered, tolerant
+ * of fragments it cannot parse, sixty-odd classes. This model is the opposite,
+ * and deliberately so: a provider author must be able to switch exhaustively
+ * over it in an afternoon. Cypher LOWERS into this model; the lowering is where
+ * "what can be pushed down here" is decided.
+ *
+ * THE GOVERNING RULE
+ *
+ * A construct belongs here only if a data source could plausibly evaluate it
+ * for itself. Everything else stays residual and the caller applies it after
+ * the fetch. That rule is what keeps this at twenty classifiers, and it is safe
+ * to apply strictly because THE FALLBACK IS ALWAYS CORRECT: an expression that
+ * cannot be pushed is simply evaluated by the caller. Expressiveness here buys
+ * performance, never correctness, so there is never an urgent reason to grow it.
+ *
+ * So: no arithmetic, no function calls, no collection comprehensions, no
+ * user-defined operators. Those arrive as OpaqueExpression and are applied by
+ * whoever asked. See the readme for the full list of deliberate omissions.
+ *
+ * SYNTAX ONLY, SEMANTICS SUPPLIED BY THE APPLICATION
+ *
+ * This is the load-bearing boundary. Cypher's three-valued null logic, its
+ * ordering across mixed types and its integer/float coercions are TCK-specified
+ * and are NOT general truths. If they were baked in here, every other consumer
+ * of this model would inherit Cypher's semantics and Cypher would still have to
+ * be checked against the TCK.
+ *
+ * Therefore: the generated evaluate() implements NEUTRAL (Java-like) semantics
+ * and exists for convenience. An application with its own semantics walks the
+ * tree with its own visitor and does not call it. Cypher will do exactly that.
+ */
+package org.nasdanika.models.expression
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+type Class<T> wraps java.lang.Class
+type Map<K, V> wraps java.util.Map
+type Instant wraps java.time.Instant
+type CompletionStage<T> wraps java.util.concurrent.CompletionStage
+
+/* ---------------------------------------------------------------------------
+ * Evaluation
+ *
+ * Evaluator is defined HERE rather than in nxcore, and nxcore refines it:
+ *
+ *     interface Evaluator extends expression.Evaluator, Documented, Marked {}
+ *
+ * which is the same re-declaration-under-the-same-name move the role floor
+ * already makes with Content and Section. The reason is dependency direction:
+ * core's graph module has to evaluate a predicate and must not drag
+ * documentation-as-structure to do it. Evaluating is more primitive than
+ * documenting.
+ *
+ * The consequence to be deliberate about: a bare Expression is NOT Marked, so an
+ * expression lowered from Cypher source carries no line and column unless the
+ * lowering produces nxcore-refined variants. Markers on expressions are what make
+ * a provider's rejection reportable against source text, so losing them silently
+ * would be a real regression in diagnostics. See the assessment for the three
+ * options and the recommendation.
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Something that produces a value from bindings. The synchronous face, and the
+ * primary one.
+ *
+ * Primary because the dominant case is in-memory and CPU-bound: a residual
+ * predicate applied once per row. Making that path allocate a CompletionStage per
+ * row to accommodate the rare evaluator that does IO is the wrong trade. Note
+ * that this is the OPPOSITE orientation from the graph content provider, where
+ * IO dominates and async is primary. Same pattern, inverted for the same reason:
+ * each face is primary where its case is dominant.
+ */
+interface Evaluator {
+
+    op <T> T evaluate(Class<T> resultType, Map<String, Object> bindings)
+
+    op <T> T evaluate(Class<T> resultType) {
+        return evaluate(resultType, null)
+    }
+
+    op Object evaluate(Map<String, Object> bindings) {
+        return evaluate(null, bindings)
+    }
+
+    op Object evaluate() {
+        return evaluate(null, null)
+    }
+
+    /*
+     * What evaluating this costs, declared rather than discovered.
+     *
+     * A caller needs to know STATICALLY whether a conjunction can be applied
+     * synchronously, because a single IO or INFERENCE operand makes the whole
+     * conjunction async. It is also what lets a scope policy refuse a class of
+     * evaluator outright, which is how "no inference in this answer" becomes
+     * enforceable rather than conventional.
+     */
+    op EvaluationCost cost() {
+        return EvaluationCost.LOCAL
+    }
+
+}
+
+/*
+ * Ordinal rather than a number, because absolute costs are unknowable and every
+ * consumer only needs ordering: refuse above a threshold, evaluate cheapest first.
+ */
+enum EvaluationCost {
+    /* A literal or a field read. */
+    FREE = 0
+    /* In-memory computation. The default. */
+    LOCAL = 1
+    /* Touches a file, a socket or a remote service. */
+    IO = 2
+    /* Invokes a model. Non-deterministic, and the one a policy most often refuses. */
+    INFERENCE = 3
+}
+
+/*
+ * The asynchronous face, for evaluators that genuinely do IO or inference.
+ * Adapters exist both ways and an implementation provides whichever is natural.
+ *
+ * CompletionStage here, Mono in the graph content provider, and the inconsistency
+ * is deliberate. Two reasons. This is a single deferred value with no stream to
+ * pair with, which is exactly what CompletionStage is for, whereas the provider
+ * returns metadata plus a stream and wants Mono and Flux together. And this is a
+ * MODEL rather than a Java SPI: it has to stay portable enough to project to
+ * TypeScript, so a Reactor type in a generated EMF class is a commitment that a
+ * plain interface in core does not make. Composing the two is one call to
+ * Mono.fromCompletionStage, which is acceptable friction for keeping a core model
+ * free of anything but the JDK.
+ */
+interface AsyncEvaluator {
+
+    op <T> CompletionStage<T> evaluateAsync(Class<T> resultType, Map<String, Object> bindings)
+
+    op <T> CompletionStage<T> evaluateAsync(Class<T> resultType) {
+        return evaluateAsync(resultType, null)
+    }
+
+    op EvaluationCost cost() {
+        return EvaluationCost.IO
+    }
+
+}
+
+/*
+ * Base of the algebra.
+ *
+ * Extends Evaluator, which is the move that makes the whole contract uniform: a
+ * caller holds a list of predicates, some of them structured Expressions it can
+ * inspect and offer to a provider, others opaque Evaluators (Groovy, SpEL, a
+ * lambda) that can only be run. Both are Evaluator, so the residual-application
+ * path is one line and does not care which it got.
+ *
+ * NOT Marked and not a ModelElement, which is the price of sitting below nxcore.
+ * Expressions do not need identity, uris or an icon, and twenty classifiers each
+ * carrying six unused features is how a micro-model stops being micro. The cost
+ * is source markers, which a Cypher lowering genuinely wants; the assessment
+ * recommends recovering them through a Marked mixin in the nxcore-aware
+ * companion rather than by pulling nxcore down here.
+ */
+abstract class Expression extends Evaluator {
+
+    /*
+     * Neutral evaluation, for convenience. See the package comment: an
+     * application with its own semantics uses its own visitor instead. Declared
+     * once here so every subclass inherits one implementation.
+     */
+    @GenModel(body="return org.nasdanika.models.expression.util.ExpressionSupport.evaluate(this, resultType, bindings);")
+    op <T> T evaluate(Class<T> resultType, Map<String, Object> bindings)
+
+}
+
+/* ---------------------------------------------------------------------------
+ * Literals
+ * --------------------------------------------------------------------------- */
+
+/*
+ * A constant. Split by type rather than carried as a single Object value,
+ * because a provider has to switch on the type to build its own query, and
+ * because an Object-valued attribute does not survive serialization to JSON
+ * without a side channel saying what it was.
+ *
+ * Integer and float are separate, not merged into "number", because Cypher
+ * distinguishes them and so do most of the targets. Merging here would force
+ * every consumer to re-derive the distinction from the value.
+ */
+abstract class Literal extends Expression {}
+
+class StringLiteral extends Literal {
+    String value
+}
+
+/* 64-bit signed. */
+class IntegerLiteral extends Literal {
+    long value
+}
+
+/* Double precision. */
+class FloatLiteral extends Literal {
+    double value
+}
+
+class BooleanLiteral extends Literal {
+    boolean value
+}
+
+/*
+ * Explicit null. A distinct class rather than an unset value, so that "compare
+ * against null" is visibly different from "this operand was never populated",
+ * which is a bug.
+ */
+class NullLiteral extends Literal {}
+
+/*
+ * An instant. The one non-primitive literal, because range predicates over time
+ * are the single most commonly pushed-down filter in every API this will meet:
+ * updated since, created before, modified between.
+ */
+class TemporalLiteral extends Literal {
+    Instant value
+}
+
+/*
+ * An ordered list of expressions. Exists for InTest's right-hand side and for
+ * nothing else in this version, which is why it is not called ListLiteral: its
+ * elements need not be constant.
+ */
+class ListExpression extends Expression {
+    contains Expression[] elements
+}
+
+/* ---------------------------------------------------------------------------
+ * References
+ * --------------------------------------------------------------------------- */
+
+/*
+ * The whole bound value, by name. In a query this is a pattern variable; in a
+ * rule it is whatever the caller bound.
+ */
+class VariableReference extends Expression {
+    String variable
+}
+
+/*
+ * A property of a bound value: i.status, r.defaultBranch.
+ *
+ * This is the class pushdown is actually about. A provider that can filter at
+ * all can almost certainly filter on a named property of the thing it produces,
+ * and a provider that cannot recognize this class can push nothing.
+ */
+class PropertyReference extends Expression {
+    String variable
+    String property
+}
+
+/*
+ * A named parameter, resolved from bindings at evaluation time: $status.
+ *
+ * Worth having as a class rather than inlining constants at lowering time for
+ * two reasons. A provider can often bind a parameter into a prepared remote
+ * query, and a logged or cached expression keeps its shape without carrying the
+ * value, which matters when the value is a credential or a customer identifier.
+ */
+class ParameterReference extends Expression {
+    String name
+}
+
+/* ---------------------------------------------------------------------------
+ * Predicates
+ * --------------------------------------------------------------------------- */
+
+enum ComparisonOperator {
+    EQUAL as "=" = 0
+    NOT_EQUAL as "<>" = 1
+    LESS as "<" = 2
+    LESS_OR_EQUAL as "<=" = 3
+    GREATER as ">" = 4
+    GREATER_OR_EQUAL as ">=" = 5
+}
+
+class Comparison extends Expression {
+    ComparisonOperator operator
+    contains Expression left
+    contains Expression right
+}
+
+enum LogicalOperator {
+    AND = 0
+    OR = 1
+}
+
+/*
+ * N-ary rather than binary, and this is not cosmetic. Pushdown negotiation is
+ * conducted over a CONJUNCTION: the caller offers a list of operands and the
+ * provider reports which of them it honored. A binary tree would force every
+ * provider to flatten it first, and every provider would flatten it slightly
+ * differently.
+ */
+class LogicalOperation extends Expression {
+    LogicalOperator operator
+    contains Expression[] operands
+}
+
+/*
+ * Negation. The only way to negate anything in this model: the individual
+ * predicates below carry no "negated" flag, so there is exactly one spelling of
+ * NOT and a provider has one case to handle rather than five.
+ *
+ * Lowering should push negation toward the leaves where it can (negation normal
+ * form), because most sources can express "not equal" and very few can express
+ * "not (a and b)".
+ */
+class Not extends Expression {
+    contains Expression operand
+}
+
+/*
+ * IS NULL. Separate from Comparison against NullLiteral because in most target
+ * languages, and in Cypher, equality with null is not a null test.
+ */
+class NullTest extends Expression {
+    contains Expression operand
+}
+
+/* Membership. The collection is usually a ListExpression or a ParameterReference. */
+class InTest extends Expression {
+    contains Expression value
+    contains Expression collection
+}
+
+enum StringTestKind {
+    STARTS_WITH = 0
+    ENDS_WITH = 1
+    CONTAINS = 2
+    /* Regular expression, in the java.util.regex dialect. Rarely pushable. */
+    MATCHES = 3
+}
+
+class StringTest extends Expression {
+    StringTestKind kind
+    contains Expression value
+    contains Expression pattern
+}
+
+/*
+ * Type test: is this value an instance of this type, by name.
+ *
+ * First class rather than encoded as a property comparison, because in this
+ * ecosystem the type system is IN the graph: a node reaches its EClass by an
+ * eClass edge and its supertypes by eSuperTypes edges. A provider that knows its
+ * own types can answer "only repositories" without fetching anything else, which
+ * is the cheapest and most common filter there is.
+ *
+ * typeName is matched by the application against whatever it calls a type:
+ * an EClass name for EMF, a label for a property graph, a resource kind for an
+ * API. includeSubTypes distinguishes "exactly this" from "this or below", which
+ * every source spells differently and none of them leave implicit.
+ */
+class TypeTest extends Expression {
+    contains Expression operand
+    String typeName
+    boolean includeSubTypes = "true"
+}
+
+/* ---------------------------------------------------------------------------
+ * The escape hatch
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Anything this model cannot express: arithmetic, a function call, a script, a
+ * Cypher list comprehension.
+ *
+ * It is an Expression so it composes inside LogicalOperation and travels with
+ * the rest of the tree, and it delegates to any Evaluator (a Groovy or SpEL
+ * evaluator, a compiled lambda) so the caller can still run it. It is never pushable, by construction, and a provider that
+ * meets one reports it as not honored without needing to know what it was.
+ *
+ * This class is what makes the governing rule affordable. Refusing to grow the
+ * algebra costs nothing when everything refused still has somewhere to go.
+ */
+class OpaqueExpression extends Expression {
+    /*
+     * What to run. Contained rather than referenced, so the expression stays
+     * self-contained when it is serialized or cached.
+     */
+    contains Evaluator delegate
+    /*
+     * Optional human-readable source, for diagnostics and for EXPLAIN output.
+     * Never parsed.
+     */
+    String description
+}

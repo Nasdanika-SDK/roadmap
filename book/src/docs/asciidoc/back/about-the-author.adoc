@@ -1,0 +1,13 @@
+[#about-the-author]
+== About the author
+
+image::headshot.jpg[Pavel Vlasov,width=178,pdfwidth=1.18in,align=center]
+
+I am Pavel Vlasov, the creator of Nasdanika and of the roadmap this book describes.
+I have worked in information technology for more than thirty years, thirty of them in financial services, as a developer, an architect and an enterprise architect.
+
+I hold a master's degree in plasma physics from the Novosibirsk State University.
+I am certified as a Java developer and as a Java architect, and as a TOGAF Enterprise Architecture Practitioner.
+
+I write about models, architecture and AI-assisted development at {medium}.
+My code is on {github}[GitHub], and I am on {linkedin}[LinkedIn].

@@ -1,0 +1,309 @@
+@Ecore(nsURI="https://tool.models.nasdanika.org", nsPrefix="org.nasdanika.models.tool")
+@GenModel(
+    modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * DRAFT. What can be called, independent of who calls it and how.
+ *
+ * WHY THIS IS ITS OWN MODEL
+ *
+ * Four consumers, not one. The agent model already describes tool parameters, the MCP
+ * model describes servers that expose tools, the ai model needs tools to put in a request,
+ * and a CLI or capability surface wants to know what is callable. Three of those had
+ * started describing the same concept separately, which is how one idea becomes three
+ * vocabularies that almost agree.
+ *
+ * It is also useful with no language model anywhere in the picture. Documenting what an
+ * MCP server exposes, who owns each tool, what it costs to call and whether it is approved
+ * is a catalog question, and catalogs with their own audience are what deserve their own
+ * model.
+ *
+ * THE TWO AXES, WHICH ARE COMMONLY CONFLATED
+ *
+ * A tool definition says WHAT can be called. Everything else is how, and there are two
+ * independent hows:
+ *
+ *   PRESENTATION - how a language model learns about the tool and asks for it. Native tool
+ *   calling, or a few-shot prompt whose examples teach the shape and whose result is
+ *   validated against the same schema.
+ *
+ *   INVOCATION - how the call actually happens. In process through a capability, over an
+ *   invocable URI, through an MCP server, or somewhere else entirely.
+ *
+ * Separating them has a consequence worth stating plainly: MCP stops being a category and
+ * becomes a transport, in the same bracket as gRPC or RMI. And few-shot prompting stops
+ * being a different technique and becomes a different calling convention for the same
+ * definition, chosen per call on capability, on token cost, or on policy.
+ *
+ * DEPENDENCIES
+ *
+ * On meta, for typed parameters. Meta's generation targets already list "JSON Schema:
+ * validation, and tool schemas for agents", so this is the use it was built for rather
+ * than a stretch.
+ *
+ * On expression, for argument bindings, which are evaluators rather than constants.
+ *
+ * On example, for teaching material, conformance suites and mocks. That model started here
+ * and was extracted when it outgrew its host: eight classifiers about examples inside a
+ * model about tools is a sub-domain wearing somebody else's name, and the machinery that
+ * forced the question only pays off when examples are shared with things that are not
+ * tools.
+ *
+ * Depended on BY the CLI model, which is the first model to sit on this one: a CLI
+ * assembly publishes a tool catalog whose tools are command registrations with arguments
+ * bound. The dependency points up the tower, and nothing here knows a CLI exists.
+ *
+ * NOT on ai. Which embedding model to use for similarity-based example selection is an
+ * inference configuration decision belonging to the caller, not a property of the tool.
+ * That keeps the dependency pointing one way.
+ */
+package org.nasdanika.models.tool
+
+import org.nasdanika.models.expression.Evaluator
+import org.nasdanika.models.example.ExampleCatalog
+import org.nasdanika.models.example.ExampleSelection
+import org.nasdanika.models.example.ExampleSet
+import org.nasdanika.models.meta.Operation
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.NamedElement
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ---------------------------------------------------------------------------
+ * Catalog
+ * --------------------------------------------------------------------------- */
+
+/*
+ * A published set of tools.
+ *
+ * Independently publishable and referenceable from several model catalogs, because who
+ * implements a tool and who approves a provider are different people answering different
+ * questions.
+ */
+class ToolCatalog extends NamedElement {
+    contains AbstractTool[] tools
+    /*
+     * Example catalogs the tools here draw on. Referenced rather than contained, because
+     * examples are their own model and their own publication unit: the same catalog serves
+     * conformance suites and mocks for implementations that have nothing to do with this
+     * tool catalog.
+     */
+    refers ExampleCatalog[] exampleCatalogs
+}
+
+/* ---------------------------------------------------------------------------
+ * Tools
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Something callable.
+ *
+ * `name` and documentation come from nxcore. `description` is what a model is told;
+ * documentation is what a person reads. They are usually not the same text and pretending
+ * otherwise produces prompts full of markdown and doc sites full of terse imperatives.
+ */
+abstract class AbstractTool extends NamedElement {
+
+    /*
+     * What the model is told the tool does. Prose, short, written for a reader with no
+     * context and a budget of tokens.
+     */
+    String description
+
+    /*
+     * How to use it, beyond the schema.
+     *
+     * This is where progressive disclosure lives. A parameter typed as an identifier of
+     * something with hundreds of possible values cannot be an enum and should not inline
+     * its type, so the schema says what is needed and the instructions say how to find it:
+     * run this query with that tool. Which is the token-economy argument from the meta
+     * model applied to tool schemas rather than to context windows.
+     */
+    String instructions
+
+    /* Presentations this tool can be offered through. Empty means native only. */
+    ToolPresentation[] presentations
+
+    /* Request constrained decoding for arguments where the model and presentation allow. */
+    boolean strict
+
+    /* Where the implementation is found. Never the implementation itself. */
+    contains InvocationReference invocation
+
+    /*
+     * Example sets this tool uses.
+     *
+     * Referenced rather than contained, and the sets live in the catalog. Slightly more
+     * ceremony for a one-off, and it makes reuse the default and every example citable
+     * from outside the tool that happens to use it.
+     */
+    refers ExampleSet[] exampleSets
+    contains ExampleSelection exampleSelection
+
+    /* How to find valid values for parameters that cannot be enumerated in a schema. */
+    contains ArgumentDiscovery[] argumentDiscoveries
+
+    /*
+     * JSON Schema for the arguments.
+     *
+     * An operation rather than a feature, so a consumer holding an AbstractTool asks for a
+     * schema without caring whether it was authored or generated. GenericTool returns what
+     * it was given; the operation kinds generate from their parameters.
+     */
+    op String getInputSchema()
+
+    /*
+     * JSON Schema for the result.
+     *
+     * Constrains nothing during inference, because a result is produced by the caller's
+     * code and never passes through the sampler. It earns its place for planning, since a
+     * model that knows the result shape can chain calls rather than discovering shapes by
+     * calling; for contract, since an implementation gains something to be tested against;
+     * and because MCP defines it.
+     */
+    op String getOutputSchema()
+}
+
+/*
+ * A tool defined by schemas somebody else wrote.
+ *
+ * The honest case for anything received rather than authored: an MCP server's tool list, a
+ * third party's function definition, a schema pasted from documentation. You cannot model
+ * what you did not author, and pretending to would mean lossy round trips.
+ */
+class GenericTool extends AbstractTool {
+    String inputSchema
+    String outputSchema
+}
+
+/*
+ * A tool whose signature is modeled.
+ *
+ * Extends meta Operation, so parameters carry types, optionality, defaults and variadic
+ * from a vocabulary that already knows how to project itself to JSON Schema. The schema
+ * becomes generated rather than maintained, which is the difference between a definition
+ * and a definition plus a copy of it that drifts.
+ */
+class OperationTool extends AbstractTool, Operation {
+}
+
+/*
+ * A call to something defined elsewhere, with some arguments fixed.
+ *
+ * Named for the call rather than for the reference, because the binding is the point. An
+ * unbound reference would just be an alias.
+ *
+ * BINDING IS SCOPE ENFORCEMENT, not convenience. Take a general operation, fix the
+ * arguments that must not be model-controlled, and expose only the remainder. A
+ * query(scope, statement) operation becomes queryFamilyModel(statement) with scope bound,
+ * and the model cannot widen what it was never shown. Structural, in the way a filtered
+ * capability loader is structural, rather than a check somebody remembers to write.
+ *
+ * The generated input schema covers the unbound arguments only.
+ *
+ * ABSTRACT BECAUSE THE TARGET VARIES. The binding idea does not depend on what is being
+ * called, and the first target that was not a Meta Operation proved it: a CLI command
+ * (https://cli.models.nasdanika.org/) is a Meta Class whose arguments are features, and it
+ * has no signature to point at. Inventing one so it could fit a subclass typed for
+ * operations would put back exactly the signature the CLI model refuses to carry. So the
+ * bindings live here, each subclass says what it calls, and a subclass whose arguments are
+ * not addressable by a plain name subclasses ArgumentBinding as well.
+ */
+abstract class BoundTool extends AbstractTool {
+    contains ArgumentBinding[] bindings
+}
+
+/*
+ * A call to a Meta operation, with some parameters fixed. Bindings name parameters of
+ * `operation`.
+ */
+class OperationCallTool extends BoundTool {
+    refers Operation operation
+}
+
+/*
+ * A fixed argument.
+ *
+ * The value is an Evaluator rather than a constant, so a binding can be a literal, an
+ * expression over the call context, or a reference resolved at call time. Same shape as
+ * the credential reference in the ai model and for the same reason: say where, not what.
+ *
+ * SECURITY NOTE. An evaluator in a published catalog is executable. Bindings evaluate at
+ * the trust level of the catalog they came from, and an untrusted catalog resolves only to
+ * the default expression language. This is the procedure-namespace rule applied one level
+ * down, and it is the sort of thing that is cheap now and expensive after somebody relies
+ * on a looser default.
+ */
+class ArgumentBinding extends ModelElement {
+    /*
+     * Name of the bound argument in the call target: a parameter name for an operation.
+     * A subclass may address the argument more precisely and leave this as the readable
+     * form.
+     */
+    String parameter
+    contains Evaluator value
+}
+
+enum ToolPresentation {
+    /* Native tool calling. Requires a model that supports it. */
+    NATIVE = 0
+    /*
+     * A generated prompt with examples, whose result is validated against the same output
+     * schema. Works on models without tool calling, is sometimes cheaper in tokens, and in
+     * organizations that scrutinize "tool calls" as a category it is sometimes the only
+     * thing that gets approved. The last reason is a fact about governance rather than
+     * about engineering, and it is still a reason.
+     */
+    FEW_SHOT = 1
+}
+
+/*
+ * Where the implementation is found. Never the implementation itself.
+ *
+ * MCP appears here, as a transport among transports, which is the point. It is how a call
+ * travels, not what kind of thing the call is.
+ */
+class InvocationReference extends ModelElement {
+    InvocationSource source
+    /* A capability requirement id, an invocable URI, or an MCP server plus tool name. */
+    String key
+}
+
+enum InvocationSource {
+    /* Resolved through the capability framework's Invocable requirements. */
+    CAPABILITY = 0
+    URI = 1
+    /* Through an MCP server. A transport, in the same bracket as gRPC or RMI. */
+    MCP = 2
+    /* Declared for a model's benefit, executed by something outside this catalog. */
+    EXTERNAL = 3
+}
+
+/*
+ * How to find valid values for a parameter that cannot be enumerated.
+ *
+ * The alternative is inlining a type or an enumeration of every candidate into the schema,
+ * which does not fit and does not stay current. This says: for this parameter, run this
+ * query with that tool.
+ *
+ * It is also the concrete payoff of having a query language available to agents. A typed
+ * tool over a large domain is only affordable when lookup is a tool call rather than a
+ * context window.
+ */
+class ArgumentDiscovery extends ModelElement {
+    String parameter
+    /* The tool to run, usually a query tool. */
+    refers AbstractTool tool
+    /* Query text, or a template for one. */
+    String query
+    /* What the result means, for the model's benefit. */
+    String hint
+}

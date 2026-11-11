@@ -1,0 +1,149 @@
+[#drawn-screens]
+== Screens Drawn in Draw.io
+
+[horizontal]
+Capability:: A user interface drawn before it is programmed: screens and the flow between them as pages of a Draw.io file, which runs with nothing connected, and to which handlers are then bound one at a time. Drawn once, shown in a terminal, on a page and in a document.
+Demonstration:: None yet. The first drawing is to be the commander of <<commander>>.
+Status:: [.planned]#PLANNED#. Nothing in this chapter has been built or run.
+Depends on:: <<widgets>> and <<terminal>> for what a drawn element becomes, <<bindings>> for what it shows, and the runtime's Draw.io model for reading the file.
+Value and effort:: High for those who think in pictures, and unknown in size: the interpreter may be larger than it looks.
+How to help:: Draw a screen flow of your own with plain Draw.io shapes and say what you needed that stacks and containers did not give you. That is the first unknown.
+
+=== Why
+
+Some people see a system before they can describe it.
+I am one of them: schematics, CAD, integration flows drawn on a canvas, user interfaces assembled in a visual builder.
+In all of those the drawing was the program and not a picture of it.
+
+For a user interface that means seeing the screens and the way between them first, and connecting behavior second.
+It also means that the people a screen is for can see it, and say what is wrong with it, long before it runs, and some of them never will see it run.
+
+Draw.io is the editor because people already have it, and because a `.drawio` file is a model the runtime already reads.
+There is no editor to build.
+
+This continues earlier work: wireframes of web pages drawn in Draw.io with a library of Bootstrap shapes, from which a site was generated and which were also used when the application ran.
+The terminal is a better place to start again.
+Its vocabulary is small, a cell grid forgives a rough drawing, and there are few tools of this kind for it.
+
+=== Draw, run, then bind
+
+The order of the work follows the way of working.
+
+[cols="1,3,3",options="header"]
+|===
+|Step |What a person does |What it needs
+
+|Draw
+|The flow and the screens, as pages of a file, with links between pages
+|A library of shapes, and no Java
+
+|Run
+|Opens the file in a terminal and walks through it with nothing connected
+|An interpreter
+
+|Bind
+|Connects one handler at a time, against a list of what is not connected yet
+|Selection annotations and a validator
+
+|Change
+|Edits the drawing and sees the screen follow
+|Reloading on save
+|===
+
+Three things follow.
+
+*Unbound is a state and not a failure.*
+A screen with no handlers still runs.
+Elements show their labels or sample text, and an action that is not connected says so on the status line.
+That is the experience of a visual builder: a user interface exists before any logic does.
+
+*The validator has two modes.*
+A handler for an element that is no longer in the drawing, two handlers for one element, and types that cannot fit are always errors.
+Elements with no handler are the to-do list while working, and errors only in a strict mode, for a build or a release.
+
+*The library comes first.*
+It can be drawn with before a line of the interpreter exists, and what people draw with it says what the interpreter has to do.
+
+=== What is drawn
+
+*Screens.*
+A page is a screen.
+Draw.io's horizontal and vertical stacks and its containers give the structure: what is inside what, and in what order.
+Whether they carry enough structure for real screens is the first thing a trial has to answer.
+How a list, or anything else whose content is not known when it is drawn, is expressed is the second.
+
+*Shapes are kinds.*
+A shape in the library stands for a kind of <<widgets>>: text, a link, a section, a list, a table, and later an action and an input.
+Two libraries are planned.
+A generic one has the kinds every surface has, with the same names as in the widget module.
+A terminal one adds what only a terminal context has, marked as such, so that a drawing made for a terminal says so.
+
+*Flows.*
+A link from an element to a page is navigation: the button opens that screen, in the whole terminal, in a dialog or in a panel.
+A screen may also define actions, such as "Next", whose meaning is given by a flow diagram that connects screens.
+Behavior that is not user interface is drawn there.
+
+*Reusable screens.*
+A page can be used inside another, as a panel or a dialog.
+And a drawing can belong to a class of a model: the module that provides a credit card account provides the drawing of its screen, and a screen that shows an account finds it, as views are found by class everywhere else in the runtime.
+
+*Styles.*
+A drawing's colors map to logical colors, and those to whatever the surface has.
+
+=== How a drawing meets Java
+
+Two things are connected to an element of a drawing, and the roadmap keeps two words for them.
+
+An element is *resolved* to what implements it: a method that, given the element, returns the widget or the action for it.
+That goes through the capability framework, with a selection annotation that says which document, page and element a method is for: by id, by label, or by the value of a property.
+The annotation is what lets a validator find a method whose element is gone.
+
+An element is *bound* to a value: a <<bindings,binding>>, which it shows and follows, or which it writes when the user types.
+
+A third word, *wire*, is for a connection drawn between two elements, where one follows the other.
+
+The mapping is one way at first.
+Java says which elements it implements, and a validator and the interpreter read the drawing and connect it.
+Handlers written inside the drawing, in a script, wait until they are asked for, and would be off unless a drawing comes from a trusted place.
+
+[source,java]
+----
+@DiagramResource("card-account.drawio")                         // <1>
+public class CardAccountScreens extends DiagramCapabilityFactory {
+
+	@Capability
+	@Element(id = "payment-due")                                 // <2>
+	public Function<CreditCardAccount, Widget<?, ?>> paymentDue(Node element) {
+		return account -> ...;
+	}
+
+}
+----
+<1> The drawing these methods are for.
+<2> The element this method implements.
+
+The listing is a design and was never compiled.
+The names of the annotations are open: `@Document`, `@Page` and `@Element` read best, and the first two are also the names of classes in the Draw.io model.
+
+=== One drawing, several surfaces
+
+A drawing made of generic shapes names kinds and not a format.
+So the screen that runs in a terminal can also be a static page with Bootstrap, an application in React, and a figure with a description in a document.
+
+The last one closes a loop with <<widgets>>.
+Draw.io is itself a surface: a widget context that writes shapes onto a page would draw a screen from a view, and the result could be opened, corrected and used as the drawing from then on.
+
+Documentation comes from the same file: the screens as figures, the flow, who owns each screen and what state it is in.
+
+=== Usage against design
+
+The drawn flow is the set of paths that were designed.
+With a span per screen and per action, as <<bindings>> describes, telemetry has the paths that people took.
+Laying the counts of the second over the first shows the paths nobody uses and the detours everybody takes.
+
+=== Prior art
+
+Visual builders for desktop user interfaces, where a form is drawn and handlers are attached.
+Layout files of mobile platforms, where a screen is a resource and code finds its parts by id.
+Builders for terminal interfaces exist as editors of their own that export code for one framework or another; a survey in November 2026 found none that reads a Draw.io file or runs the file itself, which is weak evidence that the combination is new and no evidence that it is wanted.
+The honest position is that this is built for its author first.

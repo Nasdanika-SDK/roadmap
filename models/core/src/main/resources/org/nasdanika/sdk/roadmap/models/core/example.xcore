@@ -1,0 +1,89 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/example", nsPrefix="org.nasdanika.sdk.roadmap.models.core.example")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Examples: an input, the output expected for it, and why.
+ *
+ * Examples are everywhere, on tools, operations, mappings, prompts and viewpoints, so they are a
+ * nano-model in core rather than a part of each model that has them. The package is "example",
+ * singular, as the other nano-models are named.
+ *
+ * Three uses of the same data:
+ *   - Teaching. Examples become a few-shot prompt, or a section of documentation.
+ *   - Conformance. An input and its expected output is a test case, so a published set of
+ *     examples is a conformance suite for whatever it describes.
+ *   - Mocking. Replaying the outputs runs a loop offline, with no provider.
+ *
+ * And they break loudly: where the thing exemplified has a schema, the input of an example
+ * conforms to it, so changing the schema invalidates the examples written against the old shape.
+ */
+package org.nasdanika.sdk.roadmap.models.core.example
+
+import org.nasdanika.sdk.runtime.models.core.ModelElement
+import org.nasdanika.sdk.runtime.models.core.NamedElement
+
+/**
+ * An element that has examples.
+ */
+interface Exemplified {
+
+	contains AbstractExample[] examples
+
+}
+
+/**
+ * What a list of examples holds: an example, or a reference to one in a catalog.
+ */
+abstract class AbstractExample extends ModelElement {
+
+}
+
+class Example extends AbstractExample {
+
+	String name
+
+	/** The input, as text in a format such as json. */
+	contains Payload input
+
+	/** The output expected for the input. */
+	contains Payload output
+
+	/** Why this output: what the example teaches. */
+	String rationale
+
+	/** A counter-example: an output that is wrong, shown so that it is not produced. */
+	boolean negative
+
+}
+
+class Payload {
+
+	String text
+
+	/** A location, resolved against the resource of the example, where the text is long. */
+	String location
+
+	String format
+
+}
+
+class ExampleReference extends AbstractExample {
+
+	refers Example target
+
+}
+
+class ExampleCatalog extends NamedElement {
+
+	contains Example[] examples
+
+	contains ExampleCatalog[] catalogs
+
+}

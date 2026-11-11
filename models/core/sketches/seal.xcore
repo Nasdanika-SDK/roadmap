@@ -1,0 +1,182 @@
+@Ecore(nsURI="https://seal.models.nasdanika.org", nsPrefix="org.nasdanika.models.seal")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.seal
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.iam.Subject
+import org.nasdanika.models.iam.AccessControlled
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/* ---- Keys (the distribution graph) ---- */
+
+/*
+ * A public key or a reference to one, bound to an IAM Subject: a
+ * Principal's personal key, a Group's key (a subscription tier, a review
+ * board, a trust domain boundary). Group membership in IAM is thereby the
+ * key distribution graph. Private counterparts never enter the model.
+ */
+class Key extends ModelElement {
+    /* Algorithm/format identifier, e.g. "openpgp", "rsa-4096", "x25519"; interpreted by the bound provider. */
+    String algorithm
+    /* Provider-format fingerprint used to match keys without inlining material. */
+    String fingerprint
+    /* Optional inline public material, e.g. ASCII-armored OpenPGP. */
+    String material
+    /* URI of an external key source when material is not inline: a keyring entry, a KMS key, a keyserver. Resolved via the capability framework. */
+    String location
+    /* Whose key this is: recipient when wrapping, signer when signing. */
+    refers Subject subject
+    Date expires
+    boolean revoked
+}
+
+/*
+ * A directory of keys, typically aligned with an IAM Realm: an
+ * organization keyring, a public keyring of subscription-tier group keys.
+ */
+class Keyring extends ModelElement {
+    contains Key[] ^keys
+}
+
+/* ---- Encryption (for whom) ---- */
+
+/*
+ * A content key wrapped to one recipient's public key. The recipient is
+ * key.subject; the answer to "for whom was this encrypted" is the set of
+ * WrappedKey recipients on the EncryptedValue.
+ */
+class WrappedKey {
+    refers Key key
+    /* The wrapped (encrypted) content key, base64. */
+    String value
+}
+
+/*
+ * A sealed value: ciphertext produced with a symmetric content key
+ * (AES-256 GCM by default), plus that content key wrapped to each
+ * recipient. Adding a recipient adds a WrappedKey; the ciphertext is
+ * untouched. IVs, nonces, AAD, and padding parameters travel in
+ * properties to stay provider-neutral.
+ */
+class EncryptedValue extends ModelElement {
+    /* Content encryption algorithm, e.g. "aes-256-gcm". */
+    String algorithm
+    /* Base64 ciphertext. In the bundled (cardinality-hiding) case, the ciphertext of a serialized sub-resource. */
+    String ciphertext
+    contains WrappedKey[] recipients
+}
+
+/*
+ * Ties an EncryptedValue to a structural feature of the protected
+ * element. The plaintext feature is unset; this record is why, and for
+ * whom. For many-valued features, `bundled` selects the posture:
+ * false = element-level (each value sealed on its own, siblings and count
+ * visible as proxies), true = feature-level (the value decrypts to a
+ * sub-resource holding the elements; without the key the feature reifies
+ * as an empty list and the cardinality is hidden with the contents).
+ */
+class EncryptedFeature extends ModelElement {
+    /* Structural feature name on the protected element. */
+    String feature
+    contains EncryptedValue value
+    boolean bundled
+}
+
+/* ---- Variant features (which value, not how much of it) ---- */
+
+/*
+ * One slot, many values, selected by the reading principal: encryption
+ * turned inside out. Values need not be encrypted (a tax rate is public
+ * but differs by jurisdiction) but each variant is signable so the value
+ * a reader resolves is attributable and tamper-evident.
+ */
+class VariantFeature extends ModelElement {
+    /* Structural feature name on the protected element. */
+    String feature
+    contains Variant[] variants
+}
+
+/*
+ * One candidate value. Applies when the reader matches `subjects` (an IAM
+ * Group, Role, or Principal) and/or `condition` (ABAC over the reading
+ * principal). A literal value, a sealed value, or both may be present;
+ * value may be a Groovy script when different readers get different
+ * behavior rather than different data (draw-first, execute-later at
+ * feature granularity).
+ */
+class Variant extends ModelElement {
+    refers Subject[] subjects
+    /* Boolean expression over the reading principal's attributes and properties. */
+    String condition
+    String value
+    contains EncryptedValue encrypted
+    contains Signature[] signatures
+}
+
+/* ---- Signatures (who signed, and why) ---- */
+
+/*
+ * A responsible party in Git author form. Authors own the decision; they
+ * need not hold keys and need not be the signer (Co-authored-by at the
+ * feature level). The optional subject reference links a free-form
+ * identity to a modeled IAM Principal when one exists.
+ */
+class Author {
+    String name
+    /* External identity, typically an e-mail. */
+    String identity
+    refers Subject subject
+}
+
+/*
+ * A detached signature over a canonical form of an element's content, or
+ * of named features of it. Who signed is key.subject: the signer is the
+ * party that recorded and cryptographically attests the entry, distinct
+ * from the authors who are responsible for it, exactly as Git separates
+ * committer from author. With comment and authors, a value answers not
+ * just "what" but "who, why, on whose authority, and who vouches".
+ */
+class Signature extends ModelElement {
+    /* Signature algorithm, e.g. "openpgp", "ed25519". */
+    String algorithm
+    /* Canonicalization scheme identifier the signature was computed over. */
+    String canonicalization
+    /* The detached signature, base64. */
+    String value
+    Date timestamp
+    /* The signing key; the signer is key.subject. */
+    refers Key key
+    /* Feature names covered; empty means the whole element. Mirrors AccessControlEntry.features. */
+    String[] features
+    /* Rationale: a commit message at feature granularity. May itself be a confidential feature in the enclosing element. */
+    String comment
+    contains Author[] authors
+}
+
+/* ---- Sealed elements ---- */
+
+/*
+ * The aspect extension point, cryptographic counterpart of IAM's
+ * AccessControlled (which it extends: sealing enforces an effective
+ * visibility that IAM defines). A domain class extends this to acquire
+ * sealed features, variant features, and signatures alongside access
+ * control entries. A SealedElement with none of them is simply
+ * unprotected, so the aspect costs nothing until sharing begins.
+ */
+abstract class SealedElement extends AccessControlled {
+    contains EncryptedFeature[] encryptedFeatures
+    contains VariantFeature[] variantFeatures
+    contains Signature[] signatures
+}
+
+

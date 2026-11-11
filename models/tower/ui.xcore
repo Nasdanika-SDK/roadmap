@@ -1,0 +1,264 @@
+@Ecore(nsURI="https://ui.models.nasdanika.org", nsPrefix="org.nasdanika.models.ui")
+@GenModel(
+    featureDelegation="Dynamic",
+    complianceLevel="21.0",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+package org.nasdanika.models.ui
+
+import org.nasdanika.models.governance.Governed
+import org.nasdanika.models.work.Workable
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.StringToStringMapEntry
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+/*
+ * Base UI element. Attributes are rendered onto the target markup (unlike
+ * properties, which are annotations). Aspect supertypes give every element
+ * work and governance; lifecycle and roles pending classpath:
+ *
+ * abstract class Element extends ModelElement, Workable, GovernedElement,
+ *     org.nasdanika.models.lifecycle.Staged, org.nasdanika.models.role.Undergoer
+ */
+abstract class Element extends ModelElement, Workable, Governed {
+    contains StringToStringMapEntry[] attributes
+    String[] styleClasses
+    /* Inline style. */
+    String style
+    contains Binding[] bindings
+}
+
+/* ---- Bindings ---- */
+
+enum BindingMode {
+    ONE_WAY
+    TWO_WAY
+    ONE_TIME
+}
+
+/*
+ * Dialect-neutral binding. Expressions are strings interpreted or translated
+ * by a binding provider model (alpinejs: x-bind / x-on / x-for / x-if /
+ * x-model / x-data). The core defines the vocabulary, not the execution.
+ */
+abstract class Binding extends ModelElement {
+}
+
+/* Binds a property or attribute of the element to an expression. */
+class ValueBinding extends Binding {
+    /* Property or attribute name, e.g. value, checked, class, src. */
+    String target
+    String expression
+    BindingMode mode
+}
+
+/* Binds an event to a handler expression. */
+class EventBinding extends Binding {
+    /* Event name, e.g. click, input, submit. */
+    String event
+    String handler
+}
+
+/* Structural binding: repeats the owning element (typically a Fragment) per item. */
+class Iterator extends Binding {
+    /* Expression producing the items. */
+    String items
+    /* Loop variable name. */
+    String variable
+    /* Identity expression for keyed updates. */
+    String key
+}
+
+/* Structural binding: the owning element is present when the condition holds. */
+class Conditional extends Binding {
+    String condition
+}
+
+/* Establishes a data scope on the owning element, e.g. Alpine x-data. */
+class DataContext extends Binding {
+    /* Initial data, e.g. a JSON object expression. */
+    String expression
+}
+
+/* ---- Structure ---- */
+
+abstract class Container extends Element {
+    contains Element[] children
+}
+
+/*
+ * Virtual element: renders nothing of its own, groups children and hosts
+ * structural bindings (Iterator, Conditional). The template element of the
+ * model.
+ */
+class Fragment extends Container {
+}
+
+/*
+ * Extension point: an element with a unique kind. Maps to a web-components
+ * custom element name; at generation time the kind participates in
+ * capability-framework service resolution, so new element kinds are added
+ * by registering capabilities, not by changing the metamodel.
+ */
+class Custom extends Container {
+    String kind
+}
+
+/* Content projection point within a Component or Custom, addressed by name. */
+class Slot extends Element {
+}
+
+/* Reusable definition: a named tree with an optional data scope, used via Include. */
+class Component extends Container {
+}
+
+/* Uses a Component, locally defined or federated from another published model. */
+class Include extends Element {
+    refers Component component
+    /* Arguments to the component's data scope. */
+    contains StringToStringMapEntry[] arguments
+}
+
+/* ---- Layouts ---- */
+
+abstract class Layout extends Container {
+}
+
+enum Orientation {
+    VERTICAL
+    HORIZONTAL
+}
+
+class Stack extends Layout {
+    Orientation orientation
+    String gap
+}
+
+class Grid extends Layout {
+    Integer columns
+    String gap
+}
+
+class Tabs extends Element {
+    contains Tab[] tabs
+}
+
+class Tab extends Container {
+    /* Tab label; name is the identity. */
+    String text
+}
+
+/* ---- Controls ---- */
+
+/* Static display text; Markdown allowed, interpretation is a generation concern. */
+class Text extends Element {
+    String content
+}
+
+class Image extends Element {
+    String source
+    String alternative
+}
+
+class Link extends Element {
+    String text
+    String location
+}
+
+/*
+ * Button with optional declarative command per the OpenUI Invoker Commands
+ * direction: command names an action, commandFor targets the element it
+ * operates on (show a modal, toggle a popover).
+ */
+class Button extends Element {
+    String text
+    String command
+    refers Element commandFor
+}
+
+abstract class Input extends Element {
+    String label
+    String value
+    String placeholder
+    boolean required
+    boolean disabled
+    boolean readOnly
+}
+
+enum TextKind {
+    TEXT
+    PASSWORD
+    EMAIL
+    NUMBER
+    TEL
+    URL
+    SEARCH
+}
+
+class TextInput extends Input {
+    TextKind kind
+}
+
+class TextArea extends Input {
+    Integer rows
+}
+
+class Checkbox extends Input {
+    boolean checked
+}
+
+class Option extends ModelElement {
+    String value
+    String text
+    boolean selected
+}
+
+/* Informed by OpenUI customizable select. */
+class Select extends Input {
+    boolean multiple
+    contains Option[] options
+}
+
+class RadioGroup extends Input {
+    contains Option[] options
+}
+
+class Slider extends Input {
+    double min
+    double max
+    double step
+}
+
+enum DateKind {
+    DATE
+    TIME
+    DATETIME
+}
+
+class DateInput extends Input {
+    DateKind kind
+}
+
+class FileInput extends Input {
+    /* Accepted types, e.g. image/*, .pdf. */
+    String accept
+    boolean multiple
+}
+
+/* Groups inputs; submission wiring via EventBinding or the target framework. */
+class Form extends Container {
+}
+
+/* ---- Root ---- */
+
+/* Root container: reusable components and top-level elements. Federates by reference like other Nasdanika domains. */
+class UiDomain extends ModelElement {
+    contains Component[] components
+    contains Element[] elements
+}

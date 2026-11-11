@@ -1,0 +1,25 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<artifactId>common</artifactId>
+	<packaging>jar</packaging>
+	<name>Nasdanika SDK Roadmap: Runtime Common</name>
+	<description>
+		Candidates for the runtime's common module: bindings, values that can be read now and followed
+		as they change, on Flow and Pump; and waypoints, the lineage of an execution as it advances
+		through a structure, with state, realms and telemetry.
+	</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.nasdanika.sdk.runtime</groupId>
+			<artifactId>common</artifactId>
+		</dependency>
+	</dependencies>
+</project>

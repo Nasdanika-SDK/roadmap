@@ -1,0 +1,123 @@
+[#runtime-models]
+== Runtime Models
+
+The runtime describes itself with models, as it describes everything else: a command line, a query, a tool an agent may call, a conversation with a model provider.
+The models in this chapter are [.planned]#PLANNED#.
+Most have an Xcore file in `models/runtime`, to be read: it was written against the older core model, so it does not generate here, and each needs a pass against the runtime's core and the nano-models of <<core-nano-models>> before it does.
+
+[cols="1,1,4",options="header"]
+|===
+|Model |Pre-SDK Xcore |In one line
+
+|CLI |`cli.xcore` |A command line as data: commands as types, and the tree an installation resolves
+|Tool |`tool.xcore` |What can be called, apart from who calls it and how
+|Inference |`inference.xcore` |Providers and models as a catalog, and conversations as a record
+|Expression |`expression.xcore` |A small algebra of conditions that a data source can evaluate for itself
+|Cypher |`cypher.xcore` |The Cypher language as a model, for querying models as graphs
+|XPath |none yet |Paths through a model as selectors
+|===
+
+=== CLI
+
+[horizontal]
+Status:: [.planned]#PLANNED#. The model is drafted in `models/runtime/cli.xcore`.
+Depends on:: Meta, in the runtime, and <<widgets>> for rendering.
+How to help:: Point it at a picocli application of your own once the loader exists. Until then, read the sketch against a command line you know.
+
+The runtime's command line is not written in one place.
+Modules contribute commands, and the tree is assembled from whatever modules an installation has.
+So the command line is a property of an installation, and the only complete description of it is a snapshot of the resolved tree.
+
+The CLI model is that snapshot.
+A command is a type, in terms of Meta: its options and parameters are features with bounds, and an enumeration is an enumeration.
+A registration is one place in one tree where a command occurs, since one command can occur in many.
+A program is a dated snapshot with the modules it was resolved from.
+
+Three uses follow.
+
+* *Documentation.* The saved tree is rendered by <<widgets>> into whatever is needed: a site, a chapter, a page in a terminal. This is the successor of the HTML help that the older Nasdanika command line generated. The views for Meta render most of it, because commands are Meta classes.
+* *Comparison.* Two snapshots are compared, as two models are, and the difference is what changed in a command line between two releases or two installations.
+* *Tools.* A command described this way is a tool described in a schema, which an agent can be given.
+
+The loader takes a root command and reads the tree through picocli's own API, so it works for any picocli application and not only for Nasdanika's.
+For command trees built on released picocli it waits for a picocli release that carries the description annotations the runtime contributed.
+The runtime's own picocli module has them already.
+
+A Groovy DSL for pipelines of commands, and a form built from a command's options, are further out.
+
+=== Tool
+
+[horizontal]
+Status:: [.planned]#PLANNED#. Drafted in `models/runtime/tool.xcore`.
+Depends on:: Meta for schemas, and the example nano-model.
+
+A tool definition says what can be called.
+Four models had begun to describe that separately: agents, MCP servers, inference requests, and the command line.
+The tool model is the one place.
+
+It separates two things that are usually mixed.
+*Presentation* is how a language model learns about a tool and asks for it: native tool calling, or a prompt with examples whose result is validated against the same schema.
+*Invocation* is how the call happens: in process, over a URI, through an MCP server.
+With the two apart, MCP is a transport and not a category, and a few-shot prompt is another calling convention for the same definition.
+
+The model is useful with no language model in the picture.
+What a server exposes, who owns each tool, what it costs to call and whether it is approved is a catalog, and a catalog has readers of its own.
+
+=== Inference
+
+[horizontal]
+Status:: [.planned]#PLANNED#. Drafted in `models/runtime/inference.xcore`.
+Depends on:: The tool model, and the JDK's HTTP client for the providers.
+
+The inference model has two halves.
+
+The *catalog* is configuration: which provider, which model, which endpoint, what settings, what it costs and when it retires.
+Today that is in property files and constructor arguments, where it cannot be documented, compared, reviewed or owned.
+
+The *session* is what happened: messages, tool calls, token counts and latency, as model objects.
+They are saved as JSON, opened in a viewer, kept for audit and redacted, on a laptop, with the data staying where it is.
+
+Providers are modules over the JDK's HTTP client, with no vendor library: one for the Anthropic API and one for the OpenAI API, which also covers servers that speak it.
+What the tower called the AI runtime models is folded into this one.
+
+Inference is the first increment on the path to the North Star of <<direction>>.
+A session saved with one provider and continued with another, chosen by a requirement rather than by name, is its first demonstration.
+
+=== Expression
+
+[horizontal]
+Status:: [.planned]#PLANNED#. Drafted in `models/runtime/expression.xcore`.
+
+A closed, small algebra of boolean conditions over values, made to be pushed down to a data source.
+It is not an expression language.
+A construct belongs in it only if a data source could plausibly evaluate it for itself, and everything else stays with the caller, who applies it after the fetch.
+That fallback is always correct, so the model can stay small: expressiveness here buys speed and never correctness.
+
+Cypher lowers into it, and so would a path language.
+It also separates syntax from semantics: how nulls compare and how mixed types are ordered is supplied by whoever uses it.
+
+=== Cypher
+
+[horizontal]
+Status:: [.planned]#PLANNED#. The model is in `models/runtime/cypher.xcore`, the largest file there, as it is before the SDK.
+
+Cypher as a model: a query is loaded into objects, which can be examined, rewritten and run.
+
+The reason for Cypher is that it is known.
+People know it, and language models have seen a great deal of it, which cannot be said for a query language invented here.
+A model of typed objects with references is a graph, and a graph pattern is a natural way to ask it a question.
+
+The plan has an order.
+A read-only subset comes first, published as a tool that is marked read-only from its first day.
+Writing goes through a separate tool that takes changes, of the change nano-model, and that accepts Cypher's updating clauses as one way to write them: they are translated into changes, shown as a plan, and applied after review.
+Agents read with Cypher and write with commands.
+
+=== XPath
+
+[horizontal]
+Status:: [.planned]#PLANNED#. No file in this repository.
+
+The change nano-model needs selectors, and catalogs of changes from untrusted sources need a selector language that cannot do harm.
+XPath is that language: it has no side effects, it cannot loop forever, and it is widely known.
+An XPath evaluator for model objects is the first step, beside the evaluators the core model has.
+

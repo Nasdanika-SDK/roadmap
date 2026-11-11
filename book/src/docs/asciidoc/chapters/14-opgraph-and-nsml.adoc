@@ -1,0 +1,103 @@
+[#opgraph-and-nsml]
+== OpGraph and NSML
+
+Two designs from the older Nasdanika are to be revisited on the SDK: OpGraph, a model of executable graphs, and NSML, the Nasdanika Semantic Mapping Language.
+Each has a repository with a design document.
+This chapter states what each is and what the SDK changes for it, and when it is complete the repositories will be archived with a note that points here, as the Waypoint repository is.
+
+Both are [.planned]#PLANNED#, and neither has code in this repository.
+
+=== OpGraph
+
+[horizontal]
+Capability:: A process drawn or written as a graph of activities and transitions, which runs, records what it did, and can be replayed on its own diagram.
+Status:: [.planned]#PLANNED# on the SDK. The pre-SDK design is at {models-org}/op-graph.
+Depends on:: <<waypoints>> for execution, <<bindings>> for wires, the runtime's Draw.io model for authoring, and the capability framework for what an activity does.
+How to help:: Bring a process: an integration flow, an approval, an agent's plan. A real one decides what the model has to say.
+
+==== What it is
+
+OpGraph describes a process as a graph and compiles the graph to a metamodel.
+Its design-time classes are few: an *activity* is a node, a *transition* is an edge, and a *call* invokes a sub-process, an external system or an agent.
+A process becomes a class, its activities and transitions become operations, and what an activity calls becomes parameters that are supplied when it runs.
+Because an activity is an operation with typed parameters, the schema of a tool an agent may call is not written by hand: it is the operation.
+
+A process can be written in a text syntax, drawn in Draw.io, or drafted in a conversation with an assistant.
+It runs on compiled classes or on dynamic objects, its state can be saved as a checkpoint, in a file or as a commit, and what it did is recorded as telemetry that can be played back on the diagram.
+
+Three uses motivated it.
+Modernizing a legacy integration product, whose processes are graphs already, is the first.
+Agentic systems are the second: the same graph, with activities that call a model provider, and with every tool call bounded by a typed operation.
+The third is orchestration of services in plain Java, where an integration framework would be more than is needed.
+
+==== What the SDK changes
+
+Most of what OpGraph needed and did not have is now in the runtime or in this roadmap.
+
+* *The carrier.* An execution is a graph of <<waypoints>>: a fork at a gateway is two commits from one waypoint, a join is a merge, a retry is a sibling, and a checkpoint is a waypoint that was saved.
+* *The engine.* The runtime's `Pump` and `Transformer`, where the older design had graph processors. One engine already runs flows, capability resolution and transformations.
+* *Two kinds of connection.* A transition carries messages, each of which matters, with Git as the durable log between activities. A wire between properties carries state, of which only the latest matters, and that is a <<bindings,binding>>. A diagram can say which a connection is.
+* *What an activity does.* Resolved through the capability framework, by a selection annotation that names the element of the diagram: the mechanism of <<drawn-screens>>, used for behavior.
+* *Telemetry.* A span per step, in the runtime's telemetry model, which is kept beside the model it describes. Playing a trace back on its diagram is the Draw.io animation listed in <<designed-and-waiting>>.
+* *Settling.* A graph with a cycle stops by a rule over lineage.
+
+So OpGraph on the SDK is expected to be a small model and a thin layer, where the older design had to carry its own runtime.
+
+The order in which to build it is the way of working of <<drawn-screens>>: draw a process, run it with nothing connected, then connect one activity at a time.
+Activities that call a model provider come after inference exists.
+
+=== NSML
+
+[horizontal]
+Capability:: A mapping from one model to another, written as rules that can be read, drawn, generated and reviewed, and that record why each element of the result exists.
+Status:: [.planned]#PLANNED# on the SDK. The pre-SDK design is at {models-org}/nasdanika-semantic-mapping-language.
+Depends on:: The runtime's `Transformer` and core evaluators, and <<waypoints>> for execution with provenance.
+How to help:: Bring a mapping you maintain by hand today. Mappings between two versions of a model, and from a system's export to a shared vocabulary, are the plainest cases.
+
+==== What it is
+
+NSML applies the idea of XSLT to models.
+A transformation is a set of rules.
+A rule has a *match*, a class named by its namespace and name, an optional *condition*, and a *produce* clause, a class to create with feature values computed by expressions.
+
+Three decisions shape it.
+
+*Types are bound late.*
+A rule names classes by namespace and name, as text, so a mapping can be written by an assistant that has no access to the metamodels, or against a version of a model that does not exist yet.
+Where the metamodel is available, references are validated against it.
+
+*There is no expression language of its own.*
+Every expression says which language it is in.
+On the SDK that is not a feature to build: the core model has evaluators, for SpEL, XPath, scripts and Groovy, and an expression is one of them.
+
+*A mapping compiles to code.*
+Rules compile to a transformer factory, so a mapping written as rules composes with one written in Java.
+
+It has several surfaces: YAML or JSON through the runtime's JSON resources, a Draw.io diagram in which mappings are connections, a text syntax, and a conversation with an assistant that drafts the rules.
+
+Its uses, from the design:
+
+* a model mapped to an application model and from there to a site;
+* the context of a step of an executable graph, narrowed to what the step needs, which is also how an agent is given a bounded view;
+* migration of a model from one version of its metamodel to the next;
+* a view of a federated model with access control applied, so that what a person or an agent may see is a property of the view and not of the consumer's good behavior;
+* operations as targets, where a rule produces something that can be called, by a person or an agent;
+* filters that shape a resource as it loads, chosen by the name of the file.
+
+==== What the SDK changes
+
+* *The engine exists.* The runtime's `Transformer` maps a source to a publisher of targets, wires targets to each other as they appear, and detects when nothing can progress. A compiled mapping is a factory for it.
+* *Execution is a traversal with waypoints.* Each rule firing is a step whose element is the source object and the rule. Then "why does this target element exist" is answered by walking parents, and it does not have to be reconstructed from logs.
+* *A rule that asks a model provider is a rule.* It has the same record, the same telemetry and the same retry as a deterministic one, and the difference is only in its body. A low-confidence answer is retried as a sibling, and the rejected attempt stays for the audit.
+* *A mapping is a view over a realm.* Guarded state seen through a mapping is guarded state of another shape. A cheap, deterministic mapping can be a lens, applied on every access. An expensive one, and any that asks a model provider, is applied once and its result kept, with one complete record of how it was made.
+* *Changes and mappings meet.* A change of the change nano-model selects objects and sets values, and a rule matches objects and produces values. Whether a change is a degenerate rule, or a rule produces changes, is to be decided when both exist.
+* *The text syntax follows Meta's.* The runtime has a text syntax for Meta with a hand-written grammar and no IDE dependency, and NSML's would be made the same way.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+This chapter carries the intent of the two design documents and not their detail.
+Before the repositories are archived, go through each document's use cases and open questions and move what is still wanted into this chapter or into <<revisions>>.
+The token-based execution notes for NSML were not consulted.
+====
+endif::[]

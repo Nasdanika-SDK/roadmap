@@ -1,0 +1,22 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<groupId>org.nasdanika.sdk.roadmap.tests</groupId>
+	<artifactId>parent</artifactId>
+	<packaging>pom</packaging>
+	<name>Nasdanika SDK Roadmap: Tests</name>
+	<description>
+		Tests that use several modules together, as the runtime's tests directory does. They show how
+		the modules are meant to be used, and they write what the book shows.
+	</description>
+
+	<modules>
+		<module>widgets</module>
+	</modules>
+</project>

@@ -1,0 +1,141 @@
+[#terminal]
+== The Terminal
+
+[horizontal]
+Capability:: User interfaces in a terminal for people who live in one: small screens for a task, launched by a command, on the same kinds as documents and pages. And screenshots of those screens as figures, taken by a test.
+Demonstration:: `TamboUITests` in `runtime/tui`, the last rendering of <<widgets>>, and <<commander>>, which is built on it.
+Status:: [.sketch]#SKETCH# in `runtime/tui`. The base terminal command, the kit and telemetry for commands are [.planned]#PLANNED#.
+Depends on:: <<widgets>>, and TamboUI {tamboui-version}.
+Value and effort:: High for medium. For technical people a terminal is the first user interface to offer, and it needs no server and no browser.
+How to help:: Use it in a terminal you care about and report what the keys and the colors do there. Try a screen of your own.
+
+=== Why a terminal
+
+A terminal is where developers, operators and architects already are.
+A screen there starts in a moment, works over SSH, and runs in the terminal of an IDE.
+It is also the natural form of the small user interfaces the first chapter spoke of: one screen for one task, launched by a command, not a portal.
+
+The order follows from that.
+For technical people the terminal comes first and the browser second, and React remains the way to reach people who are not technical.
+
+TamboUI is the library.
+It is a Java port of the ideas of Ratatui: a buffer of cells, widgets that render into an area of it, and state kept apart from the widgets.
+It is at version {tamboui-version}, so the rule from <<widgets>> matters here: neutral widgets are written against `TerminalContext` and never import TamboUI, and what changes in TamboUI changes in one module.
+
+=== TamboUI as a provider
+
+`TamboUIContext` is a terminal context over an area of a TamboUI buffer.
+
+[source,java]
+----
+include::{tui-main}/TamboUIContext.java[tag=context,indent=0]
+	// ...
+}
+----
+
+Writing text is clipped to the area and cleaned of control characters, as the grid of <<widgets>> does:
+
+[source,java]
+----
+include::{tui-main}/TamboUIContext.java[tag=put,indent=0]
+----
+<1> The same cleaning as every provider: a value cannot send an escape sequence.
+<2> What does not fit the area is not written.
+
+Logical styles become the terminal's own:
+
+[source,java]
+----
+include::{tui-main}/TamboUIContext.java[tag=style,indent=0]
+----
+<1> A link becomes a hyperlink of the terminal, unless its target has control characters in it.
+
+A view can name only logical colors, and they map to the sixteen colors every terminal has.
+So a screen follows the palette the user chose for their terminal, light or dark, instead of bringing its own.
+
+=== The way out, in use
+
+`TamboUIContext` extends `TerminalContext`, so every neutral kind serves it.
+And it hands out the buffer and the area, so a kind written for it can use whatever TamboUI has.
+
+.Neutral kinds serve TamboUI, and a specific one wins
+[source,java]
+----
+include::{tui-test}/TamboUITests.java[tag=kinds,indent=0]
+----
+<1> No text kind is written for TamboUI. The neutral one answers.
+<2> A section is written for TamboUI, and it is found before the neutral one.
+
+The neutral section indents its body.
+The TamboUI section draws a block with a border and the title on it.
+The neutral kinds draw with ASCII only, so that their output is good as plain text anywhere, and a border is what this context adds:
+
+[source,java]
+----
+include::{tui-main}/TamboUIKinds.java[tag=section,indent=0]
+----
+<1> The body is drawn off screen first, since its height is the height of the box.
+<2> TamboUI's own block widget draws the border.
+<3> The title is a widget like any other, rendered over the top border in a bold, primary style.
+
+[source,java]
+----
+include::{tui-test}/TamboUITests.java[tag=block,indent=0]
+----
+
+.A section on a TamboUI screen
+image::section.svg[A section drawn as a block,pdfwidth=60%]
+
+The view did not change.
+The same `roadmap` view of <<widgets>> is indented text in a grid and a box on a TamboUI screen, because it asked for a section and each context answered in its own way.
+
+=== Screenshots
+
+A screen draws into a buffer, and a buffer can be exported.
+So a screenshot needs no terminal: a test draws the screen into a buffer and writes it out.
+
+[source,java]
+----
+include::{tui-test}/TamboUITests.java[tag=screenshot,indent=0]
+----
+<1> TamboUI's exporter writes the buffer as SVG, in a window frame with a title.
+<2> The same SVG without its font rules, so that it loads nothing from the network.
+<3> The same screen gives the same SVG, byte for byte, so a figure in a repository changes only when the screen does.
+
+The figures of this book are made that way.
+The last rendering in <<widgets>> is written by these lines of `RoadmapViewTests`:
+
+[source,java]
+----
+include::{showcase-test}/RoadmapViewTests.java[tag=tamboui,indent=0]
+----
+<1> The view, for TamboUI.
+<2> Drawn into a buffer of 64 by 12 cells.
+<3> Written as a self-contained SVG, which the book's build copies beside the manuscript.
+
+Documentation of a screen then cannot drift from the screen: the picture is taken when the book is built.
+
+Three things were learned about TamboUI {tamboui-version} on the way, and they are candidates for a field note.
+
+* *The exporters are in the core jar and not in its module's exports.* On the module path, the packages under `dev.tamboui.export` have to be exported to the module that calls them, with `--add-exports`. The `tui` module's build does that, and so does every module that takes screenshots. On the class path nothing is needed.
+* *The SVG loads a font from a CDN,* Fira Code, and falls back to `monospace`. Each run of characters has its width set, so the grid holds in any monospace font. For a book, or behind a proxy, `Screenshots.selfContained` removes the font rules.
+* *The text exporter uses the line separator of the platform.* `Screenshots.text` makes it a line feed everywhere, so an assertion holds on every machine.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The first of the three is worth reporting to TamboUI: a public API that a named module cannot call.
+All three are from the {tamboui-version} jars as they were on Maven Central in November 2026.
+====
+endif::[]
+
+=== What is not there yet
+
+* [.planned]#PLANNED# *A base terminal command.* A command that draws takes a terminal, runs a loop and restores the terminal when it ends, and that belongs in one place. It arrives with the second command that draws. `cli` stays free of TamboUI.
+* [.planned]#PLANNED# *The kit:* a form with fields and problems shown beside them, a status line that every command on a line can contribute to, and a way for a test to drive a screen. It is extracted from the commander and the first task, not designed ahead of them.
+* [.planned]#PLANNED# *Telemetry for commands:* the spans of a running command as a tree that updates, over the publishing tracer. It starts on JLine alone, with no new dependency, and reaches every command.
+* [.planned]#PLANNED# *Task screens.* The first candidates are small: asserting a balance, approving a step of a workflow.
+* [.planned]#PLANNED# *An SVG context,* beside the SVG model, for figures that are drawn and not captured.
+
+The open question is the keys.
+The terminal inside an IDE keeps some function keys for itself, so every command needs a letter as well, and <<commander>> gives each of its commands one.

@@ -1,0 +1,51 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/related", nsPrefix="org.nasdanika.sdk.roadmap.models.core.related")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Relationships as model elements.
+ *
+ * A reference says that two elements are related. A relationship says so and can be asked about:
+ * it has an identity, documentation and provenance, and other nano-models give it more. Occupancy
+ * makes a transition out of it, and kind gives it a kind, so "depends on", "succeeds" and "is part
+ * of" are data in a catalog and not classes.
+ *
+ * With Related in core, the architecture model has little left to define: elements, containment
+ * and reified relationships are here.
+ */
+package org.nasdanika.sdk.roadmap.models.core.related
+
+import org.eclipse.emf.ecore.EObject
+import org.nasdanika.sdk.runtime.models.core.ModelElement
+
+/**
+ * An element that has relationships to other elements, each a model element of its own.
+ */
+interface Related {
+
+	contains Relationship[] relationships opposite source
+
+}
+
+/**
+ * A relationship from the element that contains it to a target, which is any model element, in
+ * this resource or another.
+ */
+class Relationship extends ModelElement {
+
+	container Related source opposite relationships
+
+	refers EObject target
+
+	/**
+	 * What the relationship is called where a kind is more than is needed: "depends on".
+	 */
+	String name
+
+}

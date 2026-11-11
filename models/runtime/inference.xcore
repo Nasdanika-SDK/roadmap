@@ -1,0 +1,497 @@
+@Ecore(nsURI="https://ai.models.nasdanika.org", nsPrefix="org.nasdanika.models.ai")
+@GenModel(
+    modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * DRAFT. Inference providers, the models they serve, the tools they may call, and the
+ * sessions that result.
+ *
+ * WHAT THIS IS
+ *
+ * Two halves that turned out to belong together.
+ *
+ * The CATALOG half is configuration: which provider, which model, which endpoint, what
+ * temperature, which credential, what it costs, when it retires, which tools exist. Today
+ * that lives in property files and constructor arguments, which means it cannot be
+ * documented, diffed, reviewed, owned or asked about.
+ *
+ * The SESSION half is what happened: messages, tool calls, token usage, latency. As model
+ * objects these serialize to JSON for free, open in a reflective viewer, archive for
+ * audit, and redact. A poor man's LangSmith that runs on a laptop and keeps its data.
+ *
+ * An earlier draft split these on a "configured versus happened" line. That boundary did
+ * not survive the argument: the two halves are mutually referential (a ToolCall cites a
+ * Tool, a Turn cites a ChatModel), the API needs the interaction vocabulary whether or not
+ * anything is archived, and separating them would have produced a dependency chain with no
+ * consumer on the other side of it. Privacy and retention differ between a catalog and a
+ * session, but those are properties of RESOURCES rather than of classes, and separate
+ * files handle them.
+ *
+ * WHAT THIS IS NOT
+ *
+ * Not an agent model. The [agent model](https://agent.models.nasdanika.org/) sits above
+ * this and is about goals, oversight and governance. Factoring this out should make it
+ * smaller.
+ *
+ * Not chains, retrievers, memory or evaluations. Those are above, or belong with AI
+ * governance, which already has evaluation.
+ *
+ * TWO THINGS DELIBERATELY LEFT AS JAVA RECORDS
+ *
+ * Streaming chunks and embedding vectors. Both are bulk data on a hot path: a chunk is
+ * emitted per token, so a two thousand token response would allocate two thousand EObjects
+ * to produce one archivable Message, and a 1536-dimension vector as a many-valued
+ * attribute is the wrong shape for something whose whole purpose is to go into a numeric
+ * index. Neither is inspected element by element, which is the test everything else here
+ * passes.
+ *
+ * THE RULE ABOUT SECRETS
+ *
+ * This model never contains a credential. It contains a REFERENCE to where one is found.
+ * There is no feature a secret fits into, by construction, because a model that can hold
+ * an API key will eventually hold one and it will be committed.
+ */
+package org.nasdanika.models.ai
+
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.NamedElement
+import org.nasdanika.models.tool.AbstractTool
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+type Instant wraps java.time.Instant
+
+/* ---------------------------------------------------------------------------
+ * Catalog
+ * --------------------------------------------------------------------------- */
+
+/*
+ * A set of providers. The unit of publication and what a documentation site is generated
+ * from.
+ *
+ * Catalogs compose by reference across repositories: an organization publishes its
+ * approved catalog, a team points at it and adds a local provider, and the difference is a
+ * diff rather than an argument.
+ *
+ * Tools are not here. They have their own model and their own catalog, because a tool
+ * catalog has a different audience, different owners, and is useful with no language model
+ * in the picture at all.
+ */
+class ProviderCatalog extends NamedElement {
+    contains Provider[] providers
+}
+
+/* ---------------------------------------------------------------------------
+ * Providers
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Somewhere inference can be requested: Anthropic, OpenAI, Ollama, Azure OpenAI, Bedrock,
+ * vLLM, a colleague's workstation.
+ *
+ * `protocol` rather than a vendor enum, because what a client needs is the wire shape, and
+ * the wire shape has converged much further than the vendor list has.
+ */
+class Provider extends NamedElement {
+    WireProtocol protocol
+    /* Base URL of the API. Unset means the implementation default for the protocol. */
+    String baseURL
+    /* Where to find the credential. Never the credential itself. */
+    contains CredentialReference credential
+    contains Model[] models
+    /* Zero means unknown rather than zero, which is the usual EMF unset problem. */
+    int requestsPerMinute
+    int tokensPerMinute
+}
+
+enum WireProtocol {
+    /* The Anthropic Messages API shape. Required for prompt caching and extended thinking. */
+    ANTHROPIC = 0
+    /*
+     * The OpenAI chat completions shape, which is the de facto interchange format. Ollama,
+     * vLLM, Azure, Groq and many others speak it, which is why one implementation covers
+     * most of the field.
+     */
+    OPENAI = 1
+}
+
+/*
+ * WHERE a credential is found, never what it is. Deliberately has no field a secret fits
+ * into: adding a feature is a reviewable act, filling one in is not.
+ */
+class CredentialReference extends ModelElement {
+    CredentialSource source
+    /* An environment variable name, a system property, a file path, or a capability id. */
+    String key
+}
+
+enum CredentialSource {
+    ENVIRONMENT = 0
+    SYSTEM_PROPERTY = 1
+    FILE = 2
+    /* Resolved through the capability framework, which is where a secrets manager plugs in. */
+    CAPABILITY = 3
+    /* No credential. Local Ollama, or a proxy that authenticates on the caller's behalf. */
+    NONE = 4
+}
+
+/* ---------------------------------------------------------------------------
+ * Models
+ * --------------------------------------------------------------------------- */
+
+/*
+ * A servable model.
+ *
+ * `name` is human-facing; `modelId` is what goes on the wire. They differ constantly, and
+ * conflating them is how a catalog stops matching reality.
+ *
+ * The temporal fields are why a catalog beats a property file. A retirement date is
+ * announced months ahead and nobody finds out until a call fails. As data, "what breaks in
+ * the next ninety days" is a query.
+ */
+abstract class Model extends NamedElement {
+    /* The wire identifier, e.g. claude-opus-5, or a deployment name. */
+    String modelId
+    int contextWindow
+    contains Pricing pricing
+    Instant deprecatedOn
+    /* Announced end of service. This is the one worth a query. */
+    Instant retiredOn
+    /* For migration planning. Cross-provider references are legitimate. */
+    refers Model supersedes
+}
+
+class ChatModel extends Model {
+    boolean toolCalling = "true"
+    /* Can constrain its own output to a supplied JSON Schema during generation. */
+    boolean structuredOutput
+    /* Supports constrained decoding for tool arguments, guaranteeing schema conformance. */
+    boolean strictToolCalling
+    boolean streaming = "true"
+    /* Emits reasoning tokens, which changes both latency and cost accounting. */
+    boolean reasoning
+    /*
+     * Supports caller-controlled cache breakpoints. For an agentic loop this is not an
+     * optimization, it is the cost structure: the system prompt and the tool definitions
+     * are resent on every turn, and cache reads are commonly an order of magnitude cheaper
+     * than fresh input.
+     */
+    boolean promptCaching
+    /* Maximum cache breakpoints per request. Zero means unknown or not applicable. */
+    int maxCacheBreakpoints
+    int maxOutputTokens
+    Modality[] inputModalities
+    contains ChatOptions defaultOptions
+}
+
+/*
+ * An embedding model.
+ *
+ * `dimensions` and `metric` are here because a vector index needs both before it can be
+ * built, and `truncatableDimensions` because Matryoshka-style truncation is the difference
+ * between an index that fits in a heap and one that does not.
+ *
+ * It is also what makes a similarity result citable: a measurement is reproducible given
+ * the same embedding model and version, and that requires the model to be a named thing.
+ */
+class EmbeddingModel extends Model {
+    int dimensions
+    boolean truncatableDimensions
+    int maxInputTokens
+    DistanceMetric metric
+    contains EmbeddingOptions defaultOptions
+}
+
+enum Modality {
+    TEXT = 0
+    IMAGE = 1
+    AUDIO = 2
+    VIDEO = 3
+    DOCUMENT = 4
+}
+
+enum DistanceMetric {
+    COSINE = 0
+    DOT_PRODUCT = 1
+    EUCLIDEAN = 2
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Call options, all nullable object types, because unset and zero are different. A
+ * temperature of 0.0 is meaningful and commonly wanted, and a model that cannot
+ * distinguish it from "unspecified" silently sends the wrong request.
+ */
+class ChatOptions extends ModelElement {
+    Double temperature
+    Double topP
+    Integer topK
+    Integer maxTokens
+    String[] stopSequences
+    /* Best effort everywhere, and silently ignored by some compatibility layers. */
+    Long seed
+    /*
+     * Constrains generation to a schema. This is the feature that actually constrains LLM
+     * output during inference, as distinct from a tool's output schema, which describes
+     * what the CALLER returns.
+     */
+    contains ResponseFormat responseFormat
+    /*
+     * Cache the tool definitions block. Separate from Message.cacheControl because tools
+     * are sent as their own block, and in an agentic loop they are the most stable and
+     * often the largest part of the request.
+     */
+    contains CacheControl toolCacheControl
+    /*
+     * Token budget for extended thinking, where the model supports it. Unset means the
+     * provider default; zero is not the same as unset and disables it explicitly.
+     */
+    Integer reasoningBudgetTokens
+}
+
+class EmbeddingOptions extends ModelElement {
+    /* Requested dimensions, where the model supports truncation. */
+    Integer dimensions
+}
+
+/*
+ * How the model must shape its response.
+ *
+ * `strict` requests constrained decoding, which guarantees conformance rather than
+ * encouraging it. Providers that cannot do it should refuse rather than silently degrade,
+ * which is the same rule the graph providers follow.
+ */
+class ResponseFormat extends ModelElement {
+    ResponseFormatKind kind
+    /* JSON Schema. Required when kind is JSON_SCHEMA. */
+    String schema
+    boolean strict
+}
+
+enum ResponseFormatKind {
+    TEXT = 0
+    /* Valid JSON, shape unconstrained. */
+    JSON = 1
+    JSON_SCHEMA = 2
+}
+
+/*
+ * A cache breakpoint.
+ *
+ * Caching is PREFIX caching: marking a block requests that everything up to and including
+ * it be cached, so breakpoints go at the end of stable regions. In an agentic loop that is
+ * after the tool definitions, after the system prompt, and at the last message that will
+ * not change next turn.
+ *
+ * Where it is present, caching is caller-controlled and explicit. Where a provider caches
+ * automatically and takes no instruction, this is ignored rather than refused, because
+ * caching is an optimization and not a semantic. A provider that ignores it still reports
+ * what was actually cached through Usage, which is what makes the difference observable.
+ */
+class CacheControl extends ModelElement {
+    CacheTtl ttl
+}
+
+/*
+ * Relative rather than absolute, so the model is not pinned to one vendor's durations.
+ * Implementations map these to whatever the provider offers.
+ */
+enum CacheTtl {
+    /* Minutes. The default nearly everywhere, and the right choice within one session. */
+    SHORT = 0
+    /* Approximately an hour. Costs more to write and pays off across sessions. */
+    LONG = 1
+}
+/* ---------------------------------------------------------------------------
+ * Interaction
+ *
+ * Model objects rather than records, which buys four things at once: JSON serialization
+ * with no codec to write, inspection in a reflective viewer, archival for audit, and
+ * redaction as a modeled act rather than a string substitution somebody remembered to do.
+ *
+ * The cost is allocation, and it is per TURN rather than per token, so an agentic loop of
+ * fifty turns allocates a few hundred objects. That is noise. Streaming chunks stay
+ * records precisely because they are per token.
+ * --------------------------------------------------------------------------- */
+
+/*
+ * One conversation with one model.
+ *
+ * Archivable on its own, so retention and access policy apply to the session resource
+ * rather than to the catalog it cites. That separation is at the resource level, which is
+ * where privacy policy actually lives.
+ */
+class Session extends NamedElement {
+    refers ChatModel model
+    contains Turn[] turns
+    Instant startedAt
+    Instant endedAt
+    /* Sum over turns, materialized because a viewer should not have to compute it. */
+    contains Usage totalUsage
+}
+
+/*
+ * One request and its response.
+ *
+ * `effectiveOptions` is materialized rather than referenced, because the catalog defaults
+ * it was derived from will change and a transcript that silently re-derives them is not an
+ * audit record.
+ */
+class Turn extends ModelElement {
+    int index
+    /* Messages sent, in order. Includes tool results from the previous turn. */
+    contains Message[] request
+    contains Message response
+    contains ChatOptions effectiveOptions
+    /* Tools offered on this request, which may be a subset of the catalog. */
+    refers AbstractTool[] offeredTools
+    contains Usage usage
+    FinishReason finishReason
+    Instant requestedAt
+    long latencyMillis
+}
+
+/*
+ * One message.
+ *
+ * Flattened deliberately: providers model a message as an ordered array of content blocks
+ * (text, thinking, tool use, tool result, image, document), and this splits the common
+ * ones into named features instead. What is lost is the interleaving order between text
+ * and tool calls, which in practice is thinking, then text, then tool calls. What is
+ * gained is a shape somebody can read on a documentation page. Revisit if a real
+ * transcript shows interleaving that matters.
+ */
+class Message extends ModelElement {
+    Role role
+    String content
+    contains ToolCall[] toolCalls
+    /* For a TOOL message, the call this is a result for. */
+    String toolCallId
+    contains Attachment[] attachments
+    /*
+     * Extended thinking content, where the provider exposes it. Often the most valuable
+     * part of an audit record, because it is where a wrong answer becomes explicable.
+     */
+    String reasoning
+    /*
+     * Opaque provider verification token for the reasoning block.
+     *
+     * Not decoration. Where extended thinking is combined with tool use, the thinking
+     * block and its signature must be passed back on the following turn or the provider
+     * rejects the request. A transcript that drops this cannot be replayed, and a loop
+     * that drops it does not work at all. This is one of the concrete things a
+     * compatibility layer does not carry.
+     */
+    String reasoningSignature
+    /* Marks a cache breakpoint at this message. See CacheControl. */
+    contains CacheControl cacheControl
+    /*
+     * True when content has been replaced by a redaction process. The marker inherited
+     * from nxcore carries who did it, when and under what policy, so redaction is an
+     * auditable act rather than an absence.
+     */
+    boolean redacted
+}
+
+enum Role {
+    SYSTEM = 0
+    USER = 1
+    ASSISTANT = 2
+    TOOL = 3
+}
+
+/*
+ * `arguments` stays raw JSON as the model produced it. Models emit malformed JSON often
+ * enough that parsing belongs where the repair strategy lives, and the raw text is what an
+ * audit record needs anyway.
+ */
+class ToolCall extends ModelElement {
+    String callId
+    /* The catalog tool, where it is one. Unset for a name the model invented. */
+    refers AbstractTool tool
+    /* The name as it appeared on the wire, which may not match any tool. */
+    String name
+    String arguments
+}
+
+/*
+ * Non-text input. `data` is inline bytes; `uri` is a reference, for providers that fetch.
+ * A redacted attachment keeps its media type and loses its data.
+ */
+class Attachment extends ModelElement {
+    String mediaType
+    byte[] data
+    String uri
+}
+
+enum FinishReason {
+    /* Finished normally. */
+    STOP = 0
+    /* Output token limit reached. The response is truncated and usually unusable. */
+    LENGTH = 1
+    /* The model is requesting tool calls. */
+    TOOL_CALLS = 2
+    /* The provider's safety system stopped generation. */
+    FILTERED = 3
+    OTHER = 4
+}
+
+/*
+ * Token counts.
+ *
+ * THREE input counts, not two, and the distinction is load bearing. Writing to the cache
+ * costs MORE than ordinary input, typically around a 1.25x multiplier. Reading from it
+ * costs much less, often around a tenth. Collapsing both into one "cached" number makes
+ * cost uncomputable in both directions at once: it hides a premium and a discount behind
+ * a single figure.
+ *
+ * An earlier draft had exactly that mistake, and it only surfaced when caching became a
+ * first-class feature rather than a flag.
+ */
+class Usage extends ModelElement {
+    /* Fresh input, neither written to nor read from cache. */
+    long inputTokens
+    /* Written to cache on this request. Priced at a premium. */
+    long cacheWriteTokens
+    /* Served from cache. Priced at a discount, and the whole point of caching. */
+    long cacheReadTokens
+    long outputTokens
+    /* Included in outputTokens by most providers. Reported separately where available. */
+    long reasoningTokens
+}
+
+/* ---------------------------------------------------------------------------
+ * Cost
+ * --------------------------------------------------------------------------- */
+
+/*
+ * Per-million-token pricing.
+ *
+ * This will go stale, and that is acceptable because the alternative is that it lives
+ * nowhere and every cost conversation starts from memory. Dated and wrong is auditable;
+ * undocumented is not. `asOf` makes the staleness visible rather than silent.
+ */
+class Pricing extends ModelElement {
+    String currency = "USD"
+    double inputPerMillionTokens
+    double outputPerMillionTokens
+    /* Writing to cache, which costs MORE than fresh input. Zero means not priced separately. */
+    double cacheWritePerMillionTokens
+    /* Reading from cache, which is where the saving is. */
+    double cacheReadPerMillionTokens
+    /* Longer-lived cache writes, where the provider prices them separately. */
+    double longCacheWritePerMillionTokens
+    /* When this pricing was recorded. Without it the numbers are rumour. */
+    Instant asOf
+}

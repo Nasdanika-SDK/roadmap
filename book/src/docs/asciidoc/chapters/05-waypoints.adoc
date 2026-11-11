@@ -1,0 +1,246 @@
+[#waypoints]
+== Waypoints
+
+[horizontal]
+Capability:: The history of an execution as it advances through a structure: where it is, how it got there, what it carries, and which span covers it. Rollback, retry, join and settling are then questions asked of that history.
+Demonstration:: `WaypointTests` in `runtime/common`.
+Status:: [.sketch]#SKETCH# in `runtime/common`, package `org.nasdanika.sdk.roadmap.runtime.common.waypoint`. Persistence in Git, human-in-the-loop and the mapping engine are [.planned]#PLANNED#.
+Depends on:: The runtime's `common` module: `Pump` and the OpenTelemetry API.
+Value and effort:: High for medium. It is the carrier that executable graphs, agents and mapping need, and its core is small.
+How to help:: Port a traversal you have, of a graph or a file tree or a model, onto waypoints and say what was awkward. The Git backend is a self-contained piece of work for someone who knows JGit.
+
+Waypoint was designed as a module of the older Nasdanika, in a repository of its own.
+This chapter replaces that design document, and the repository is to be archived with a note that points here.
+What changed on the way into the SDK is in <<waypoint-changes>>.
+
+=== Why
+
+Many things advance through a structure and need to remember how they got where they are.
+
+[cols="2,2,2",options="header"]
+|===
+|Structure |Where execution is |What it carries
+
+|An executable graph |A node or a connection |Named variables
+|A file tree walk |A path |A running total
+|A model traversal |A model element and the reference followed |A resource set
+|A compiler pass |A syntax node |A symbol table
+|A state machine |A state or a transition |Variables
+|A mapping from one model to another |A source element and the rule applied to it |The target under construction
+|An agent's work |A step |What it knows so far
+|===
+
+Workflow engines, state graphs for agents and compilers each have their own answer, bound to their own structure.
+A waypoint is the part they share, with the structure left as a type parameter, so one set of words serves all of them: waypoint, commit, merge, state, realm, span.
+
+The words are Git's on purpose.
+A waypoint is a commit: it is never changed, it knows its parents, a step forward makes a new one, and two lines of work join in a merge.
+Someone who knows Git knows what the methods do.
+
+=== Lineage
+
+.A waypoint
+[source,java]
+----
+include::{waypoint-main}/Waypoint.java[tag=waypoint,indent=0]
+}
+----
+
+.An execution is a graph of waypoints
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=lineage,indent=0]
+----
+<1> A step forward: a new waypoint with this one as its parent.
+<2> Two steps from one waypoint are a fork. Nothing declares it.
+<3> A join: a waypoint with two parents.
+<4> The lineage, nearest first, each waypoint once.
+<5> Advancing changed nothing behind it.
+
+The graph only grows.
+That is what makes the rest simple.
+
+.A retry is a sibling
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=retry,indent=0]
+----
+<1> A retry does not undo the failed attempt. It steps again from the last waypoint that was good.
+<2> The failed attempt stays in the graph, with its state, for whoever asks what happened.
+
+Failure handling is deliberately not part of the interface.
+An engine that retries, one that compensates and one that gives up all build on the same two moves: find the waypoint to go back to, and commit from it.
+
+=== State
+
+A state waypoint carries a value.
+The value belongs to the waypoint and is never changed: a transformation makes a new waypoint with a new state, which may be of another type.
+
+.A join computes its state from what it joins
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=join,indent=0]
+----
+<1> The mapper gets the joining waypoints, this one first, and reads their states.
+
+=== Settling is a rule over lineage
+
+<<bindings>> ended with a loop of values that needs to know when to stop.
+A raw value cannot tell.
+A value that carries its lineage can: it has settled when it comes back to where it has been with the state it had there.
+
+.Settled, by lineage
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=settled,indent=0]
+----
+<1> Skip this waypoint itself.
+<2> The last time the execution was at this element.
+<3> A ring of three nodes.
+<4> Each step halves the value and moves on.
+<5> The fourth visit to "b" found what the third had left.
+
+Other rules read the same history: stop when a change is smaller than a tolerance, stop on the tenth pass, stop when a budget is spent.
+None of them is in the value, and none needs a field added to it.
+
+=== Realms
+
+Some state cannot be passed by value: a resource set, a connection, a model that many steps change.
+A realm is a space of such state that is reached only through commands, so that its rules hold: one command at a time, or a transaction around each.
+It is the idea of JFace's `Realm`, of EMF's command stack and of an event loop.
+
+.A realm
+[source,java]
+----
+include::{waypoint-main}/Realm.java[tag=realm,indent=0]
+----
+
+The runtime already has a realm, though it does not call it one: `Pump` runs one task at a time.
+
+.A realm on a pump
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=realm,indent=0]
+----
+<1> A plain list, with no synchronization. The realm guards it.
+<2> A command runs in the context it was issued in, so what it changes can be traced to where it came from.
+<3> `submit` returns at once, and the command runs when the pump is drained.
+
+A realm waypoint is a waypoint whose every descendant reaches the same guarded state.
+A command's closure captures the waypoint, so a command knows both where the execution is and what it may touch.
+
+=== Telemetry
+
+A telemetry waypoint adds a span to another waypoint.
+A step forward is a child span, and a join is a span under the first parent that links to the others.
+
+.The tree of waypoints is the tree of spans
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=telemetry,indent=0]
+----
+<1> The runtime's publishing tracer: spans can be examined with no telemetry backend.
+<2> Telemetry decorates a waypoint, here one that carries state.
+<3> A step that changed the state is followed: the caller advances, and telemetry adds the span.
+<4> A join. Its span's parent is the span of `price`, and it links to the span of `stock`.
+<5> What the decorated waypoint carries is reached through `facet`.
+<6> Work run through the waypoint sees its span as the current one.
+
+Troubleshooting then happens at the level of spans and not of log lines.
+For any step there is, in one place, what it was, how long it took, what it cost, and the waypoints that led to it.
+
+[#waypoint-changes]
+=== What changed on the way into the SDK
+
+The original design returned Reactor's `Mono` from an asynchronous twin of every method, and split the work over seven modules.
+Four things are different here.
+
+* *No reactive library.* On virtual threads a blocking call is cheap, which is also why `Flows` has no time operators. Methods are synchronous. Work that leaves the process, such as a call to a model provider, returns a `CompletionStage` tracked by the pump. That removed about half of the interface.
+* *Telemetry is in the core.* The OpenTelemetry API is part of the foundation, and the pump already carries the context.
+* *One way to add what a waypoint carries.* `facet(Class)`, as `capability(Class)` is for volumes. Composed interfaces multiply with every facet, so there are none beyond the three in the package.
+* *A package in `common`,* not a module, since the pump should be a realm and bindings may carry waypoints. It becomes a module of its own if it grows.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+Whether Waypoint is a package of `common` or a module above it is an open question in the roadmap, with the package recommended.
+`Pump` cannot be made an `ExclusiveRealm` from outside the runtime, so here `Realms.pump` wraps one.
+In the runtime, `Pump` itself would implement the interface.
+====
+endif::[]
+
+=== Designed, not built
+
+The rest of the original design carries over as intent.
+
+==== History in Git
+
+[.planned]#PLANNED#
+A waypoint can be a real commit: the element and the state are written to a repository, and branches and merges happen in Git.
+That gives a durable history for long-running work, rollback as a reset, and a record for whoever examines it later.
+
+Each such commit also records the trace context of the span that made it, as trailers in the W3C format, the same convention as `Signed-off-by`:
+
+[source,text]
+----
+Waypoint-Id: 3f9a1c
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+----
+
+Whoever reads the commit later, to resume or to audit, continues the same trace.
+A trace then spans not only processes and machines but time: an agent's work, a pause of days and its completion are one trace.
+It needs JGit, so it belongs with a Git volume, outside `common`.
+
+==== One ladder from memory to a remote
+
+[.planned]#PLANNED#
+Where an agent keeps its state is a choice of root waypoint and not of code.
+The code that commits, merges and issues commands is the same on every rung.
+
+[cols="2,3",options="header"]
+|===
+|Where the state is |What it buys
+
+|In memory |The fastest working state, lost when the process ends
+|A resource set with change recording |The same, with each step reversible in the process
+|A saved resource |Survives a crash
+|A commit in a local repository |A checkpoint that cannot change, with branch, merge and reset
+|A commit pushed to a remote |Survives the loss of the machine
+|===
+
+With EMF the choice is per resource and not per agent: scratch work stays in memory while the resources that matter are committed.
+Recovery picks the rung it needs: reverse a change, reload a resource, reset to a commit, fetch from a remote.
+
+==== A commit is an escalation
+
+[.planned]#PLANNED#
+When an agent reaches a point that needs a person, an approval or a choice between two readings, it commits a waypoint whose tree is the state of the model and whose message says who is asked, by when, how often to remind, and what to do if nobody answers.
+Then the process can end.
+A hook on the repository notifies and sets the timers.
+The answer arrives as another commit, made by a person or by the timeout, and the agent that resumes cannot tell which.
+
+This is the pause and resume of workflow engines, built from what Git already has.
+The one part Git does not have is a scheduler, so the timers need a service outside it, and that service, not Git, knows whether a request has timed out.
+
+==== A loop that builds within a budget
+
+[.planned]#PLANNED#
+The pieces compose into a loop that works unattended.
+The element is a thing to build, taken from a model of what is wanted.
+The state carries what is known and what budget remains.
+Each pass selects the most valuable thing that can be built now, checks that enough is known and enough budget is left, and either builds it, as one transaction that also spends the budget, or asks the person who can supply what is missing and moves on to the next thing that can be built.
+The spend is the difference between a waypoint's state and its parent's, so the ledger is auditable by construction.
+Requests to people are limited by the people, who say how often they will be asked: back pressure applied to human attention.
+
+==== Mapping
+
+[.planned]#PLANNED#
+A mapping from one model to another is a traversal in which each step applies a rule to a source element.
+With a waypoint per step, "why does this target element exist" is answered by walking parents, and a rule that asks a model provider is recorded the same way as a rule that does not.
+<<opgraph-and-nsml>> takes this up.
+
+=== Open questions
+
+* Whether a waypoint tracks its children. Here it does not, so that a long traversal does not hold all of its history in memory. A walker over a factory that records children is the alternative.
+* Whether a waypoint has an identity of its own, or only where it is persisted. Here equality is identity, as it is for commits.
+* Whether the realm's `adapt` needs a snapshot form beside the lens, for a view that is expensive to compute.

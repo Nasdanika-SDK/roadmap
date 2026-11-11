@@ -1,0 +1,232 @@
+[#core-nano-models]
+== Core Nano-models
+
+[horizontal]
+Capability:: Small aspects that many models share, defined once in the core model: relationships, changes, occupancy in time and other dimensions, kinds, stakeholders and what they are shown, documents, and examples.
+Demonstration:: `NanoModelTests` in `models/core`, which instantiates each one.
+Status:: [.sketch]#SKETCH# in `models/core`: seven Xcore files that generate and compile against the released core model. Role, IAM, Seal and Lifecycle are in `models/core/sketches` as they are in the tower today.
+Depends on:: The runtime's core model.
+Value and effort:: High, and each is small. Every model above the core gets them for nothing, and several models in the tower shrink when they arrive.
+How to help:: Read the one closest to your work and say which word is wrong. Naming is the hard part of a nano-model and the part that cannot be changed after release.
+
+=== What a nano-model is
+
+A Maven module can hold many Xcore models.
+A nano-model is one file: an aspect small enough to read at once, in a package of the core module, with a namespace of its own.
+It is in core because nearly every model needs it and because it needs nothing that core does not have.
+A model with other dependencies, other users or another pace of change is a module of its own, which the SDK calls a micro-model.
+
+The nano-models depend on each other in a line, so there is an order in which to read them and no cycle to untangle.
+
+[cols="1,2,3",options="header"]
+|===
+|Nano-model |Builds on |In one line
+
+|related |core |Relationships as model elements
+|change |core |Changes as data, with selectors and computed values
+|occupancy |related, change |A subject occupies a box in dimensions, of which time is one
+|kind |change, occupancy |Classification as data, which can configure
+|enterprise |core |Stakeholders, concerns, viewpoints, formats and channels
+|document |enterprise |Structure in the model, text in a named format
+|example |core |An input, the output expected for it, and why
+|===
+
+Where a later nano-model needs a class of an earlier one to say more, it specializes that class, and only that class, and only when something needs it.
+A role model that needs documents with authors specializes `Section`, and leaves the rest of the document model alone.
+
+==== The pattern
+
+Most nano-models have the same four parts, shown here by the kind model:
+
+[source,text]
+----
+include::{nano-xcore}/kind.xcore[tag=pattern,indent=0]
+----
+
+`AbstractKind`:: What a list holds: either of the two below.
+`Kind`:: The definition.
+`KindCatalog`:: Definitions published together, as a resource that others refer to.
+`KindReference`:: A use of a definition from a catalog, in a place where a definition could also be written.
+
+The reference class was designed before one fact about EMF was put to use here: containment can cross resources.
+A contained object may live in another file, so splitting a model over files does not need a reference class.
+A reference class stays where the user of a definition has something of its own to say about the use, and it may go from the nano-models where it has not.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+Which nano-models keep their reference class is undecided.
+The sketches have one wherever the pattern would put one, so that each can be judged where it stands.
+The field note on cross-resource containment is the evidence for doing without.
+====
+endif::[]
+
+=== Related
+
+A reference says that two elements are related.
+A relationship says so and can be asked about, because it is a model element: it has an identity, documentation and provenance, and other nano-models give it more.
+`Related` is the interface of an element that has such relationships.
+
+The architecture model of the tower is mostly this: elements, containment and relationships that are objects.
+With `Related` in core, little of it is left to define.
+
+=== Change
+
+EMF Change describes a change by pointing at the objects it changed and holding the values it set.
+The change nano-model keeps the idea and changes two things.
+A change finds its objects with a *selector*, an evaluator run in the context of a host.
+And a new value can be *computed* from that context.
+
+So a change can be written before the objects it applies to exist, kept in a catalog, and applied to many hosts.
+Two nano-models need exactly that: a kind applies its changes to whatever it classifies, and a transition applies its changes to what moves.
+
+A change is a plan.
+It can be validated, shown to a person and approved before anything is applied, which is why it is also the command an agent should write with: read with a query, write with a change.
+Applying a change is recorded by EMF's change recorder, whose description is the reverse of what was done.
+
+Three rules come with it.
+Changes apply in order, and each sees the result of those before it.
+A change sets values in the structure its host has and never adds to that structure.
+And selectors and values have no side effects, with XPath as the language for catalogs that are not trusted to run scripts.
+
+=== Occupancy
+
+Most models treat time as two date columns.
+Occupancy treats it as one dimension among others: a jurisdiction, a version line, a level of sensitivity, a floor of a building.
+
+A *region* is a box, with at most one extent per dimension.
+An *occupancy* is the recorded fact that a subject is in a region.
+Plans, the present and history are then one model read at different coordinates: a person to be hired next year, a control that applies only in one jurisdiction, a price valid for a quarter.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=occupancy,indent=0]
+----
+<1> A draft, from the first of November to the eleventh. The end is exclusive, and the model says so.
+<2> Published from the eleventh, with no end: unbounded, not unknown.
+<3> A transition from one occupancy to the other, with the change it makes to what moves.
+
+The rules are in the header of `occupancy.xcore`, and four of them prevent most mistakes.
+A dimension that a region does not mention is unconstrained.
+Whether a bound is inclusive is stored and never assumed.
+A shape is a union of boxes, two occupancies and not a polygon.
+And an occupancy is a record: a correction is a new occupancy that names the one it replaces.
+
+`Temporal` and `Period`, which the older core model had as special cases, become a coordinate and an extent on the calendar dimension.
+Stages of a lifecycle, presence in a place and participation in an engagement are occupancies with one more reference each.
+
+=== Kind
+
+A class says what an element is, for good.
+A kind says what it is classified as, and that can be one of several, can come from a catalog that someone else publishes, and can stop applying.
+
+A kind can also configure.
+It carries changes, and they apply to what it classifies: the size of a machine, from a vendor's catalog, sets the memory of every machine classified with it.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=kind,indent=0]
+----
+<1> A change that sets a feature, as a constraint: a host that says otherwise is in error.
+<2> A use of the kind, by reference, in a classification.
+<3> The catalog and its user are saved as two files.
+<4> Loading the user finds the kind in the catalog's file.
+
+The boundary is one sentence.
+A kind sets values in the structure its host has and never adds to it; a kind that wants a feature its host's class does not have wants to be a class.
+
+Where kinds specialize several others, the order of their changes is the C3 linearization, the one Python uses for classes.
+And changes are layers over the host and not edits of it, so that ending a classification removes a layer and nothing has to be undone.
+Neither is built yet.
+
+=== Enterprise
+
+Every effort has stakeholders with concerns, and few write them down.
+The enterprise nano-model is the first model an effort should make: who the stakeholders are, what concerns each, what they are shown to address it, in what format, and over what channel.
+
+The vocabulary is that of ISO/IEC/IEEE 42010, with formats and channels added.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=enterprise,indent=0]
+----
+<1> A channel accepts formats.
+<2> A stakeholder has formats in order of preference.
+<3> A viewpoint's documentation says how to read what is made from it.
+<4> A viewpoint names the kinds of things it is made of. A kind of representation element is the class of a representation model, here the table of the document nano-model.
+<5> What can be sent to whom is then computed: the formats that the stakeholder takes and the channel accepts.
+
+The model is small because EMF already has most of the full enterprise model's kinds.
+A kind of semantic element is a class, a semantic element is any object, and a kind of representation element is a class of a representation model.
+
+It has two uses.
+One is documentation: a "monthly statement" viewpoint that explains how to read a statement, a chart that explains itself, which matters most for something new.
+The other is a request.
+Asked for a viewpoint in a format over a channel, the polymorphic user interface builds the view, and the rendered view can open its viewpoint's documentation as help: a link on a page, kbd:[F1] in a terminal.
+
+It also explains why the runtime has several formats for one picture.
+SVG is for people reading a page or a book, Draw.io for people who edit, and Markdown or the model itself for agents.
+Each is a row of a stakeholder, a channel and a format.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+Open in the sketch: whether `Message` is worth a class apart from `View`; whether a viewpoint should refer to channels; and the names `Representation` and `RepresentationElement`, for which "widget" has been suggested.
+The split of representation and representation element may also be finer than anything needs.
+====
+endif::[]
+
+=== Document
+
+The core model's `Documented` has sections and content.
+The document nano-model replaces them, and it starts from the enterprise nano-model: a document is a view, and a section is a representation.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=document,indent=0]
+----
+<1> A document, made from a viewpoint, which a view always is.
+<2> A section, with a title, in which sections and blocks nest.
+<3> Text stays in the format it was written in. The model owns structure, and the formats own text.
+<4> Delivering a document is a message: to whom, over what, in what format.
+
+The model is a pivot.
+Markdown is read into it, and AsciiDoc, Markdown and HTML are written from it, so a new format costs one reader and one writer.
+A widget context of <<widgets>> can build it, and a document can be played back through the kinds into any other context.
+
+=== Example
+
+Examples are on tools, operations, mappings, prompts and viewpoints, so they are a nano-model and not a part of each.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=example,indent=0]
+----
+
+The same data has three uses.
+Examples teach, as a few-shot prompt or a section of documentation.
+An input with its expected output is a test case, so a published set of examples is a conformance suite for whatever they describe.
+And replaying the outputs runs a loop with no provider behind it.
+
+=== Role, IAM, Seal and Lifecycle
+
+Four models of the tower are to become nano-models: who is responsible, who may see and do what, what is signed and encrypted, and what stage something is in.
+They are the lowest floors of the tower, and everything above them inherits what they say.
+
+Their Xcore is in `models/core/sketches`, as it is in the tower today, on the older core model.
+Moving them is a rewrite and not a rename:
+
+* *Role.* An assignment of a role is an occupancy, and a role in a catalog is a kind. Sections with authors and editors specialize the section of the document nano-model.
+* *IAM.* A grant valid in one region during one period is an occupancy. Levels of sensitivity are a dimension, so "cleared up to confidential" is an extent.
+* *Seal.* Signatures are made over content digests, which are planned for core.
+* *Lifecycle.* A stay in a stage is an occupancy, and a transition between stages is the transition of the occupancy nano-model, with its changes.
+
+Each should be smaller afterwards than it is now, which is the test that the nano-models below it are right.
+
+=== What is not there yet
+
+* [.planned]#PLANNED# *Applying changes:* the engine that evaluates selectors and values, applies changes in order, and reports a change that does not fit its host.
+* [.planned]#PLANNED# *Region arithmetic:* whether one box contains or meets another, and which occupancies are current at a coordinate.
+* [.planned]#PLANNED# *Catalogs as resources:* formats, channels and a few stakeholders that models can refer to, as the first content.
+* [.planned]#PLANNED# *Facets:* an element that has an aspect for a while, where today it would have to inherit it for good.
+* [.planned]#PLANNED# *Generated references* for these models, in this book, once the runtime generates them.

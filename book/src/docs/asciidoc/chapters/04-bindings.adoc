@@ -1,0 +1,212 @@
+[#bindings]
+== Bindings
+
+[horizontal]
+Capability:: A value that can be read now and followed as it changes, the same type for a static document, a live screen, an input field and a wire between two computations.
+Demonstration:: `BindingTests` in `runtime/common`, and the views of <<widgets>>, which take a binding wherever they take a value.
+Status:: [.sketch]#SKETCH# in `runtime/common`, package `org.nasdanika.sdk.roadmap.runtime.common.flow`, beside where `Flows` and `Pump` are in the runtime.
+Depends on:: The runtime's `common` module: `Pump`, and EMF core for the bridge.
+Value and effort:: High for small. Widgets, the terminal, live telemetry and executable graphs all need it, and it is a few classes.
+How to help:: Try it under load and from several threads, and say where the rules below surprise you. List bindings are the next piece, and they are open.
+
+=== Why
+
+A user interface shows values that change, and takes values from a user.
+JFace and EMF have databinding for that, built on observables.
+The runtime already has what observables are made of: `Flow` publishers and subscribers, and `Pump`, a queue that runs one task at a time.
+So a binding here is a small thing on top of them, not a framework beside them.
+
+Bindings are not only for user interfaces.
+A static format such as Markdown needs the value at the time it renders.
+Live telemetry, server-sent events and notifications to an agent need the value as it changes.
+And two computations wired to each other need the latest value of the other, as cells of a spreadsheet do.
+One type serves all of them.
+
+=== The interface
+
+.A binding is a supplier, a publisher and closeable
+[source,java]
+----
+include::{flow-main}/Binding.java[tag=binding,indent=0]
+----
+
+Each supertype is a decision.
+
+*`Supplier`,* so the current value is `get()`.
+Wherever code takes a supplier of a value, a table column or a lambda, it takes a binding, and a format that renders once calls `get()` and never subscribes.
+
+*`Flow.Publisher`,* so a binding is followed by subscribing, and the operators of `Flows` apply to it.
+The first item is the value at subscription, and every item after it is a change.
+
+*`Closeable`,* the runtime's own, which declares no checked exception.
+A binding may hold a subscription to another binding or an adapter on a model object, and closing releases it.
+
+=== The value now, and then each change
+
+.The first item is the value at subscription
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=first,indent=0]
+----
+<1> The collector asks for everything. It receives "Checking" at once.
+<2> A value equal to the current one changes nothing, and nobody is told.
+<3> `get()` is the value now, with no subscription.
+
+Emitting the current value on subscription removes a race.
+With a separate "read the value" and "start listening", a change between the two calls is lost.
+Here there is no gap: the first item is the value at the moment of subscription.
+Kotlin's `StateFlow` and RxJava's `BehaviorSubject` do the same.
+
+A value is never null, because `Flow` forbids null items.
+A value that can be absent is a binding of `Optional`, as the EMF bridge below shows.
+
+=== Back pressure is coalescing
+
+A reactive stream protects a slow subscriber by holding its source back.
+A binding cannot do that.
+An EMF notification is delivered inside the setter, so holding it back would freeze whatever is changing the model, and dropping it would lose a change.
+
+A binding does neither.
+It keeps the latest value, and a subscriber that has demand gets the value as it is then.
+
+.A slow subscriber gets the latest value, not a backlog
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=coalescing,indent=0]
+----
+<1> A subscriber that takes one value at a time, as a frame of a screen does.
+<2> The source changes a thousand times. Each change marks the subscriber's slot and returns.
+<3> The subscriber asks again and gets the value as it is now.
+
+A source that changes every millisecond and a target that looks every three seconds cost one flag written per change and one delivery per look.
+The target sets the pace, and neither the binding nor a widget knows anything about time.
+
+The whole mechanism is one method, run for a subscriber whenever something may have changed for it:
+
+.Serving a subscriber
+[source,java]
+----
+include::{flow-main}/AbstractBinding.java[tag=step,indent=0]
+----
+<1> A subscriber is not told about a value equal to the last one it received.
+
+=== The pump sets the pace
+
+A binding delivers through an executor.
+Without one, a subscriber is called on the thread that made the change.
+With a `Pump`, every delivery is a task of the pump, and nothing is delivered until somebody pumps.
+
+.On a pump, changes wait for whoever drains it
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=pump,indent=0]
+----
+<1> The binding delivers through the pump.
+<2> Three changes, and nothing has been delivered: no task has run.
+<3> The pump is drained, as a terminal's frame loop would drain it, and the subscriber gets one value, the latest.
+
+This is what JFace calls a realm: one thread of access to what is shown.
+A screen that drains the pump once per frame sees a consistent state on each frame, and no widget needs a lock.
+
+=== Where a change came from
+
+A task of a pump runs in the OpenTelemetry context that was current when it was enqueued.
+A binding inherits that for nothing.
+
+.A change arrives in the context it was made in
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=provenance,indent=0]
+----
+<1> The subscriber records each value and what the context says about its origin.
+<2> The change is made inside a scope, as a key typed into the amount field of a transfer screen would be.
+<3> The delivery happens later, outside the scope, and still sees it.
+
+With a span per screen and a span or a log record per control, a change in a model can be traced back to the input and the screen that caused it, with no field added for that purpose.
+Usage can then be compared with design: the paths that a screen flow drew, against the paths people took.
+
+Two limits should be said plainly.
+When several changes are coalesced into one delivery, the delivery runs in the context of the first of them.
+And telemetry of a binding records that a value changed and where, and should not record the value by default, since what a person types may be a name, an account number or a password.
+A sanitizer between values and telemetry is [.planned]#PLANNED#, in <<designed-and-waiting>>.
+
+=== Computed bindings
+
+The operators of `Flows` return a plain publisher, which has no `get()`.
+`Bindings` maps both sides.
+
+.A converter
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=map,indent=0]
+----
+<1> The value now, mapped.
+<2> A subscriber follows the mapped value.
+<3> Closing the mapped binding stops it following its source. It does not close the source, which it does not own.
+
+.A value computed from two others
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=combine,indent=0]
+----
+
+A computed binding does not store its value.
+It computes it from its sources when asked, and tells its subscribers to ask again when a source changes.
+`Bindings.derive` takes any number of sources, which is a spreadsheet cell: a formula and the cells it reads.
+
+=== Bindings that follow each other
+
+Two values can be bound in both directions, and the rule that an equal value changes nothing is what lets them settle.
+
+.Two bindings settle
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=two-way,indent=0]
+----
+<1> Each binding sets the other. A round trip arrives back with the value already there, and stops.
+
+A loop that converges settles this way.
+A loop that does not converge would run forever, and it needs a guard, as a spreadsheet refuses a circular reference.
+<<waypoints>> shows where that guard comes from: a value that carries its history can tell that it has been here before.
+
+=== A model feature is a binding
+
+.The bridge from EMF notifications
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=emf,indent=0]
+----
+<1> Any EMF object will do. This one is an `EClass`, whose name is a feature like any other.
+<2> A setter notifies, and the binding marks its subscribers. The setter is never held back.
+<3> Closing removes the adapter from the object.
+
+A many-valued feature is bound as an unmodifiable copy of its list.
+A subscriber is told that the list changed and reads it again, which is what a screen does on each frame anyway.
+
+=== Closing
+
+.Closing ends subscribers and keeps the last value
+[source,java]
+----
+include::{flow-test}/BindingTests.java[tag=close,indent=0]
+----
+<1> Closing twice is closing once.
+<2> The last value stays readable, so a session that has ended can still be rendered.
+<3> A subscriber that arrives late gets the last value and then the end.
+
+A subscriber that cancels leaves the binding open for the others.
+The owner of a binding closes it, as the owner of any resource does.
+
+=== What is not there yet
+
+* [.planned]#PLANNED# *List bindings.* A binding of a list tells that the list changed, not what changed in it. A list binding with a second publisher of changes, whose first item is a reset with the whole list, is designed and not built. It matters for targets that patch what they show, such as a page in a browser.
+* [.planned]#PLANNED# *Input written through a transaction.* An input field's state is a binding already. Writing it to a model should go through a command inside a model transaction: recorded, validated, and rolled back on cancel.
+* [.planned]#PLANNED# *Telemetry of bindings,* with spans per screen and per control, and the sanitizer for values.
+* [.planned]#PLANNED# *Bindings over the wire:* server-sent events for a browser, and notifications for an agent.
+
+=== Prior art
+
+JFace and EMF databinding: observables, realms, update strategies and validators.
+Kotlin's `StateFlow` and RxJava's `BehaviorSubject`: the current value on subscription, keeping only the latest.
+Spreadsheets and dataflow tools, for cells that follow other cells.
+Service Component Architecture, for properties and wires between components, which bindings take one step further: a wired property keeps following its source.
