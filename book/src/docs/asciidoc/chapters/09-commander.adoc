@@ -236,8 +236,8 @@ A list for a tool that is meant to be used.
 * [.planned]#PLANNED# *Marking several entries,* with kbd:[Insert], and acting on all of them.
 * [.planned]#PLANNED# *Progress and cancel* for a long copy, and keeping the time of last change on a copy.
 * [.planned]#PLANNED# *Search* in a panel and in the viewer, and a viewer for files that are not text or are too large to hold.
-* [.planned]#PLANNED# *A navigator with details:* one panel and, beside it, what the selected entry is, instead of a second panel. For a model that is the more useful form.
-* [.planned]#PLANNED# *Any tree, with commands by type.* A panel over a generic volume of model elements or of the pages and shapes of a Draw.io file, where the commands offered depend on what is selected. Navigating a structure and acting on its elements is the polymorphic user interface in another form.
+* [.sketch]#SKETCH# *A navigator with details:* one tree and, beside it, what the selected entry is, instead of a second panel. For a model that is the more useful form, and it became an application of its own: <<explorer>>.
+* [.planned]#PLANNED# *Any tree, with commands by type.* A generic volume of model elements or of the pages and shapes of a Draw.io file, where the commands offered depend on what is selected. Navigating a structure and acting on its elements is the polymorphic user interface in another form. It lands in the explorer first, and a panel of the commander over such a volume follows where copying between two of them makes sense.
 * [.planned]#PLANNED# *Extensions through the capability framework:* syntax highlighting, commands, and an assistant that can be asked about what is selected.
 * [.planned]#PLANNED# *A command for scripts and agents* that runs an action on a path, so that what a person can do with a key, an agent can do with a line.
 * [.planned]#PLANNED# *As a command of `nsdk`,* with the volumes that the commands before it on the line produce, and in an organization's own command line with its own volumes.

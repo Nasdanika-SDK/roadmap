@@ -22,5 +22,6 @@
 		<module>widget</module>
 		<module>tui</module>
 		<module>commander</module>
+		<module>explorer</module>
 	</modules>
 </project>

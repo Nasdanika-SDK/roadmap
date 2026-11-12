@@ -16,6 +16,7 @@ An item has an id that does not change when its title does, so that another plan
 
 |`runtime.binding` |Bindings |[.sketch]#SKETCH# |<<bindings>>, `runtime/common` |Runtime `common`
 |`runtime.binding.list` |List bindings with changes |[.planned]#PLANNED# |<<bindings>> |`runtime.binding`
+|`runtime.binding.capability` |Bindings that provide capabilities, with quality attributes |[.planned]#PLANNED# |<<bindings-capabilities>> |`runtime.binding`
 |`runtime.waypoint` |Waypoints, state, realms, telemetry |[.sketch]#SKETCH# |<<waypoints>>, `runtime/common` |Runtime `common`
 |`runtime.waypoint.git` |Waypoints in Git, and escalation |[.planned]#PLANNED# |<<waypoints>> |`runtime.waypoint`, a Git volume
 |`runtime.widget` |Widgets, kinds and Markdown |[.sketch]#SKETCH# |<<widgets>>, `runtime/widget` |`runtime.binding`
@@ -26,10 +27,14 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.tui.kit` |A base terminal command and the kit |[.planned]#PLANNED# |<<terminal>> |`runtime.tui`
 |`runtime.tui.telemetry` |Telemetry for commands in the terminal |[.planned]#PLANNED# |<<terminal>> |Runtime `cli`
 |`runtime.commander` |Nasdanika Commander |[.sketch]#SKETCH# |<<commander>>, `runtime/commander` |`runtime.tui`, runtime `volume`
-|`runtime.commander.tree` |Commander on any tree, with commands by type |[.planned]#PLANNED# |<<commander>> |`runtime.commander`
+|`runtime.commander.tree` |Commander on any tree, with commands by type |[.planned]#PLANNED# |<<commander>> |`runtime.commander`, `runtime.explorer.model`
+|`runtime.explorer` |Nasdanika Explorer |[.sketch]#SKETCH# |<<explorer>>, `runtime/explorer` |`runtime.tui`, runtime `volume`
+|`runtime.explorer.model` |Explorer over models and diagrams, with editing and commands by type |[.planned]#PLANNED# |<<explorer>> |`runtime.explorer`, `runtime.ui.views`
+|`runtime.ui.views` |Views by class, for Meta and Ecore first |[.planned]#PLANNED# |<<metamodel-documentation>> |`runtime.widget`
 |`runtime.screens` |Screens drawn in Draw.io |[.planned]#PLANNED# |<<drawn-screens>> |`runtime.tui`, runtime `drawio`
 |`runtime.inference` |Inference and provider modules |[.planned]#PLANNED# |<<designed-and-waiting>>, <<runtime-models>> |`model.tool`
-|`runtime.mcp` |MCP on a JSON-RPC core |[.planned]#PLANNED# |<<designed-and-waiting>> |`model.tool`
+|`runtime.mcp` |MCP on a JSON-RPC core, with servers and clients as models and tools resolved as capabilities |[.planned]#PLANNED# |<<designed-and-waiting>>, <<agentic-components>> |`model.tool`
+|`runtime.agentic` |Agentic systems as documented, owned and approved components |[.planned]#PLANNED# |<<agentic-components>> |`runtime.inference`, `model.tool`, `runtime.doc.diagram`, `model.core.role`
 |`runtime.telemetry.live` |Live telemetry |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `common`
 |`runtime.telemetry.sanitizer` |A sanitizer for telemetry |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `common`
 |`runtime.volume.system` |System volumes |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
@@ -37,7 +42,11 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.graph` |Reactive compute graphs |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.binding`, `runtime.waypoint`
 |`runtime.cli.commands` |Commands over what is built |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `cli`
 |`runtime.cli.install` |`nsdk install` and profiles |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `bootstrap`
-|`runtime.doc.reference` |Generated metamodel references |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime models
+|`runtime.doc.reference` |Generated metamodel references |[.planned]#PLANNED# |<<metamodel-documentation>> |`runtime.ui.views`, `runtime.widget.asciidoc`, `runtime.doc.stubs`
+|`runtime.doc.diagram` |Generated diagram documentation |[.planned]#PLANNED# |<<diagram-documentation>> |`runtime.ui.views`, `runtime.widget.asciidoc`, `runtime.doc.stubs`
+|`runtime.doc.stubs` |Documentation stubs: create, report orphans, follow a diagram |[.planned]#PLANNED# |<<doc-stubs>> |Runtime `cli`
+|`runtime.diagram.status` |Status on diagrams, while building and while running |[.planned]#PLANNED# |<<target-implementation>> |`runtime.telemetry.live`, `model.technology`
+|`runtime.diagram.inheritance` |Variability and inheritance of diagrams |[.planned]#PLANNED# |<<target-business>> |`model.core.occupancy`, `model.core.kind`
 |`runtime.merger` |A merger for generated files |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
 |`runtime.ui.browser` |The polymorphic user interface in a browser |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.widget.html`
 |===
@@ -53,10 +62,11 @@ An item has an id that does not change when its title does, so that another plan
 |`model.core.occupancy` |Occupancy |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.related`, `model.core.change`
 |`model.core.kind` |Kind |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.change`, `model.core.occupancy`
 |`model.core.enterprise` |Enterprise |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
-|`model.core.document` |Document |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.enterprise`
+|`model.core.document` |Document, in the next release in place of `Documented`, `Section` and `Content` |[.sketch]#SKETCH# |<<core-nano-models>>, <<document-model-release>>, `models/core` |`model.core.enterprise`
 |`model.core.example` |Example |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
 |`model.core.role` |Role, IAM, Seal and Lifecycle as nano-models |[.planned]#PLANNED# |<<core-nano-models>>, `models/core/sketches` |`model.core.occupancy`, `model.core.kind`
 |`model.core.change.engine` |Applying changes |[.planned]#PLANNED# |<<core-nano-models>> |`model.core.change`
+|`model.core.occupancy.projection` |A model at a coordinate, and releases by coordinate |[.planned]#PLANNED# |<<target-business>>, <<core-nano-models>> |`model.core.occupancy`
 |`model.cli` |The CLI model and self-documenting command lines |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `runtime.widget`
 |`model.tool` |The tool model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `model.core.example`
 |`model.inference` |The inference model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`

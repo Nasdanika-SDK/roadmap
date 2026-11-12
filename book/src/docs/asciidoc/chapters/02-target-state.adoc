@@ -1,0 +1,389 @@
+[#target-state]
+== The Target State
+
+The North Star of <<direction>> is one sentence, and one sentence does not say what a working day looks like when it is reached.
+This chapter draws the fuller picture, in the way an architect would draw it for somebody else's system: a target state, the baseline it replaces, and the transition states between them.
+
+The outline is inspired by the TOGAF Architecture Development Method, and readers who know it will recognize the order: preliminary work, then business, applications and technology, then implementation and what comes after.
+It is inspired by the method and not aligned with it.
+Nothing here needs TOGAF, a certified team or a cycle of phases, and no phase here has the deliverables that the method asks of it.
+The method is borrowed for its order, which is a good order in which to ask questions.
+
+[cols="2,3,3",options="header"]
+|===
+|In the method |Here |Section
+
+|Preliminary, and the architecture vision
+|Who the work is for, written down as a model
+|<<target-preliminary>>
+
+|Business architecture
+|Concepts with owners, and processes that are drawn
+|<<target-business>>
+
+|Information systems and technology architectures
+|Catalogs, decisions, architectures that build on each other, diagrams that run, and agentic systems that are components
+|<<target-application>>
+
+|Opportunities, migration, governance of the implementation, and change
+|Status shown on the diagrams that were drawn, while it is built and while it runs
+|<<target-implementation>>
+
+|No phase: it runs through all of them
+|AI assistants that work on the models
+|<<target-ai>>
+|===
+
+=== How to read a capability
+
+Each capability below says five things.
+
+Target:: What a person, a team or an agent will be able to do.
+Why it matters:: What goes wrong without it.
+Today:: What stands in its place now, and the prior art.
+Have:: What the released runtime and this roadmap already hold, with the labels of the <<preface>>.
+Missing:: What is between the two.
+
+Under "Today" the incumbent is nearly always an office document: a deck, a spreadsheet, a page in a wiki, a board from a workshop.
+That is worth saying once, plainly.
+Nasdanika's competition, in most of what follows, is not another modeling tool.
+It is the document that was good enough on the day it was written.
+A document wins the first hour, since everybody has the tool and nobody has to learn anything.
+It loses the first year: it is written once, it is not kept, and nothing can be generated from it or checked against it.
+So the bar for each capability is to cost little more than the document on the first day and to be still true a year later.
+
+The products and standards named under "Today" are named from memory and from their public descriptions.
+They are there to place a capability, not to review a product.
+
+[#target-preliminary]
+=== Preliminary: who it is for
+
+[horizontal]
+Target:: An effort starts by writing down its stakeholders, what concerns each of them, what they are shown to address it, in which format, and over which channel. That is a model of a page or two, in the enterprise nano-model. It refers to catalogs of channels, formats and viewpoints that are shared, so that a team does not define "e-mail" or "a C4 container diagram" for itself.
+Why it matters:: Everything made afterwards is a view for somebody. Without the list, documents are written for nobody in particular and in whatever format the author had open. With it, what to generate, for whom, in what format and over what channel is computed and not remembered. An agent is a stakeholder too, with formats and channels of its own.
+Today:: A stakeholder map on a slide, a board from a kickoff workshop, a page in a wiki. Made once, at the start, and not maintained. The vocabulary exists and is good: ISO/IEC/IEEE 42010, the stakeholder map of TOGAF's architecture vision, the stakeholder section of an arc42 document.
+Have:: [.sketch]#SKETCH# The enterprise nano-model in <<core-nano-models>>, with a test that computes what can be sent to whom.
+Missing:: [.planned]#PLANNED# The shared catalogs as resources. Views by class, so that a request for a viewpoint in a format over a channel builds the view: <<next-transition>> is the first step toward that.
+
+[#target-business]
+=== Business: concepts and processes
+
+==== Concepts with owners
+
+[horizontal]
+Target:: Business concepts are defined in Meta, each with an owner and the roles around it. Where a concept differs by place or by time, the difference is said with occupancy and with kinds, in one model, and not by keeping a copy per region. The model is in version control and is released formally, in several formats and for several coordinates: Canada 2026.12.0, California 2027.1.0.
+Why it matters:: A word that nobody defined cannot ground a system or an agent, and every team that uses it defines it again, a little differently. A concept with no accountable owner is nobody's to correct. When owner and roles are data, a build can refuse a concept that has none, and governance stops being a step that people walk through.
+Today:: Glossaries in spreadsheets and in wiki pages, and one set of sources per region, drifting apart from the day they were copied. Data catalogs keep a glossary with owners, as text from which nothing is generated. Semantic layers define metrics and little else. Ontology platforms do generate applications from business objects, and are central and closed.
+Have:: [.available]#AVAILABLE# Meta, with a text syntax. [.sketch]#SKETCH# Occupancy and kind in <<core-nano-models>>. The role model as a pre-SDK sketch.
+Missing:: [.planned]#PLANNED# Ownership on Meta's elements, from the role nano-model. Region arithmetic. A release of a model for a coordinate, which is a projection: what holds in California in January 2027, with everything else left out. Generated references, which are the first transition.
+
+Three mechanisms describe variation, and each has its own question.
+*Occupancy* says where and when something holds.
+*A kind* says how something is configured, from a catalog.
+*Inheritance of diagrams*, below, says that one drawing is another with differences.
+Keeping them apart is a rule to hold on to, since each can be bent to do the work of the others.
+
+==== Processes that are drawn
+
+[horizontal]
+Target:: A business process is a diagram, drawn in the tool people have. What goes into a step and what comes out is a type in Meta, so that process and concept meet at the payload. Steps have owners and roles, and each element has documentation of its own. The process is published in several formats, and it may be mapped to the process model of <<opgraph-and-nsml>> for those who want it to run. Later: variability, and a diagram that inherits from another.
+Why it matters:: A process described only in a picture cannot be checked against the data it moves. With typed inputs and outputs it can: a step that consumes what no step produces is an error and not a meeting. And a diagram documented element by element is one that a new person can read without its author.
+Today:: Swimlanes in a deck or in a drawing tool, steps described in a wiki, and payloads described in prose or not at all. Where there is a process team there is a BPMN tool, with a repository of its own that the rest of the organization does not open.
+Have:: [.available]#AVAILABLE# The Draw.io model and Java API, rendering with the viewer of draw.io, and Meta. [.planned]#PLANNED# OpGraph.
+Missing:: [.planned]#PLANNED# Documentation of diagrams, generated and written, which is the first transition. The mapping from a drawing to the process model. Variability and inheritance.
+
+A participant of a process may be an agent.
+This is where the formal part stops being a nicety.
+A person who is handed a step with a vague description asks a colleague.
+An agent has what the step says: the type of what comes in, the type of what must come out, and the documentation of the activity.
+So typed payloads and documentation per element, which are good practice for a process that people run, are the specification of a step that an agent runs.
+
+The same activity may be done by people in one deployment and by an agent in another.
+The process does not change, since it names the activity, its inputs and its outputs, and not who does it.
+Who does it is resolved where the process is deployed, as any other implementation is.
+
+[#target-application]
+=== Applications and technology
+
+==== Catalogs of kinds
+
+[horizontal]
+Target:: What an organization uses is a catalog of kinds: the sizes of virtual machines, the approved databases, the patterns of integration. An element of an architecture is classified with a kind from a catalog, and the kind configures it: the size sets the memory and the cost.
+Why it matters:: A standard that is a page is read once. A standard that is a catalog is used every time something is classified, and what is outside the catalog is visible as an exception, with a name and an owner.
+Today:: Lists of approved technologies in a spreadsheet or on a "standards" page, a technology radar, the console of a cloud provider. Developer portals keep a catalog of services with their owners, close to operations and with little meaning behind an entry.
+Have:: [.sketch]#SKETCH# The kind nano-model, with catalogs and uses in separate files.
+Missing:: [.planned]#PLANNED# Applying a kind's changes to what it classifies. The first catalogs.
+
+==== Decisions that can be revisited
+
+[horizontal]
+Target:: A choice that costs money is a decision with alternatives, criteria and the judgments of those who decided. A larger virtual machine costs more, so choosing it is justified, published and open to be looked at again when its inputs change.
+Why it matters:: Most decisions are remembered as their outcome. The reasons leave with the people, and a year later nobody can say whether the reasons still hold, so the decision is either defended blindly or reopened from nothing.
+Today:: At best an architecture decision record: a page of text in the repository, not connected to what it decided. More often a thread of e-mail, a scoring spreadsheet that one person has, or consensus with no record.
+Have:: The decision analysis and decision binding models of <<model-tower>>, as pre-SDK sketches.
+Missing:: [.planned]#PLANNED# Both models on the SDK. An alternative that is a kind, so that the decision and the catalog refer to the same thing.
+
+Some decisions cannot be made at a desk.
+Which model provider, which cache and which search are best for a system under its real load is found by running the alternatives and measuring.
+The alternatives are then configurations of the system, and the judgments are what was observed.
+<<bindings-capabilities>> describes the runtime that makes such an experiment a matter of configuration.
+
+==== Architectures that build on each other
+
+[horizontal]
+Target:: An infrastructure team publishes its architecture. Application teams build theirs on top of it and on top of the architectures of the applications they depend on, as a build depends on libraries. A system that was removed upstream fails the build downstream.
+Why it matters:: Every team draws the systems around its own, and those boxes are copies that go stale. A dependency makes them references to what their owners published.
+Today:: A reference architecture as a PDF or a deck. Diagrams of neighbors copied into one's own. A central repository of the enterprise architecture that the teams do not update, since it is not where they work.
+Have:: Git and Maven, and containment across files in the models. [.planned]#PLANNED# Cascading architectures in <<designed-and-waiting>>, with their forms of dependency: a submodule, a subtree, a released artifact, and a record a team keeps of a neighbor that publishes nothing.
+Missing:: References by id that the build checks, and the first two repositories that depend on each other.
+
+==== Diagrams that run
+
+[horizontal]
+Target:: A model, a diagram or a graph can be executed, and what it did can be followed on the picture it was drawn as. That holds for a process, for an architecture diagram whose elements have behavior, and for a reactive graph that rolls cost up and carries risk along dependencies.
+Why it matters:: A diagram that only describes a system is correct until the system changes. A diagram that is the system, or drives it, cannot fall behind it.
+Today:: The diagram is a picture and the behavior is in code somewhere else. Workflow engines run what is drawn, in designers of their own. For rolled-up cost and propagated risk the incumbent is a spreadsheet, which is a reactive graph that nobody can review.
+Have:: [.sketch]#SKETCH# <<waypoints>> and <<bindings>>.
+Missing:: [.planned]#PLANNED# OpGraph on the SDK, and reactive compute graphs.
+
+[#agentic-components]
+==== Agentic systems that are components
+
+[horizontal]
+Target:: An agentic system is a diagram, and it is treated as any other part of an architecture is: documented element by element, with an owner and roles, versioned, signed and approved. At run time it is a component or a function like any other. It is obtained through the capability framework as a capability, and it requests other capabilities in turn: a language model, for example.
+Why it matters:: A system that acts on its own needs more of what every component needs, not something else. Who owns it, which version runs, who approved that version and what it may ask for are the questions asked of a service, and the answers should be in the same place and in the same form. A component that requests its language model, instead of constructing one, can be given another one, a recorded one in a test, or none.
+Today:: A prompt and a list of tools in the code of an application, or a canvas in an agent framework with a repository of its own. Described, where it is described, on a wiki page. Approval is a meeting, and what was approved is not what is deployed a month later.
+Have:: [.available]#AVAILABLE# The capability framework and the Draw.io model. The agent model of <<model-tower>>, as a pre-SDK sketch.
+Missing:: [.planned]#PLANNED# Inference and the tool model, in <<runtime-models>>. The agent model on the SDK, running on <<waypoints>>. Ownership from the role nano-model and signatures from the seal nano-model, in <<core-nano-models>>. Documentation of the diagram, which is the first transition.
+
+==== Tools that come from wherever they are
+
+[horizontal]
+Target:: MCP servers and clients are models, with documentation, owners and roles, versions and approval, as above. An agentic system requests a tool by its id or by a description of what it needs, and the tool comes from the capability framework: from the same JVM or from a server over MCP. The agent does not know which and does not care.
+Why it matters:: Where a tool runs is a decision of deployment, and it changes. An agent that was written against a server breaks when the tool moves into the process, and the other way round. An agent written against a request does not. And a request that is resolved in one place can be answered with what is approved there, and refused with a reason.
+Today:: A configuration file per assistant that lists servers by address, kept by each developer. Registries of servers are appearing, as lists. What a server exposes is discovered by connecting to it.
+Have:: [.available]#AVAILABLE# The capability framework. The MCP model of <<model-tower>>, as a pre-SDK sketch.
+Missing:: [.planned]#PLANNED# The tool model, in which MCP is one way to invoke a tool. MCP itself, server and client, in <<designed-and-waiting>>. A provider of tools as capabilities, by id and by description.
+
+[#target-implementation]
+=== Implementation, and after
+
+[horizontal]
+Target:: Status is shown on the architecture diagrams, the same ones that were drawn to design the thing. While it is built: system A is green and done, system B is blue and in progress, system C is amber and at risk. While it runs: the live state of each element. For live monitoring the diagram may be a page in a web portal, drawn with React Flow, where Draw.io is the form for editing.
+Why it matters:: The picture of what was designed, the report of how far it is and the dashboard of how it runs are today three pictures of one system, kept by three groups, and they disagree. One picture with three sources of color does not.
+Today:: A status deck with colored boxes, drawn again every week by hand. Dashboards of an issue tracker, which know work items and not the architecture. Monitoring dashboards, which know hosts and services and not the design.
+Have:: [.available]#AVAILABLE# The Draw.io model, the React and React Flow models, and the telemetry model. [.sketch]#SKETCH# Logical colors in <<widgets>>: success, primary, warning and danger are already what a view names instead of green, blue, amber and red.
+Missing:: [.planned]#PLANNED# A source of status while building: the work model, or a snapshot of a tracker from <<technology-models>>. Live telemetry and bindings over the wire for status while running. The mapping from a status to the style of an element.
+
+The method's remaining phases need less than it seems, because the repository is Git.
+A change to the architecture is a pull request, a baseline is a release, and what changed between two baselines is a comparison of two models.
+And a transition state is not a separate drawing.
+With occupancy, a system planned for next year and a system retired last year are in one model, read at different dates.
+
+[#target-ai]
+=== AI assistants
+
+[horizontal]
+Target:: An assistant works on the models with the tool that fits the question: an overview in Markdown to get its bearings, XPath for simple navigation and selection, Cypher for questions that cross many relationships. It can work on very large models, with Cypher over reactive graphs, because it is given a semantic context: the part of the model it may see, and no more.
+Why it matters:: A large model does not fit in a context window, and should not be put there. An assistant given files guesses at structure. An assistant given a query language and a bounded view asks, and what it may see is decided by the view and not by its good behavior.
+Today:: Assistants read documents. Text is retrieved from wikis and office files by similarity and placed in the prompt, and the answer is as good as the page that happened to be retrieved, which may be the one nobody kept. Some build a graph by extracting it from text. Here the graph is the source and the text is generated from it.
+Have:: [.sketch]#SKETCH# Markdown from the same views as everything else, in <<widgets>>.
+Missing:: [.planned]#PLANNED# XPath for models, the Cypher model and engine, and the tool model, in <<runtime-models>>. Views that bound what an agent sees, from the mapping language of <<opgraph-and-nsml>>. MCP and inference, in <<designed-and-waiting>>.
+
+This is where the target state meets the North Star.
+Agentic work on bounded, typed models needs the models to exist, to be owned, to be current and to be reachable by a query.
+The four sections above are how they come to exist.
+
+=== Assessment
+
+An assessment of the picture above, as of November 2026.
+
+*Most of it is assembly.*
+Every section has something under "Have", and nothing under "Missing" is an invention.
+The enterprise vocabulary, occupancy, kinds, waypoints and bindings are sketched and tested, the diagram models are released, and the decision models exist before the SDK.
+The work is to migrate, connect and demonstrate.
+
+*The incumbent decides the first step.*
+Since the competition is a document, the first thing to show is not a new kind of model.
+It is that the models and diagrams which already exist produce better documents than the ones written by hand, and keep them current.
+That is why documentation is the first transition, below.
+
+*It is too wide to build as layers.*
+Five sections, each of them a product somewhere, for one maintainer.
+A transition state is therefore a slice and not a layer: one concept, one process, one system, taken through as many sections as the state covers, in the International Banking System.
+The dispute of a card transaction is the slice, as it is for the North Star.
+
+*Three things are unproven.*
+A release of a model for a coordinate has been reasoned about and never built, and it needs region arithmetic first.
+Inheritance of diagrams is the least defined item in this chapter.
+And status on diagrams depends on a source of status, which is a floor of the tower or a technology model that has not moved yet.
+
+*Agents add no machinery of their own.*
+An agent is a participant of a process, an agentic system is a component, and a tool is a capability.
+Each is described, owned, versioned and resolved by what the picture already has for people, services and libraries.
+That is the strongest argument for the order of this chapter: what is built for the first four sections is what agents need, and little is built for agents alone.
+
+*Three query surfaces are two too many to start with.*
+Markdown overviews come for nothing with the first transition, so they are first.
+XPath is needed by the change nano-model in any case.
+Cypher is the largest and comes when a model is too large for the other two.
+
+[#transitions]
+=== Transition states
+
+The baseline is the runtime {runtime-version} with the sketches of this repository.
+Between it and the target are states that an organization, or one person, can stop at and still have something that works.
+Each is named for what becomes possible.
+
+[cols="1,3,3",options="header"]
+|===
+|State |What becomes possible |What it takes
+
+|Documented
+|The metamodels and diagrams that exist explain themselves, in books, on sites and in a terminal, and stay current.
+|<<next-transition>>, with the document model.
+
+|Owned
+|Concepts in Meta with owners, kinds and occupancy in the core model, shared catalogs, and a release for a coordinate.
+|The nano-models of <<core-nano-models>> in the runtime, with Role. Region arithmetic and projection.
+
+|Decided and federated
+|Catalogs of kinds in use, decisions that refer to them, and one architecture built on another.
+|Applying changes. The decision models on the SDK. Cascading architectures.
+
+|Running
+|Diagrams that execute, and status on diagrams while building and while running.
+|OpGraph and reactive graphs on <<waypoints>>. Live telemetry.
+
+|Agentic
+|The North Star: agents that read with queries and write with changes, with state in Git. Agentic systems that are drawn, owned and approved, and that get their tools and their language model as capabilities.
+|XPath, Cypher, the change engine, the tool model, inference, MCP, and bindings that provide capabilities.
+|===
+
+Only the first has a date.
+The others are in the order of dependency as it looks today, and gradient ascent may change it.
+The assistants do not wait for the last row.
+Each state gives them something: Markdown overviews with the first, schemas with owners with the second, catalogs to choose from with the third.
+
+[#next-transition]
+=== The first transition: documentation
+
+The next release of the runtime is planned for February 2027, tentatively, and its highest priority is documentation generated from views.
+
+[#metamodel-documentation]
+==== Metamodel documentation
+
+The runtime has a good number of metamodels, and they are dark.
+The older Nasdanika generated documentation from Ecore and published a site per model.
+The SDK has books, and a book has what its author wrote about a model, not everything the model has.
+
+In the SDK the reference of a metamodel is rendered by the polymorphic user interface: views of the classes of Meta and of Ecore, written once against the kinds of <<widgets>>.
+The first formats are Markdown, which is easy and is what an assistant reads, and AsciiDoc, for the quality of its output and so that a reference can be included in a Zephyr Book.
+A book with a generated reference in it will be large.
+That is not a problem, since a reference is looked up and not read through.
+
+What this pulls:
+
+* *Views by class,* [.planned]#PLANNED#: the function that finds a view for an object by its class, through the capability framework. <<explorer>> has the place where it plugs in.
+* *An AsciiDoc context,* [.planned]#PLANNED# in <<widgets>>, with files split by policy and the `Include` kind.
+* *<<bindings>>,* [.sketch]#SKETCH#: a value in a view is a supplier, which a binding is, so the views written for a static page are ready for a live screen. Widgets and bindings graduate together, since the references are the consumer that the rule of <<taking-part>> asks for.
+* *<<waypoints>>* may come along, if rendering turns out to be a traversal worth recording: which element produced which section. Nothing waits for them.
+
+[#document-model-release]
+==== The document model
+
+With documentation as the focus, the document model is part of this release.
+It replaces `Documented`, `Section` and `Content` of the runtime's core model, which are what an element's documentation is held in today.
+<<core-nano-models>> has its sketch: a document is a view, a section is a representation, and text stays in the format it was written in.
+
+It belongs here for a reason beyond tidiness.
+A generated reference and a hand-written stub are both documentation of an element, and they should be the same kind of thing in the model, so that one writer per format serves both.
+
+Models that use the three classes today are migrated to the document model.
+There should be few of them, if any, so the classes are replaced and not kept beside it.
+
+What does not come with this release is occupancy.
+Its sketch is a placeholder, a first statement of the idea, and nothing in documentation waits for it.
+The same holds for a release of a model for a coordinate, which stands on it.
+
+[#diagram-documentation]
+==== Diagram documentation
+
+A diagram is a model, and it has a Java API.
+Documentation can be generated from either.
+The model is the better choice.
+Views are found by class, as for every other model, and the classes of the Draw.io model extend those of the diagram model, so a view written for a node of any diagram serves Draw.io today and another format later.
+
+[.planned]#PLANNED# *Generation* is then the same mechanism as for metamodels: views of pages, layers, nodes and connections, rendered to Markdown and AsciiDoc, with the picture beside the text.
+
+[#doc-stubs]
+[.planned]#PLANNED# *Authoring* is where the text comes from, and it has two parts.
+
+The first is *stubs*.
+A stub is a small file of hand-written documentation for one element, in a format that is chosen, AsciiDoc first.
+A command creates a stub for each element that has none, and the generated documentation includes the stubs, so text written by a person is never inside a generated file.
+The older Nasdanika did this for Ecore.
+
+[cols="2,5",options="header"]
+|===
+|Command |What it does
+
+|Create stubs
+|A stub for every element that has none. A stub that exists is never overwritten, so the command is safe to run again after the diagram grew.
+
+|Report orphans
+|Stubs whose element is gone: deleted, given another id, or moved to another page, layer or container.
+
+|Follow the diagram
+|Compares the diagram with an earlier version of it in Git, and moves or deletes stubs to follow what moved or was deleted.
+|===
+
+There may be several directories of stubs for one diagram, and with AsciiDoc's conditional sections one stub can say different things to different audiences.
+The stakeholders of <<target-preliminary>> are those audiences.
+
+A stub's file is at the path of its element, its place in the tree: the page, the layer, the containers, the element.
+The directory of stubs then has the shape of the diagram, and a person who knows where an element is in the diagram knows where its file is.
+A flat directory of files named by id would survive a move, and nobody could find a file in it.
+
+A segment of the path is the id of the element.
+Draw.io does not allow two elements of a diagram to have the same id, so the path is unique with no further rule.
+The ids that Draw.io generates are ugly, and they can be edited: an element that matters gets an id that reads.
+Where the id has to stay as it is, a `path-segment` property of the element overrides it.
+The segment is the value of that property and defaults to the id.
+The older Nasdanika treated labels the same way: what was shown was the value of a `title` property, which defaulted to the label.
+
+The price of the path is that a stub becomes an orphan when its element moves, and the second and the third command are there to pay it.
+
+The same stubs serve metamodels, where the path is the qualified name.
+This is the "hand-written text in files that are created once" of generated references in <<designed-and-waiting>>, now with commands.
+
+The second part is *Nasdanika Explorer*, in <<explorer>>: a tree of the diagram's elements with, beside it, the documentation of the selected one, to read it, correct it and write what is missing.
+Its prototype is in this repository.
+
+==== What shows that it is reached
+
+* The reference of each of the runtime's models is in its book, generated, and the build fails when it is out of date.
+* One architecture diagram of the International Banking System is documented element by element, with stubs written in the explorer, and published as a chapter and as Markdown.
+* An assistant given that Markdown answers a question about the diagram that it could not answer from the picture.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+This chapter was drafted by an AI assistant on 2026-11-12 from an outline of the target state and of the next steps.
+The outline is the author's.
+The assistant's own are: the "Why it matters" and "Today" lines, the Assessment section, the names and the order of the transition states after the first, and the three demonstrations at the end.
+None of the products behind the "Today" lines was looked at for this chapter.
+
+The author decided on 2026-11-12 that TOGAF is named once, as inspiration and not as alignment, and that a stub's file is at the path of its element.
+
+A segment of the path is the element's id, overridden by a `path-segment` property, also the author's decision of that day.
+The name of the property is not settled.
+Two siblings given the same `path-segment` would share a file. The assistant's suggestion is that the commands report it as an error.
+
+Open: the names of the three commands.
+
+The clarifications of the same day are the author's: agents as participants of processes, agentic systems as components, MCP servers and clients as models, the document model in the next release, and occupancy as a placeholder that waits.
+The assistant's own in those parts are the "Why it matters" and "Today" lines again, and the paragraph of the Assessment about agents.
+Models that already use `Documented`, `Section` and `Content` are migrated, also the author's decision of that day.
+====
+endif::[]

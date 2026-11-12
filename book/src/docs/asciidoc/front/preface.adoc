@@ -28,7 +28,7 @@ An assistant that has read this book and the repository can build on the roadmap
 
 === How to read it
 
-Start with <<direction>>, which says what the destination is and how the next step is chosen.
+Start with <<direction>>, which says what the destination is and how the next step is chosen, and <<target-state>>, which draws the destination area by area and says what the next release is for.
 After that the book is a reference: go to the item you care about.
 <<items>> lists every item with its status and the chapter that describes it.
 

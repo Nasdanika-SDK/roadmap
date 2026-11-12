@@ -36,7 +36,7 @@ the code. Do not trust a chapter over a test: the test runs with every build.
   materials manages them. TamboUI is the exception, with its version in the root `pom.xml`.
 - The foundation is Java, EMF core and the OpenTelemetry API. Do not add a reactive library. Flows are
   `java.util.concurrent.Flow` with the runtime's `Flows` and `Pump`.
-- Only `runtime/tui` and `runtime/commander` may import TamboUI. Neutral terminal widgets are written
+- Only `runtime/tui`, `runtime/commander` and `runtime/explorer` may import TamboUI. Neutral terminal widgets are written
   against `TerminalContext` in `runtime/widget`.
 - Tabs for indentation in Java. Keep lines that a chapter quotes short: the PDF wraps a listing line
   past 96 characters.

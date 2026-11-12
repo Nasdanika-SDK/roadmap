@@ -57,6 +57,11 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+			<artifactId>explorer</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.nasdanika.sdk.roadmap.tests</groupId>
 			<artifactId>widgets</artifactId>
 			<version>${project.version}</version>
@@ -145,6 +150,7 @@
 								</copy>
 								<copy todir="${manuscript.dir}/images" failonerror="true">
 									<fileset dir="${roadmap.root}/runtime/commander/target/screenshots" includes="*.svg"/>
+									<fileset dir="${roadmap.root}/runtime/explorer/target/screenshots" includes="*.svg"/>
 									<fileset dir="${roadmap.root}/runtime/tui/target/screenshots" includes="*.svg"/>
 									<fileset dir="${roadmap.root}/tests/widgets/target/showcase" includes="*.svg"/>
 								</copy>
@@ -159,6 +165,7 @@
 									value="font-family: &quot;M+ 1mn&quot;, &quot;Fira Code&quot;, monospace"/>
 								<copy todir="${manuscript.dir}/showcase" failonerror="true">
 									<fileset dir="${roadmap.root}/tests/widgets/target/showcase" includes="*.md,*.txt"/>
+									<fileset dir="${roadmap.root}/runtime/explorer/target/showcase" includes="*.md"/>
 								</copy>
 								<copy file="${nasdanika.doc.dir}/nbok/nbok-appendix.adoc" todir="${manuscript.dir}/nbok"/>
 								<concat destfile="${project.build.directory}/zephyr/roadmap.css" encoding="UTF-8" outputencoding="UTF-8" fixlastline="yes">

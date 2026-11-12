@@ -53,6 +53,8 @@ ifndef::roadmap-repo[:roadmap-repo: https://github.com/Nasdanika-SDK/roadmap]
 :tui-test: {roadmap-root}/runtime/tui/src/test/java/org/nasdanika/sdk/roadmap/runtime/tui
 :commander-main: {roadmap-root}/runtime/commander/src/main/java/org/nasdanika/sdk/roadmap/runtime/commander
 :commander-test: {roadmap-root}/runtime/commander/src/test/java/org/nasdanika/sdk/roadmap/runtime/commander
+:explorer-main: {roadmap-root}/runtime/explorer/src/main/java/org/nasdanika/sdk/roadmap/runtime/explorer
+:explorer-test: {roadmap-root}/runtime/explorer/src/test/java/org/nasdanika/sdk/roadmap/runtime/explorer
 :showcase-test: {roadmap-root}/tests/widgets/src/test/java/org/nasdanika/sdk/roadmap/tests/widgets
 :nano-test: {roadmap-root}/models/core/src/test/java/org/nasdanika/sdk/roadmap/models/core
 :nano-xcore: {roadmap-root}/models/core/src/main/resources/org/nasdanika/sdk/roadmap/models/core
@@ -65,35 +67,39 @@ include::front/preface.adoc[]
 = The Roadmap
 
 [partintro]
-Where Nasdanika is going and how the next step is chosen, what a reader can do with a roadmap that has code in it, and how to work with an AI assistant that has read it.
+Where Nasdanika is going and how the next step is chosen, the target state domain by domain with what stands in its place today, what a reader can do with a roadmap that has code in it, and how to work with an AI assistant that has read it.
 
 include::chapters/01-direction.adoc[]
 
-include::chapters/02-taking-part.adoc[]
+include::chapters/02-target-state.adoc[]
 
-include::chapters/03-assistants.adoc[]
+include::chapters/03-taking-part.adoc[]
+
+include::chapters/04-assistants.adoc[]
 
 [#runtime]
 = Runtime
 
 [partintro]
 What is on the roadmap for the Nasdanika SDK Runtime.
-The first five chapters have modules in this repository, built on the released runtime and tested with every build: bindings, waypoints, widgets, the terminal and Nasdanika Commander.
+The first six chapters have modules in this repository, built on the released runtime and tested with every build: bindings, waypoints, widgets, the terminal, Nasdanika Commander and Nasdanika Explorer.
 The last two are designs without code yet.
 
-include::chapters/04-bindings.adoc[]
+include::chapters/05-bindings.adoc[]
 
-include::chapters/05-waypoints.adoc[]
+include::chapters/06-waypoints.adoc[]
 
-include::chapters/06-widgets.adoc[]
+include::chapters/07-widgets.adoc[]
 
-include::chapters/07-terminal.adoc[]
+include::chapters/08-terminal.adoc[]
 
-include::chapters/08-commander.adoc[]
+include::chapters/09-commander.adoc[]
 
-include::chapters/09-drawn-screens.adoc[]
+include::chapters/10-explorer.adoc[]
 
-include::chapters/10-designed-and-waiting.adoc[]
+include::chapters/11-drawn-screens.adoc[]
+
+include::chapters/12-designed-and-waiting.adoc[]
 
 [#models]
 = Models
@@ -101,15 +107,15 @@ include::chapters/10-designed-and-waiting.adoc[]
 [partintro]
 The models on the roadmap: the nano-models that are to join the core model, the models of the runtime itself, the model tower, the executable graph and mapping models to revisit, and the technology models to migrate.
 
-include::chapters/11-core-nano-models.adoc[]
+include::chapters/13-core-nano-models.adoc[]
 
-include::chapters/12-runtime-models.adoc[]
+include::chapters/14-runtime-models.adoc[]
 
-include::chapters/13-model-tower.adoc[]
+include::chapters/15-model-tower.adoc[]
 
-include::chapters/14-opgraph-and-nsml.adoc[]
+include::chapters/16-opgraph-and-nsml.adoc[]
 
-include::chapters/15-technology-models.adoc[]
+include::chapters/17-technology-models.adoc[]
 
 include::appendices/a-items.adoc[]
 

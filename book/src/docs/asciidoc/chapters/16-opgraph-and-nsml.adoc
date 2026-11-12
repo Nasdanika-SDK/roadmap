@@ -37,7 +37,7 @@ Most of what OpGraph needed and did not have is now in the runtime or in this ro
 * *The carrier.* An execution is a graph of <<waypoints>>: a fork at a gateway is two commits from one waypoint, a join is a merge, a retry is a sibling, and a checkpoint is a waypoint that was saved.
 * *The engine.* The runtime's `Pump` and `Transformer`, where the older design had graph processors. One engine already runs flows, capability resolution and transformations.
 * *Two kinds of connection.* A transition carries messages, each of which matters, with Git as the durable log between activities. A wire between properties carries state, of which only the latest matters, and that is a <<bindings,binding>>. A diagram can say which a connection is.
-* *What an activity does.* Resolved through the capability framework, by a selection annotation that names the element of the diagram: the mechanism of <<drawn-screens>>, used for behavior.
+* *What an activity does.* Resolved through the capability framework, by a selection annotation that names the element of the diagram: the mechanism of <<drawn-screens>>, used for behavior. Since it is resolved where the process is deployed, the same activity may be a task for a person in one deployment and an agent in another, as <<target-business>> says.
 * *Telemetry.* A span per step, in the runtime's telemetry model, which is kept beside the model it describes. Playing a trace back on its diagram is the Draw.io animation listed in <<designed-and-waiting>>.
 * *Settling.* A graph with a cycle stops by a rule over lineage.
 

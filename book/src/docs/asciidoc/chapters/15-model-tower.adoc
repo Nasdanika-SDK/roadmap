@@ -124,12 +124,12 @@ Each row is a model to migrate, and none has a date.
 |Agent +
 `agent.xcore`
 |Agentic systems, agents, tasks, tools and skills: for documenting such a system and for running it. An agent is an AI system, so it is governed by construction.
-|Runs on <<waypoints>>. Tools come from the tool model and inference from the inference model, so it should shrink. Authoring in Draw.io follows <<drawn-screens>>.
+|Runs on <<waypoints>>. Tools come from the tool model and inference from the inference model, so it should shrink. Authoring in Draw.io follows <<drawn-screens>>. An agentic system is a component like any other: <<agentic-components>>.
 
 |MCP +
 `mcp.xcore`
 |Servers, their versions, tools, resources and prompts, hosts and clients, and catalogs of them.
-|Tools move to the tool model, where MCP is one transport.
+|Tools move to the tool model, where MCP is one transport. Servers and clients stay as models, so that a tool can be requested by id or by description: <<agentic-components>>.
 
 |Capability +
 `capability.xcore`
@@ -212,7 +212,7 @@ The form is not one application for everything.
 It is a navigator with contributions: the tree of accounts on one side, and on the other a view that depends on what is selected, an account's entries, a transaction, an assertion that a balance is what the bank says it is.
 Each view comes from the module that knows the class, as views do everywhere in the runtime.
 The same form serves the other floors: a tree of capabilities, of controls, of work.
-It is the navigator with details that <<commander>> lists as planned.
+It is the navigator with details, which is now <<explorer>>.
 
 === Order
 

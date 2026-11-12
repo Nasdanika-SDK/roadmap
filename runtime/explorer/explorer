@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs Nasdanika Explorer from this module's target directory, after "mvn package".
+#   ./explorer
+exec java -jar "$(dirname "$0")"/target/explorer-*.jar "$@"

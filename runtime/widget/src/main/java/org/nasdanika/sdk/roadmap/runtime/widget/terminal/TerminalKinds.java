@@ -49,8 +49,9 @@ public class TerminalKinds extends KindFactory {
 	// end::rows[]
 
 	/**
-	 * Breaks a line at spaces so that each piece fits the width, and in the middle of a word that
-	 * is longer than the width.
+	 * Breaks a line at spaces so that each piece fits the width. A word that is longer than the
+	 * width is broken after a dot or a slash where it has one, as a qualified name or a path does,
+	 * and in the middle where it has none.
 	 */
 	static List<String> wrap(String line, int width) {
 		List<String> pieces = new ArrayList<>();
@@ -58,8 +59,10 @@ public class TerminalKinds extends KindFactory {
 		while (rest.length() > width) {
 			int at = rest.lastIndexOf(' ', width);
 			if (at <= 0) {
-				pieces.add(rest.substring(0, width));
-				rest = rest.substring(width);
+				int separator = Math.max(rest.lastIndexOf('.', width - 1), rest.lastIndexOf('/', width - 1));
+				int cut = separator > 0 ? separator + 1 : width;
+				pieces.add(rest.substring(0, cut));
+				rest = rest.substring(cut);
 			} else {
 				pieces.add(rest.substring(0, at));
 				rest = rest.substring(at + 1);

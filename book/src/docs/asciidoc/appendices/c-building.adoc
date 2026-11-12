@@ -13,6 +13,7 @@ runtime/                    what is on the roadmap for the runtime, as code
   widget/                   widgets, kinds, Markdown and the neutral terminal context
   tui/                      the terminal on TamboUI, and screenshots
   commander/                Nasdanika Commander
+  explorer/                 Nasdanika Explorer
 models/
   core/                     the core nano-models: Xcore that generates and compiles
     sketches/               Role, IAM, Seal and Lifecycle, as they are before the SDK
@@ -56,7 +57,7 @@ The book is AsciiDoc in `book/src/docs/asciidoc`, rendered by Asciidoctor to a P
 Its build does five things, in order.
 
 . Unpacks the look of the HTML and the NBOK appendix from the runtime release, the artifacts `org.nasdanika.sdk.runtime.doc:zephyr` and `:nbok`.
-. Copies the manuscript to `target/manuscript`, and beside it what the tests wrote: the screenshots of the commander and the renderings of <<widgets>>.
+. Copies the manuscript to `target/manuscript`, and beside it what the tests wrote: the screenshots of the commander and the explorer, and the renderings of <<widgets>> and of the explorer's views.
 . Draws the cover, with `book/src/cover/Cover.java`, run by the JDK that runs Maven.
 . Renders the three formats into `target/book`.
 . Assembles `target/site`: the HTML as `index.html`, and the PDF and the EPUB under names that do not change, so that links to them keep working.
@@ -128,4 +129,4 @@ The root `pom.xml` has them as the `tamboui.exports` property:
 --add-exports=dev.tamboui.core/dev.tamboui.export.text=org.nasdanika.sdk.roadmap.runtime.tui
 ----
 
-The commander's jar runs on the class path, where they are not needed.
+The jars of the commander and the explorer run on the class path, where they are not needed.

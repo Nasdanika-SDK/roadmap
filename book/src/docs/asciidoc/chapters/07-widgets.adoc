@@ -286,9 +286,9 @@ Otherwise binding late to a context would only move the early binding into the w
 === What is not there yet
 
 * [.planned]#PLANNED# *An AsciiDoc context.* AsciiDoc is a format of several files. Widgets ask for sections, and the context decides through a policy which sections become files of their own: by level, as a book splits into chapters, or by class, as a reference has a file per class. A locator maps a model element to a path and an anchor, so a link to an element is written before the element is rendered. `Include` is a kind that only AsciiDoc has.
-* [.planned]#PLANNED# *The first consumers:* the glossary of a Meta package, rendered as Markdown and AsciiDoc with the bank model as the example, and the documentation of a command line, rendered from its saved command tree (<<runtime-models>>).
+* [.planned]#PLANNED# *The first consumers:* the references of metamodels and the documentation of diagrams, which are the first transition of <<target-state>>, starting with the glossary of a Meta package rendered as Markdown and AsciiDoc with the bank model as the example. Then the documentation of a command line, rendered from its saved command tree (<<runtime-models>>). <<explorer>> already shows a view in a terminal and as Markdown from one piece of code.
 * [.planned]#PLANNED# *An HTML context with Bootstrap,* beside the HTML models it depends on, and a context that builds the document model of <<core-nano-models>>.
-* [.planned]#PLANNED# *Interaction:* `Action`, `Selection` and `Input` as kinds that static formats do not provide, and `Tree` and a form, each arriving with the first screen that needs it.
+* [.planned]#PLANNED# *Interaction:* `Action`, `Selection` and `Input` as kinds that static formats do not provide, and `Tree` and a form, each arriving with the first screen that needs it. For `Tree` that screen exists: <<explorer>> uses TamboUI's tree directly, and what it needed is the specification of the kind.
 * [.planned]#PLANNED# *A table that scrolls,* with its position in a state object.
 
 === Why not something that exists

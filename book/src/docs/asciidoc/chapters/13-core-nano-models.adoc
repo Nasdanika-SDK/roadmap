@@ -91,6 +91,9 @@ And selectors and values have no side effects, with XPath as the language for ca
 
 === Occupancy
 
+The sketch below is a placeholder: a first statement of the idea, to be worked out when something needs it.
+It can wait, and the next release does not include it.
+
 Most models treat time as two date columns.
 Occupancy treats it as one dimension among others: a jurisdiction, a version line, a level of sensitivity, a floor of a building.
 
@@ -180,6 +183,7 @@ endif::[]
 
 The core model's `Documented` has sections and content.
 The document nano-model replaces them, and it starts from the enterprise nano-model: a document is a view, and a section is a representation.
+It is planned for the next release, whose focus is documentation: <<document-model-release>>.
 
 [source,java]
 ----
@@ -227,6 +231,7 @@ Each should be smaller afterwards than it is now, which is the test that the nan
 
 * [.planned]#PLANNED# *Applying changes:* the engine that evaluates selectors and values, applies changes in order, and reports a change that does not fit its host.
 * [.planned]#PLANNED# *Region arithmetic:* whether one box contains or meets another, and which occupancies are current at a coordinate.
+* [.planned]#PLANNED# *A model at a coordinate:* the projection of a model to what holds at one place and time, so that a model can be released for a jurisdiction and a date. <<target-business>> has the use.
 * [.planned]#PLANNED# *Catalogs as resources:* formats, channels and a few stakeholders that models can refer to, as the first content.
 * [.planned]#PLANNED# *Facets:* an element that has an aspect for a while, where today it would have to inherit it for good.
 * [.planned]#PLANNED# *Generated references* for these models, in this book, once the runtime generates them.

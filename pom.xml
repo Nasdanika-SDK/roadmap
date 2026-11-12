@@ -53,7 +53,7 @@
 				mvn verify -Dnasdanika.runtime.version=<version installed from the runtime>
 		-->
 		<nasdanika.runtime.version>2026.11.0</nasdanika.runtime.version>
-		<!-- TamboUI is 0.x: one property, one place to change, and only the tui and commander modules see it -->
+		<!-- TamboUI is 0.x: one property, one place to change, and only the tui, commander and explorer modules see it -->
 		<tamboui.version>0.7.0</tamboui.version>
 		<!--
 			TamboUI 0.7.0 ships its exporters, dev.tamboui.export, in the tamboui-core jar and does not
@@ -95,6 +95,11 @@
 			<dependency>
 				<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
 				<artifactId>commander</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+				<artifactId>explorer</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>

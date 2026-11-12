@@ -3,6 +3,8 @@
 == Glossary
 
 [glossary]
+Baseline:: What is there before a change: here, the released runtime with the sketches of this repository. Also a released state of an architecture that others build on.
+
 Binding:: A value that can be read now and followed as it changes: a supplier, a publisher that starts with the current value, and closeable. Not to be confused with resolving a diagram element to what implements it, or with a decision binding of the model tower.
 
 Catalog:: Definitions published together as a resource that other models refer to: kinds, changes, dimensions, examples, stakeholders.
@@ -13,7 +15,11 @@ Change:: A change to a model as data: a selector that finds what to change, and 
 
 Coalescing:: Keeping only the latest value for a subscriber that is slower than its source, where a stream would hold the source back.
 
+Coordinate:: A position in one or more dimensions: a jurisdiction, a date, a version line. A model can be released for a coordinate.
+
 Context:: Where a widget renders: Markdown being written, an area of a terminal. Its type is the format. A derived context is one made from another for a part of the output: a deeper heading level, a sub-area, a buffer.
+
+Explorer:: Nasdanika Explorer: a tree and, beside it, a view of what is selected in it.
 
 Facet:: What a waypoint carries besides its lineage, asked for by type.
 
@@ -55,9 +61,15 @@ Resolve:: To find what implements an element of a diagram. Kept apart from "bind
 
 Sketch:: Code in this repository, built and tested, and not settled.
 
+Stub:: A small file of hand-written documentation for one element of a model or a diagram, created once by a command and included by the generated documentation. Its file is at the path of the element.
+
 Surface:: A context that is an area: a terminal in cells, a diagram page in pixels.
 
+Target state:: The North Star drawn area by area: what people, teams and agents will be able to do, and what stands in each place today.
+
 Technology model:: A model of what a system or a format holds, in its own terms, for reading and writing.
+
+Transition state:: A state between the baseline and the target at which one can stop and still have something that works.
 
 Viewpoint:: A way of looking that frames concerns. A view is what is built from a viewpoint for some elements.
 

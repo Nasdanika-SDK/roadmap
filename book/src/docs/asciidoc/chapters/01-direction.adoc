@@ -34,6 +34,9 @@ The candidate is the dispute of a card transaction in the Nasdanika Internationa
 The North Star is what keeps gradient ascent from stopping on a local maximum.
 A step can be valuable and cheap and still lead away from it.
 
+One sentence is a direction and not a picture.
+<<target-state>> draws the picture: what the destination looks like for those who define a business, draw its processes, design its systems, build them and run them, what stands in each of those places today, and the states on the way.
+
 === How the next step is chosen
 
 *Gradient ascent.*
@@ -117,10 +120,11 @@ The SDK book argues them; here they are in one line each.
 
 === The shape of what follows
 
-The rest of the book has two parts.
+<<target-state>> comes first, and then two chapters on using the roadmap: <<taking-part>> and <<assistants>>.
+After them the book has two parts.
 
 *Runtime* is what comes next in the runtime itself.
-The order of its chapters is the order of dependency: bindings and waypoints go into `common`, widgets are built on bindings, the terminal on widgets, and the commander on the terminal and on volumes.
+The order of its chapters is the order of dependency: bindings and waypoints go into `common`, widgets are built on bindings, the terminal on widgets, and the commander and the explorer on the terminal and on volumes.
 Screens drawn in Draw.io, and the list of what is designed and waiting, close the part.
 
 *Models* is the larger and the slower part.
@@ -130,3 +134,4 @@ Then the model tower, the "business" models that build on each other floor by fl
 
 The runtime is released quarterly.
 The next release is planned for February 2027, tentatively.
+Its highest priority is documentation generated from views, of metamodels and of diagrams: <<next-transition>> says why and what it takes.

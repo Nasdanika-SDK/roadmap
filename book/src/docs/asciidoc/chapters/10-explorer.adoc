@@ -1,0 +1,300 @@
+[#explorer]
+== Nasdanika Explorer
+
+[horizontal]
+Capability:: A tree on the left and, on the right, a view of what is selected in it: a way to walk through a structure one element at a time and see, and later edit, what is known about each. Over the modules of a JVM today. Over the elements of a model and the pages and shapes of a diagram next.
+Demonstration:: `ExplorerTests`, `ModuleViewsTests` and `TerminalLoopTests` in `runtime/explorer`. After the build, `java -jar` runs it.
+Status:: [.sketch]#SKETCH# in `runtime/explorer`: a prototype that navigates and views. Editing, and exploring a model or a diagram, are [.planned]#PLANNED#.
+Depends on:: <<widgets>> for the views, <<terminal>>, the runtime's `volume` module for the tree, and TamboUI {tamboui-version} for the tree widget.
+Value and effort:: High for small. It is the navigator with details that <<commander>> and <<model-tower>> ask for, and the authoring half of the diagram documentation in <<target-state>>.
+How to help:: Make a generic volume of something you know, with a view for its content, and say what the explorer did not let you do.
+
+=== Why
+
+I have many diagrams, and many of them are a pixel deep: boxes and lines with nothing behind them.
+Drawing a diagram is spatial thinking.
+Documenting it is sequential thinking: go through its elements one by one, and for each write down what is known, or read what is already written and correct it.
+A canvas is the wrong tool for the second kind of work.
+It shows everything at once and one element's documentation in a small dialog.
+
+The explorer is the tool for the sequential half.
+It shows the structure as a tree and gives the rest of the screen to the element that is selected.
+
+It differs from the commander in what it is about.
+The commander has two places and is about moving things between them.
+The explorer has one structure and is about what each thing in it is.
+They share what they stand on: both show a volume, and both are an application without a terminal, driven by a test.
+
+=== Running it
+
+[source,text,subs="attributes"]
+----
+mvn -q package
+java -jar runtime/explorer/target/explorer-{revnumber}.jar
+----
+
+It opens on the modules of the JVM that runs it, which every reader has.
+Started this way those are the modules of the JDK.
+`explorer` and `explorer.cmd` beside the module's `pom.xml` run the same line.
+
+.The modules of a JVM, in folders by the segments of their names
+image::explorer.svg[The explorer,pdfwidth=100%]
+
+[cols="1,1,3",options="header"]
+|===
+|Key |Letter |What it does
+
+|kbd:[Up], kbd:[Down] | |Move in the tree, or scroll the view
+|kbd:[Right] | |Open a folder, then go into it
+|kbd:[Left] | |Close a folder, or go to the one above
+|kbd:[Enter] | |Open or close a folder. On a leaf, go to its view
+|kbd:[Backspace] | |The folder above
+|kbd:[Tab] | |The other pane
+|kbd:[F1] |`h` |The keys
+|kbd:[F3] |`v` |The view, and back to the tree
+|kbd:[F4] |`e` |Edit, where an editor exists. None does yet
+|kbd:[Ctrl+R] |`r` |Read the tree again
+|kbd:[F10] |`q` |Quit
+|===
+
+The function keys are the commander's, so that a hand that knows one knows the other.
+
+=== What is explored
+
+The explorer takes three things.
+
+[source,java]
+----
+include::{explorer-main}/Explorer.java[tag=constructor,indent=0]
+----
+<1> The view of a content is a widget of <<widgets>>.
+
+The tree is a `GenericVolume`, the interface under the runtime's `Volume`.
+A volume's content is bytes.
+A generic volume's content is whatever the volume holds, so the explorer gets the thing itself and not a file to parse.
+
+The volume of the prototype holds modules, in folders by the segments of their names, as a Maven repository lays out groups:
+
+[source,java]
+----
+include::{explorer-main}/jvm/ModulesVolume.java[tag=volume,indent=0]
+----
+<1> `org.nasdanika.sdk.runtime.common` is at `org/nasdanika/sdk/runtime/common`.
+<2> The content at a path is a place in the tree of names, not bytes.
+<3> No capabilities, so it is read-only.
+
+[source,java]
+----
+include::{explorer-main}/jvm/ModuleNode.java[tag=node,indent=0]
+----
+
+A place can be a module, a folder, or both.
+`java.sql` is a module, and it is the folder of `java.sql.rowset`:
+
+[source,java]
+----
+include::{explorer-test}/ExplorerTests.java[tag=both,indent=0]
+----
+<1> To the tree it is a directory, because something is under it.
+<2> Its view has what the module requires.
+<3> And what is under it.
+
+A model element is like that too: it has features of its own and it contains other elements.
+A file system has no such thing, which is one reason the explorer is not a panel of the commander.
+
+The tests do not explore the JVM that runs them, since its modules differ from one machine to the next.
+They explore a handful of descriptors made for the purpose:
+
+[source,java]
+----
+include::{explorer-test}/Modules.java[tag=modules,indent=0]
+----
+<1> A module that is also a folder.
+
+[source,java]
+----
+include::{explorer-test}/ExplorerTests.java[tag=setup,indent=0]
+----
+<1> The volume.
+<2> The views, for the kinds of a terminal.
+<3> The explorer, with the function from a content to its view.
+
+=== The view is a widget
+
+The explorer does not know what it shows.
+It asks the function for a widget and draws it.
+For the modules, the function is one method:
+
+[source,java]
+----
+include::{explorer-main}/jvm/ModuleViews.java[tag=view,indent=0]
+----
+<1> A module: what it exports, requires and provides.
+<2> A folder: a table of what is in it. Under a module it gets a heading of its own.
+<3> The name is the heading.
+
+[source,java]
+----
+include::{explorer-main}/jvm/ModuleViews.java[tag=module,indent=0]
+----
+<1> By the name of the module that is required. A modifier, such as `transitive`, is written before the name and does not change the order.
+
+[source,java]
+----
+include::{explorer-main}/jvm/ModuleViews.java[tag=folder,indent=0]
+----
+<1> The number of modules is for folders.
+<2> A format with no tables gets a list.
+
+[source,java]
+----
+include::{explorer-test}/ExplorerTests.java[tag=folder,indent=0]
+----
+<1> Selecting by path opens the folders above.
+<2> Three requires and one provides. Every module requires `java.base`, and the descriptor says so.
+
+.A folder: its modules, and the sums of their requires and provides
+image::explorer-folder.svg[A folder in the explorer,pdfwidth=100%]
+
+[source,java]
+----
+include::{explorer-test}/ExplorerTests.java[tag=module,indent=0]
+----
+<1> A modifier before the name.
+<2> A name that is longer than the pane is broken after a dot.
+
+.A module: its name, and what it exports, requires and provides
+image::explorer-module.svg[A module in the explorer,pdfwidth=100%]
+
+`ModuleViews` chooses between two views with an `if`.
+That is all "a view chosen by the class of what it shows" needs when there is one class.
+For a model with many classes the function will be the polymorphic user interface, resolving a view through the capability framework, and the explorer will not change.
+
+=== The same view is a page
+
+`ModuleViews` names no format.
+It asks for kinds, so the view that the explorer shows is also a page of Markdown:
+
+[source,java]
+----
+include::{explorer-test}/ModuleViewsTests.java[tag=markdown,indent=0]
+----
+<1> The kinds of GitHub Flavored Markdown instead of the kinds of a terminal. Nothing else changes.
+
+.What the test wrote
+[source,markdown]
+----
+include::../showcase/explorer-module.md[]
+----
+
+This is the reason the explorer is on the roadmap now.
+What is browsed and what is published come from one view, so a reference generated for a book and a screen for walking through the same elements cannot say different things.
+<<next-transition>> builds on it: the documentation of metamodels and of diagrams is generated from views, and reviewed and written in the explorer.
+
+=== The tree
+
+The tree is TamboUI's tree widget.
+The explorer gives it functions over the volume and keeps what is open in a set of paths:
+
+[source,java]
+----
+include::{explorer-main}/Explorer.java[tag=tree,indent=0]
+----
+<1> The entries of a folder, from the volume.
+<2> What is open is the explorer's state, not the widget's.
+<3> The widget keeps the selection in view.
+
+[source,java]
+----
+include::{explorer-main}/Explorer.java[tag=children,indent=0]
+----
+<1> A folder is listed when it is first opened and not before, so a large volume costs what is looked at.
+
+The arrows work as they do in the tree of a file manager:
+
+[source,java]
+----
+include::{explorer-test}/ExplorerTests.java[tag=arrows,indent=0]
+----
+<1> Right opens a folder.
+<2> Right again goes into it.
+<3> Left on a leaf goes to its folder, and left on an open folder closes it.
+
+The widget module has no tree kind yet.
+`Tree` is listed in <<widgets>> as planned, to arrive with the first screen that needs it, and this is that screen.
+The prototype uses TamboUI's widget directly, which the `explorer` module may do, and what it needed from it is the specification of the neutral kind: children read on demand, open nodes as state outside the widget, and a selection that can be set by path.
+
+=== A view longer than its pane
+
+`java.base` exports more than a hundred packages.
+The view is drawn whole into a buffer of its own, once for a selection and a width, and the pane shows a window of it:
+
+[source,java]
+----
+include::{explorer-main}/Explorer.java[tag=view,indent=0]
+----
+<1> Drawn again only when the selection or the width changes.
+<2> The window is copied cell by cell.
+<3> The content from the volume, and its view from the function.
+<4> A view that fails is shown as its error, in the pane, and the explorer goes on.
+
+[source,java]
+----
+include::{explorer-test}/ExplorerTests.java[tag=scroll,indent=0]
+----
+<1> The status line says which rows are shown.
+<2> The view takes the keys.
+<3> Moving in the tree starts the next view at its top.
+
+This is how the prototype does without the scrolling table that <<widgets>> lists as planned.
+It works for views of hundreds of rows and it is not the answer for a table of a million.
+
+=== From the command line
+
+The explorer is meant to be a command, after a command that supplies what to explore:
+
+[source,text]
+----
+nsdk model architecture.drawio explore --edit
+----
+
+`model` loads `architecture.drawio` as a model. The runtime has the model of a Draw.io file: a document, its pages, their layers, nodes and connections.
+`explore` opens the explorer on it, the tree of the diagram's elements on the left.
+With `--edit` the right pane is an editor where one exists for the selected element, and a view where none does.
+Without it kbd:[F4] opens the editor, as it does in the commander.
+Which of the two is the default is a setting.
+
+A person then walks the tree of the diagram, reads what is written about each element and writes what is missing.
+What is edited there is the documentation stub of the element, described in <<next-transition>>, and not the diagram file.
+
+The line is a design.
+The released runtime has the wiring that lets `explore` receive what `model` supplied, and neither command exists yet.
+
+=== What is not there yet
+
+* [.planned]#PLANNED# *A volume of model elements.* Containment as folders, attributes as content, and references as links, which the volume interface already has a capability for. With it the explorer opens any model the runtime loads.
+* [.planned]#PLANNED# *Views by class.* The view function as the polymorphic user interface: a view per class from the module that knows the class, and a reflective view for what nobody claimed. The views of Meta's classes come first, since they document every metamodel.
+* [.planned]#PLANNED# *Editing.* kbd:[F4] on an element opens the editor of the commander on the element's documentation, or on an attribute. Saving goes through a command, recorded and validated, as <<bindings>> describes for input.
+* [.planned]#PLANNED# *Commands by type.* What can be done with the selected element depends on its class, and the key bar shows it. This is the commander's "any tree, with commands by type", in the screen that fits it better.
+* [.planned]#PLANNED# *Search and filter* in the tree, and going to an element by its path or id.
+* [.planned]#PLANNED# *Links in a view.* A view that mentions another element lets the reader go to it, and come back.
+* [.planned]#PLANNED# *The `explore` command,* and a base terminal command under it and the commander, as <<terminal>> describes.
+* [.planned]#PLANNED# *A tree kind* in the widget module, extracted from this prototype.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The explorer was run from its jar with a key piped to it, and through JLine's in-memory terminal in `TerminalLoopTests`.
+Nobody has sat in front of it on a real terminal yet, so how the colors, the double border of the focused pane and the keys behave there is not known.
+
+TamboUI {tamboui-version} draws a closed and an open node as two triangles and has no option for them.
+The PDF's code font has neither triangle, so the explorer replaces them with a plus and a minus after the tree is drawn.
+This is a field note to write, and a request to make of TamboUI.
+
+The key bar, the status line and the help dialog are now written twice, here and in the commander.
+That is the signal <<terminal>> waits for to extract the kit.
+
+Wrapping in the neutral terminal text was changed for this chapter: a word longer than its area is now broken after a dot or a slash.
+<<widgets>> does not mention wrapping, and it should once the rule is settled.
+====
+endif::[]

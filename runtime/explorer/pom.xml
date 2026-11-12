@@ -1,0 +1,96 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<artifactId>explorer</artifactId>
+	<packaging>jar</packaging>
+	<name>Nasdanika SDK Roadmap: Runtime Explorer</name>
+	<description>
+		Nasdanika Explorer: a tree on the left and, on the right, a view of what is selected. The tree
+		is a generic volume, whose content is whatever the volume holds, and the view is made of the
+		widget module's kinds, so the view that is shown in the terminal is also a page of Markdown.
+		A prototype, on the runtime's volume module and TamboUI's tree widget.
+
+		Run it after "mvn package", over the modules of the JVM that runs it:
+
+			java -jar runtime/explorer/target/explorer-VERSION.jar
+
+		The jar's manifest names its dependencies in target/lib, copied there by the build.
+	</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.runtime</groupId>
+			<artifactId>tui</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.nasdanika.sdk.runtime</groupId>
+			<artifactId>volume</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>dev.tamboui</groupId>
+			<artifactId>tamboui-tui</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>dev.tamboui</groupId>
+			<artifactId>tamboui-jline3-backend</artifactId>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- The tests take screenshots: see tamboui.exports in the root pom -->
+					<argLine>${tamboui.exports}</argLine>
+				</configuration>
+			</plugin>
+			<plugin>
+				<!-- The dependencies beside the jar, so that "java -jar" is all it takes to run -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/lib</outputDirectory>
+							<includeScope>runtime</includeScope>
+							<!-- The runtime and the roadmap each have a module called common: the group keeps the files apart -->
+							<prependGroupId>true</prependGroupId>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+							<classpathLayoutType>custom</classpathLayoutType>
+							<customClasspathLayout>$${artifact.groupId}.$${artifact.artifactId}-$${artifact.version}$${dashClassifier?}.$${artifact.extension}</customClasspathLayout>
+							<mainClass>org.nasdanika.sdk.roadmap.runtime.explorer.ExplorerMain</mainClass>
+						</manifest>
+						<manifestEntries>
+							<!-- JLine reaches the terminal through the foreign function API -->
+							<Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

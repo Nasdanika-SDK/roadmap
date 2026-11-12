@@ -14,6 +14,42 @@ They are here so that the first cut of the book has its history, and only what i
 |===
 |Date |Decision |Chapters
 
+|2026-11-12
+|Models that use `Documented`, `Section` and `Content` are migrated to the document model. There should be few, if any, and the three classes are not kept beside it.
+|<<target-state>>
+
+|2026-11-12
+|Bindings are also for what a component needs in order to run: a language model, a cache, a search. Such a binding may carry response time, cost and availability, so that the one that requests can choose. The capability framework is for stable providers and assemblies that the consumer drives. Bindings are for a system shaped by its configuration and environment. Configurations compared under load are alternatives of a decision.
+|<<bindings>>, <<target-state>>, <<designed-and-waiting>>
+
+|2026-11-12
+|The document model is part of the next release and replaces `Documented`, `Section` and `Content` of the core model. Occupancy is a placeholder and waits.
+|<<target-state>>, <<core-nano-models>>, <<designed-and-waiting>>
+
+|2026-11-12
+|An agent may be a participant of a process, and the same activity may be done by people in one deployment and by an agent in another. An agentic system is a diagram that is documented, owned, versioned, signed and approved, and at run time a component obtained as a capability. MCP servers and clients are models, and a tool is requested by id or by description and comes from the same JVM or over MCP.
+|<<target-state>>, <<designed-and-waiting>>, <<model-tower>>, <<opgraph-and-nsml>>
+
+|2026-11-12
+|A segment of a stub's path is the id of the element, which Draw.io keeps unique in a diagram and which can be edited to read well. A `path-segment` property of the element overrides it and defaults to the id.
+|<<target-state>>
+
+|2026-11-12
+|A documentation stub's file is at the path of its element, its place in the tree, and not named by the element's id, so that a person can find the file of interest. A stub whose element moved is an orphan until the commands report it or move it. The target state is inspired by TOGAF's method and not aligned with it.
+|<<target-state>>
+
+|2026-11-12
+|The North Star gets a target state, drawn in the order of TOGAF's method: who the work is for, business, applications and technology, implementation and after, and AI through all of them. Each capability says what stands in its place today, which is usually an office document. Transition states lead to it, and only the first has a date.
+|<<direction>>, <<target-state>>
+
+|2026-11-12
+|The first transition, and the highest priority of the next release, is documentation generated from views: references of metamodels and documentation of diagrams, in Markdown and AsciiDoc. Hand-written text is in stubs that a command creates once, with commands to report orphans and to follow a diagram through Git. Diagram documentation is generated from the diagram model and not from the Java API.
+|<<target-state>>, <<widgets>>, <<designed-and-waiting>>
+
+|2026-11-12
+|Nasdanika Explorer: a tree with a view of what is selected, in an `explorer` module, over a generic volume and with views made of widget kinds. It is the navigator with details that the commander listed, as an application of its own, and where "any tree, with commands by type" lands first. The neutral terminal text breaks a word that is longer than its area after a dot or a slash.
+|<<explorer>>, <<commander>>, <<widgets>>, <<model-tower>>
+
 |2026-11-11
 |The roadmap becomes a repository in the SDK organization: this book, modules built on runtime 2026.11.0, and model sketches. Bindings, waypoints, widgets, the terminal and the commander get code. The Maven group is `org.nasdanika.sdk.roadmap`, and a module graduates by dropping `roadmap` from its names.
 |All

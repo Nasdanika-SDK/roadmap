@@ -20,6 +20,7 @@ The build compiles the modules, runs their tests, generates the nano-models from
 
 Some things can be used as they are.
 Nasdanika Commander, in <<commander>>, is a file manager for a terminal, and after the build it runs with `java -jar`.
+Nasdanika Explorer, in <<explorer>>, runs the same way and opens on the modules of the JVM that runs it.
 
 === Take a piece
 
