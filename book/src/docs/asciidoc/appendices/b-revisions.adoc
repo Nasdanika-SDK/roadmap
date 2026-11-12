@@ -15,6 +15,18 @@ They are here so that the first cut of the book has its history, and only what i
 |Date |Decision |Chapters
 
 |2026-11-12
+|Two more ways of delivering in the reactive enterprise: a view on demand with what changed since a point that the one who asks names, and a view sent again because the view was released in a new version and not because the state changed.
+|<<reactive-enterprise>>
+
+|2026-11-12
+|One embodiment of the reactive enterprise: an architecture repository in which a push is analyzed for changes, the changes are played to routing processors on the enterprise model, and views are delivered at once or by a scheduler. Each stakeholder, kind of view and channel has an "at commit", which is an offset into the history of the repository.
+|<<reactive-enterprise>>
+
+|2026-11-12
+|The reactive enterprise: the enterprise model as what routes information and not only what describes it. A model changes, and stakeholders whose view changed get the new view at a pace by role. Live bindings, change recordings and Git are providers of one capability: bind, coalesce, emit. It carries state and not messages. An idea with no date, in an appendix.
+|<<reactive-enterprise>>, <<target-state>>, <<bindings>>, <<core-nano-models>>
+
+|2026-11-12
 |Models that use `Documented`, `Section` and `Content` are migrated to the document model. There should be few, if any, and the three classes are not kept beside it.
 |<<target-state>>
 

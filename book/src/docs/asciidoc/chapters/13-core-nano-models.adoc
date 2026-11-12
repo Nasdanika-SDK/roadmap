@@ -167,6 +167,9 @@ One is documentation: a "monthly statement" viewpoint that explains how to read 
 The other is a request.
 Asked for a viewpoint in a format over a channel, the polymorphic user interface builds the view, and the rendered view can open its viewpoint's documentation as help: a link on a page, kbd:[F1] in a terminal.
 
+A third use is further out.
+The same rows can route changes as they happen, each stakeholder at a pace of their own: <<reactive-enterprise>>.
+
 It also explains why the runtime has several formats for one picture.
 SVG is for people reading a page or a book, Draw.io for people who edit, and Markdown or the model itself for agents.
 Each is a row of a stakeholder, a channel and a format.

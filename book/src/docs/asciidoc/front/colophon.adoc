@@ -12,7 +12,7 @@ This book is published in three formats, and each is rebuilt whenever the roadma
 * an EPUB, {epub-url}.
 
 It is also on Leanpub, {leanpub-url}, as part of the Nasdanika Body of Knowledge.
-Its source, with the modules, the tests and the models it describes, is at {roadmap-repo}.
+Its source, with the modules, the tests and the models it describes, is at {roadmap-repo} and, as a zip file made from it at each publication, at {sources-url}.
 
 This edition is built on Nasdanika SDK Runtime {runtime-version}.
 Every code listing in it is a region of a source file or a test in the repository, compiled and tested against that version of the runtime when the book is built, and every terminal screenshot is what a test drew.

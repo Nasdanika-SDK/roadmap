@@ -271,6 +271,7 @@ The configurations of a system are then the alternatives, and the performance th
 * [.planned]#PLANNED# *Input written through a transaction.* An input field's state is a binding already. Writing it to a model should go through a command inside a model transaction: recorded, validated, and rolled back on cancel.
 * [.planned]#PLANNED# *Telemetry of bindings,* with spans per screen and per control, and the sanitizer for values.
 * [.planned]#PLANNED# *Bindings over the wire:* server-sent events for a browser, and notifications for an agent.
+* [.planned]#PLANNED# *A quiet period:* an operator that emits once its source has been still for a while, for a subscriber that wants changes after they settle. <<reactive-enterprise>> has the widest use of it.
 
 === Prior art
 

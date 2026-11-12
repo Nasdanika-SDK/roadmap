@@ -39,6 +39,7 @@ ifndef::imagesdir[:imagesdir: images]
 ifndef::site-url[:site-url: https://roadmap.sdk.nasdanika.org]
 ifndef::pdf-url[:pdf-url: {site-url}/nasdanika-roadmap.pdf]
 ifndef::epub-url[:epub-url: {site-url}/nasdanika-roadmap.epub]
+ifndef::sources-url[:sources-url: {site-url}/nasdanika-roadmap-sources.zip]
 ifndef::leanpub-url[:leanpub-url: https://leanpub.com/nasdanika-sdk-roadmap]
 ifndef::roadmap-repo[:roadmap-repo: https://github.com/Nasdanika-SDK/roadmap]
 
@@ -124,6 +125,8 @@ include::appendices/b-revisions.adoc[]
 include::appendices/c-building.adoc[]
 
 include::appendices/d-glossary.adoc[]
+
+include::appendices/e-reactive-enterprise.adoc[]
 
 // The NBOK appendix, shared with every book of NBOK, comes from the runtime release the roadmap is built on
 include::nbok/nbok-appendix.adoc[]

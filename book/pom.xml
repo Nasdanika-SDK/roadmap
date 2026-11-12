@@ -36,6 +36,8 @@
 		<site.dir>${project.build.directory}/site</site.dir>
 		<site.pdf>nasdanika-roadmap.pdf</site.pdf>
 		<site.epub>nasdanika-roadmap.epub</site.epub>
+		<!-- Not made by this build: the workflow zips the checkout and adds it to the site under this name -->
+		<site.sources>nasdanika-roadmap-sources.zip</site.sources>
 		<site.domain>roadmap.sdk.nasdanika.org</site.domain>
 		<leanpub.url>https://leanpub.com/nasdanika-sdk-roadmap</leanpub.url>
 		<asciidoctor.skip>false</asciidoctor.skip>
@@ -265,6 +267,7 @@
 						<site-url>https://${site.domain}</site-url>
 						<pdf-url>https://${site.domain}/${site.pdf}</pdf-url>
 						<epub-url>https://${site.domain}/${site.epub}</epub-url>
+						<sources-url>https://${site.domain}/${site.sources}</sources-url>
 						<leanpub-url>${leanpub.url}</leanpub-url>
 						<roadmap-repo>${project.scm.url}</roadmap-repo>
 						<source-highlighter>rouge</source-highlighter>

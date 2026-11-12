@@ -55,6 +55,8 @@ Provider:: An implementation behind an interface that views are written against:
 
 Pump:: The runtime's queue of work drained by one thread at a time. The realm of bindings and of a terminal's frame loop.
 
+Reactive enterprise:: An enterprise model used to route information: a model changes, and stakeholders whose view changed get the new view, at a pace by role. <<reactive-enterprise>>.
+
 Realm:: A space of state that is reached only through commands, so that its rules hold.
 
 Resolve:: To find what implements an element of a diagram. Kept apart from "bind", which is for values.

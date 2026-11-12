@@ -71,6 +71,8 @@ The PDF uses the theme of the SDK book, and the HTML the Bootswatch Zephyr look 
 
 A workflow in `.github/workflows` builds the repository on every push and pull request.
 On a push to `main` it also publishes `book/target/site` to GitHub Pages, which serves it at {site-url}.
+Before it builds, the workflow zips the sources as they were checked out, and it adds the zip to the site, at {sources-url}, for those who want to try the modules without Git.
+A build on a laptop does not make the zip.
 The book on Leanpub is uploaded by hand, the PDF and the EPUB from `book/target/book`, when a release of the runtime is made or the roadmap has changed enough to say so.
 
 === Conventions

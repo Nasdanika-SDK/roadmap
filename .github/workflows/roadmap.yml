@@ -6,6 +6,7 @@ name: Build the roadmap and publish it to GitHub Pages
 #   index.html               the book as one page
 #   nasdanika-roadmap.pdf    the book as a PDF
 #   nasdanika-roadmap.epub   the book as an EPUB
+#   nasdanika-roadmap-sources.zip   the repository as it was checked out, for those who do not use Git
 #
 # In the repository's Settings > Pages, set Source to "GitHub Actions" and the custom domain to
 # roadmap.sdk.nasdanika.org.
@@ -31,6 +32,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Zip the sources
+      # Before the build, so that the zip has what is in the repository and nothing that a build made.
+      # git archive takes tracked files only. The zip is written outside the workspace.
+      run: git archive --format=zip --prefix=nasdanika-sdk-roadmap/ -o "$RUNNER_TEMP/nasdanika-roadmap-sources.zip" HEAD
     - name: Set up JDK 25
       uses: actions/setup-java@v4
       with:
@@ -41,6 +46,9 @@ jobs:
       # Published editions leave the editor's notes out.
       # Fails on a failing test, a missing listing tag, a broken cross-reference or a missing image.
       run: mvn -B verify -Dbook.editor-notes=false
+    - name: Add the sources to the site
+      # The name is site.sources in book/pom.xml, which the link in the book is made from.
+      run: cp "$RUNNER_TEMP/nasdanika-roadmap-sources.zip" book/target/site/
     - name: Keep the books with the run
       uses: actions/upload-artifact@v4
       with:

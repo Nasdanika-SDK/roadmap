@@ -1,0 +1,192 @@
+[appendix]
+[#reactive-enterprise]
+== The Reactive Enterprise
+
+[.planned]#PLANNED#. This appendix is an idea written down while it is fresh.
+None of it has code, and it is not on the path of the next release.
+It is here, and not in <<target-state>>, so that the target state stays a picture of capabilities and this stays what it is: a consequence of putting two of them together.
+
+=== From documentation to live pathways
+
+<<target-preliminary>> asks an effort to write down its stakeholders, what concerns each of them, what they are shown, in which format and over which channel.
+Read once, that is documentation: a better stakeholder map.
+The enterprise nano-model of <<core-nano-models>> already goes one step further, and computes what can be sent to whom.
+
+The next step is to send it, and to keep sending it.
+A domain model changes.
+The change travels along <<bindings>>, literally or in concept, to the views that show what changed.
+Each stakeholder whose view is now different gets the new view, in their format, over their channel, and at their pace.
+
+The enterprise model is then not a description of how information should flow.
+It is the configuration of how it does flow.
+A definition of enterprise architecture by Chris Behrens speaks of the information pathways of an enterprise.
+The enterprise model first draws those pathways, as who is shown what.
+Here it becomes them: the pathways are live, and the list of stakeholders and concerns is what information travels along.
+
+=== One capability, several providers
+
+In the words of the method that <<target-state>> borrows its order from, there is one architecture building block here and there are several solution building blocks for it.
+In the words of the runtime, there is one capability and there are several providers.
+
+The capability has three parts.
+
+Bind:: Follow a part of a model that a view depends on.
+Coalesce:: Gather changes into a batch, by aggregating them and by waiting.
+Emit:: Produce the views of interest, for those whose view changed.
+
+[cols="2,3,3",options="header"]
+|===
+|Provider |How it binds and coalesces |Where it fits
+
+|Live bindings
+|A binding on a model in memory. A slow subscriber gets the latest value and not a backlog, which <<bindings>> has today. A quiet period, during which nothing changes, says that the changes have settled.
+|An agent or a screen working on a model that is loaded: a new view once the changes settle.
+
+|Change recordings and differences
+|What changed between two points in time, recorded as it happened or computed by comparing two versions of a model.
+|A view of what happened since somebody last looked, some time later.
+
+|Git, over a volume
+|Git coalesces by its nature. A commit is a batch of changes that belong together, a merge is a larger one, and a release is the largest. A push is the notification.
+|Models that are files in a repository, which is where the models of this roadmap are, and people and agents who are not there when a change is made.
+|===
+
+The three are not alternatives to choose one from.
+A person may edit a model with an agent watching it live, commit, and have the commit reach a colleague the next morning and a steering group on Friday.
+
+=== A pace for each role
+
+Coalescing is where a stakeholder's relation to the subject comes in.
+How often somebody should hear about a change depends on what they are to it, and the role model has the words:
+
+[cols="2,3",options="header"]
+|===
+|Who |Gets a new view, for example
+
+|Responsible, and consulted
+|Once the changes settle, as an agent does.
+
+|Accountable
+|Once a day.
+
+|Informed
+|Once a week.
+
+|An agent
+|Once the changes settle and have been still for a while.
+|===
+
+The numbers are examples.
+What matters is that the pace is data, attached to a role and a concern, and not a habit of whoever sends the status report.
+
+A view that did not change is not sent.
+<<bindings>> has that rule for values: an equal value changes nothing, and nobody is told.
+Applied to a rendered view, it means that a week with fifty commits, none of which touched what a stakeholder is shown, is a quiet week for that stakeholder.
+
+[#reactive-enterprise-repository]
+=== One embodiment: an architecture repository
+
+The enterprise model lives in an architecture repository beside other models: the architecture model, and snapshots of an issue tracker and of the cloud infrastructure, as <<technology-models>> would take them.
+A push to the repository starts the following.
+
+. *What changed, by file.* The commits that were pushed are read for the files they touched. A commit may also carry changes at the level of the model, written by whatever made it: in its message, in a file, or in Git notes.
+. *What changed, at the level that is needed.* For a model, that is changes to its elements, taken from the commit where it carries them and computed by comparing two versions of the model where it does not.
+. *The enterprise model is loaded.*
+. *The changes are played* to it, or more likely to routing processors that stand on it. Each change reaches the outboxes of the stakeholders and views that it concerns.
+. *The outboxes are checked.* A delivery that is immediate, or whose interval has passed, is made: the view is computed and sent. Then the "at commit" of that stakeholder, kind of view and channel is moved to the commit that was delivered.
+
+Deliveries at a pace are made by a scheduler.
+It runs a command that looks at what is pending for each stakeholder and view.
+Where nothing is pending it does nothing.
+Where something is, it computes the view, sends it, and moves "at commit".
+
+"At commit" is the offset of a consumer, as in Kafka, and the history of the repository is the log.
+Three things follow from that.
+
+* *An outbox needs to hold nothing.* What is pending for a stakeholder is the range of commits from their "at commit" to the head, so coalescing a week of changes into one delivery is one comparison of two commits and not a queue to maintain.
+* *A delivery can be repeated.* The view is sent first and the offset moved after, so a failure between the two sends the view again. Since a view is state, receiving it twice does no harm.
+* *Moving an offset is a commit, and the loop still ends.* "At commit" is kept in the repository, so a delivery makes a commit, and that commit starts the job again. If no stakeholder is shown the offsets, the second run finds that no view changed, delivers nothing, and makes no commit. The cost is one run with nothing to do. In return, who was told what, and when, is in the history with everything else.
+
+==== On demand, and when the view itself changes
+
+Since a delivery can be repeated, two more ways of delivering come for little.
+
+*On demand, with "since".*
+A stakeholder, or an agent, asks for a view and names a point: a commit, a release, a date.
+The answer is the view as it is now, with what changed since that point.
+It is the delivery that the scheduler makes, with the offset supplied by the one who asks and not read from their record.
+Somebody who joins an effort, or returns to it after a month, asks once and is up to date.
+Asking moves no offset, unless the one who asks says that it should.
+
+*A new version of the view.*
+A view is sent again because the view was released in a new version, and not because what it shows changed: a section was added to it, a chart replaced a table, a mistake in it was corrected.
+The state is the same and the picture of it is better, so those who have the old picture get the new one.
+
+For this the offset has two parts: the commit that was delivered and the version of the view it was delivered with.
+A delivery is due when either is behind.
+Such a delivery should say which of the two it is, because "nothing happened and this is a better report" and "something happened" are read differently.
+
+This is not difficult to build once there is a demand for it.
+Agents may create that demand, and so may teams that are distributed across functions and across organizations, where nobody can walk over and ask what changed.
+
+=== What it carries, and what it does not
+
+An assessment, as of November 2026.
+
+*The pathways carry state, not messages.*
+A coalescing binding keeps the latest value and drops what was between.
+That is right for "what holds now", which is what a view shows.
+It is wrong for anything of which every instance matters: a request for approval, an obligation with a deadline, a payment.
+<<opgraph-and-nsml>> already keeps the two apart, as a wire between properties and a transition that carries messages.
+The reactive enterprise is the first of the two.
+What needs the second goes through a process.
+
+*The hard part is knowing that a view changed.*
+The simple way is to render the view again and compare it with what was sent last, by a digest.
+It costs a rendering for every stakeholder and every batch, and it is enough to start with.
+The better way is to know which elements a view depends on, which is what a binding on a model feature knows and what the views of the mapping language in <<opgraph-and-nsml>> are meant to say.
+
+*Most of it is on the roadmap for other reasons.*
+Views from models, formats and channels, bindings that coalesce, state in Git and notifications to an agent are each listed somewhere in this book.
+What is new is small: a pace on a stakeholder's concern, a quiet period as an operator on bindings, and the loop that connects them.
+
+*It comes after the first two transition states.*
+There is nothing to emit until views are generated, and no pace by role until elements have owners and roles.
+
+=== What stands in its place today
+
+An e-mail that starts with "FYI", a weekly status meeting, and a channel that everybody has muted.
+Wikis and trackers let a person watch a page or an issue, which is a subscription to a document and not to a concern.
+A repository can name owners of files and ask them for review.
+Integration buses and streams of events move records between systems, for systems.
+
+What is missing in all of them is the middle: who cares about what, in which form and how often, written down once and used to route.
+
+=== A first step
+
+The smallest version needs no live bindings and no agent.
+A build that runs on a push generates the views, compares each with the one from the previous build, and lists which stakeholders have a view that changed.
+That is a report, and it becomes a delivery when a channel is attached to it.
+It can be shown as soon as the first transition of <<target-state>> is reached, on the stakeholders of this roadmap.
+It is <<reactive-enterprise-repository>> with one stakeholder pace, immediate, and no offsets: the previous build is the only "at commit".
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The idea is the author's, of 2026-11-12: the enterprise model as what information travels along, live bindings and Git as providers of one capability, and a pace by role.
+The assistant's own are: the reading of commit, merge and release as three sizes of batch, the rule that an unchanged view is not sent, the Assessment section, the "today" section, and the first step.
+The first point of the assessment is a limit and not a detail.
+The author's first word was "information bus", after the "information pathways" in Chris Behrens's definition of enterprise architecture. The assistant suggested "live pathways", since a bus suggests messages and this carries state.
+The definition was not looked up for this appendix: check its wording and add where it was published.
+
+The embodiment in an architecture repository is the author's as well: the steps after a push, the scheduler, and "at commit" as an offset in the manner of Kafka.
+The assistant's own there are two consequences: an outbox that holds nothing, and a delivery that can be repeated.
+The third is the author's: moving "at commit" is a commit, and the run it starts finds nothing to deliver.
+The assistant had proposed Git references to avoid that commit, and they remain an option if the empty run or the extra commits become a nuisance.
+
+Views on demand with "since", and sending again when a view is released in a new version, are the author's too.
+The assistant's own there: that asking moves no offset by default, that the offset has the version of the view as a second part, and that a delivery says which of the two reasons it has.
+
+Open: where the pace is stored. A stakeholder's concern, a role assignment and a channel are all candidates, and the enterprise nano-model has no place for it yet.
+====
+endif::[]

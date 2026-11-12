@@ -65,6 +65,9 @@ Today:: A stakeholder map on a slide, a board from a kickoff workshop, a page in
 Have:: [.sketch]#SKETCH# The enterprise nano-model in <<core-nano-models>>, with a test that computes what can be sent to whom.
 Missing:: [.planned]#PLANNED# The shared catalogs as resources. Views by class, so that a request for a viewpoint in a format over a channel builds the view: <<next-transition>> is the first step toward that.
 
+A list of who is shown what, in which format and over which channel is one step from being what routes information and not only what describes its routes: a model changes, and those whose view changed get the new one, at a pace that fits their role.
+<<reactive-enterprise>> spells that out.
+
 [#target-business]
 === Business: concepts and processes
 

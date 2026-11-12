@@ -62,6 +62,7 @@ An item has an id that does not change when its title does, so that another plan
 |`model.core.occupancy` |Occupancy |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.related`, `model.core.change`
 |`model.core.kind` |Kind |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |`model.core.change`, `model.core.occupancy`
 |`model.core.enterprise` |Enterprise |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
+|`model.core.enterprise.reactive` |The reactive enterprise: views emitted to stakeholders as a model changes, at a pace by role |[.planned]#PLANNED# |<<reactive-enterprise>> |`model.core.enterprise`, `model.core.role`, `runtime.binding`, `runtime.ui.views`
 |`model.core.document` |Document, in the next release in place of `Documented`, `Section` and `Content` |[.sketch]#SKETCH# |<<core-nano-models>>, <<document-model-release>>, `models/core` |`model.core.enterprise`
 |`model.core.example` |Example |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
 |`model.core.role` |Role, IAM, Seal and Lifecycle as nano-models |[.planned]#PLANNED# |<<core-nano-models>>, `models/core/sketches` |`model.core.occupancy`, `model.core.kind`
