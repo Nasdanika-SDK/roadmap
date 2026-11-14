@@ -121,6 +121,9 @@ These are the increments that lead to agentic work on typed models, and they wil
 |[.planned]#PLANNED# Content digests
 |A digest of a model element computed from its content, as an identifier that does not depend on where the element is, and later signatures over digests.
 
+|[.planned]#PLANNED# Lineage providers
+|The polymorphic user interface is given the lineage of an element and does not compute the lineage of its class. Java, Ecore and Meta are the first three providers, and kinds may follow. <<lineage-providers>>.
+
 |[.planned]#PLANNED# The polymorphic user interface in a browser
 |React with Bootstrap, after the terminal. A view covers the features it shows and hands the rest to a less specific view, so that the reflective view at the end of the chain shows only what nobody claimed.
 |===
@@ -143,6 +146,73 @@ These are the increments that lead to agentic work on typed models, and they wil
 |[.planned]#PLANNED# Cascading roadmaps and architectures
 |A roadmap that depends on another team's released roadmap, as a build depends on a library: a slip shows up as a difference, and conflicting dates as warnings. The same for architecture repositories. This roadmap, with ids and dates as data, would be the first to be depended on.
 |===
+
+[#lineage-providers]
+=== Lineage providers
+
+[.planned]#PLANNED#
+The polymorphic user interface chooses a view by asking along a lineage: the class of an element, then its superclasses, nearest first, and the first view found renders the element.
+The SDK book shows it with the classes of Ecore.
+
+The lineage is all that the choice needs.
+It does not need a class, and the lineage does not have to be a line of specialization.
+It is a sequence of things to ask, nearest first, and whoever knows the element provides it.
+
+[cols="1,3,2",options="header"]
+|===
+|Provider |The sequence |Where it is
+
+|Java
+|A class, its superclasses and interfaces, and `Object` last. Generic types the same way.
+|In the runtime: `Util.lineage` and `Util.genericLineage`
+
+|Ecore
+|The class of a model element and its superclasses.
+|In the runtime: `Util.lineage`
+
+|Meta
+|A class of Meta and its supertypes. An object of Meta may change its type or have none, and then the lineage is what the object says about itself.
+|Planned. Today a vocabulary of Meta gets there through its projection to Ecore
+|===
+
+There may be more: the kinds an element is classified with, the roles of whoever asks, the stages of a lifecycle.
+
+The order is already written once.
+`Util.lineage` takes a starting point and a function that gives what is more general, and linearizes with C3, so a new provider is a function and not an algorithm.
+The order is still the provider's choice, and it depends on the nature of the lineage.
+A simple breadth-first walk is another way, and it agrees with C3 where nothing is inherited along two paths.
+Where something is, C3 is the more logical of the two: it never asks the general before the specific.
+A lineage that is not a hierarchy at all, such as a list of kinds in the order they were assigned, needs neither.
+What is missing is the place where a provider is given: a resolver that asks for the lineage of an element, most likely as a capability, where today it computes the lineage of the element's class.
+
+The word is used twice in this book.
+The lineage of a waypoint is where an execution has been, and the lineage here is what an element is.
+Both are a sequence read nearest first.
+
+==== Is a, and has a
+
+Inheritance and containment are closer than they look.
+"`B` extends `A`" is read as "`B` is an `A`", and what it gives is that `B` has the features and operations of `A`.
+Containment gives the same by another route.
+
+A virtual machine that runs Linux is a virtual machine.
+It can be modeled as `LinuxVM extends VM`.
+It can also be modeled as a `VM` that contains an `OS`, with `Linux extends OS`.
+In the first model the lineage of the machine says that it runs Linux.
+In the second the class of the machine is `VM` whatever it runs, and what it runs is in what it has.
+
+A lineage provider can read it there.
+Asked for the lineage of a machine, it answers "a machine with Linux", then "a machine with an operating system", then "a machine", and a view written for machines with Linux is found with no class `LinuxVM` in the model.
+
+This is why it matters for kinds (<<core-nano-models>>).
+A kind is "is a" recorded as "has a": classification that is data, that may be one of several, and that may stop applying.
+With kinds in the lineage, a kind can choose a view as a class does.
+
+It can also become too complicated.
+Each thing an element contains has a lineage of its own, the combinations multiply, and the order between what an element has and what it is becomes a rule that someone must know.
+So the lineage of the class stays the default.
+Kinds come next, since their order among themselves is already the same linearization.
+Containment is read only where a model says so.
 
 ifdef::editor-notes[]
 [IMPORTANT,caption="Editor's note"]

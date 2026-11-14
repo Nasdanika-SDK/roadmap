@@ -115,7 +115,7 @@ The SDK book argues them; here they are in one line each.
 * *Services before capabilities.* A lookup by type is a Java service. The capability framework is for requirements that are objects, and for resolution that chains.
 * *Telemetry per unit of work.* Spans for operations, log records for what happens in them, and one `OpenTelemetry` per unit of work carried in the context, never a global one.
 * *Three planes.* Data in volumes, semantics in resource sets, representation in views. Reads go up through volumes and writes go down through commands.
-* *A polymorphic user interface.* A view is chosen by the class of what it shows and by the format asked for, and an agent is a user too.
+* *A polymorphic user interface.* A view is chosen by the class of what it shows and by the format asked for, and an agent is a user too. The class is one case: all the choice needs is a lineage, a sequence of things to ask, nearest first (<<lineage-providers>>).
 * *Documentation is built.* Books are AsciiDoc in the module they describe, their listings are regions of tests, and a warning fails the build.
 
 === The shape of what follows

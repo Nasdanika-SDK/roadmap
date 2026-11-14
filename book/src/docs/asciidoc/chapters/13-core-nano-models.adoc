@@ -142,6 +142,9 @@ Where kinds specialize several others, the order of their changes is the C3 line
 And changes are layers over the host and not edits of it, so that ending a classification removes a layer and nothing has to be undone.
 Neither is built yet.
 
+A kind may also choose a view.
+The polymorphic user interface asks along a lineage, and the kinds of an element can be part of it, before its class: <<lineage-providers>>.
+
 === Enterprise
 
 Every effort has stakeholders with concerns, and few write them down.

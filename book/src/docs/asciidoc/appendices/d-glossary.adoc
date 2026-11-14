@@ -37,7 +37,9 @@ Kind (model):: A classification of an element as data, which may carry changes t
 
 Kind (widget):: A capability interface a view is written against, such as `Table`, provided per type of context.
 
-Lineage:: The waypoints an execution passed through to reach a waypoint.
+Lineage:: Of a waypoint, the waypoints an execution passed through to reach it. Of an element, the sequence of things asked for its view, nearest first: its class and superclasses, or what a lineage provider says.
+
+Lineage provider:: What gives the polymorphic user interface the lineage of an element: Java, Ecore, Meta, and possibly kinds.
 
 Micro-model:: A small model in a module of its own.
 
@@ -51,7 +53,7 @@ Observed waypoint:: A waypoint whose root has a publisher of two events, arrived
 
 Occupancy:: The recorded fact that a subject is in a region: a box in dimensions, of which time is one.
 
-Polymorphic user interface:: A user interface assembled from views chosen by the class of what they show and by the format asked for.
+Polymorphic user interface:: A user interface assembled from views chosen by the class of what they show, or by its lineage from another provider, and by the format asked for.
 
 Provider:: An implementation behind an interface that views are written against: TamboUI is a provider of the terminal context.
 

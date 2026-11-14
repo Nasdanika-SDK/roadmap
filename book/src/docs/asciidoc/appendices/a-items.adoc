@@ -48,6 +48,7 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.diagram.status` |Status on diagrams, while building and while running |[.planned]#PLANNED# |<<target-implementation>> |`runtime.telemetry.live`, `model.technology`
 |`runtime.diagram.inheritance` |Variability and inheritance of diagrams |[.planned]#PLANNED# |<<target-business>> |`model.core.occupancy`, `model.core.kind`
 |`runtime.merger` |A merger for generated files |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
+|`runtime.ui.lineage` |Lineage providers: Java, Ecore, Meta, and kinds after them |[.planned]#PLANNED# |<<lineage-providers>> |`runtime.ui.views`, `model.core.kind`
 |`runtime.ui.browser` |The polymorphic user interface in a browser |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.widget.html`
 |===
 
