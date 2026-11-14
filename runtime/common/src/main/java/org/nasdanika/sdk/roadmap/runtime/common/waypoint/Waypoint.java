@@ -18,8 +18,8 @@ import java.util.stream.Stream;
  *
  * <p>
  * A waypoint may carry more than its lineage: state ({@link StateWaypoint}), a guarded space of
- * state ({@link RealmWaypoint}), a span ({@link TelemetryWaypoint}). Ask for what it carries with
- * {@link #facet(Class)}.
+ * state ({@link RealmWaypoint}), a span ({@link TelemetryWaypoint}), a publisher of where the
+ * execution goes ({@link ObservedWaypoint}). Ask for what it carries with {@link #facet(Class)}.
  *
  * @param <E> The type of the elements of the structure: a node, a path, a model element, a rule firing
  */

@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.Test;
 import org.nasdanika.sdk.roadmap.runtime.common.waypoint.Realms.PumpRealm;
+import org.nasdanika.sdk.runtime.common.flow.Flows;
 import org.nasdanika.sdk.runtime.common.flow.Pump;
 import org.nasdanika.sdk.runtime.common.telemetry.PublishingSpan;
 import org.nasdanika.sdk.runtime.common.telemetry.PublishingTracerProvider;
@@ -190,6 +192,101 @@ class WaypointTests {
 			assertThat(span.isEnded()).isTrue();
 		}
 		// end::telemetry[]
+	}
+
+	@Test
+	void anObservedExecutionCanBeFollowedForward() {
+		// tag::observed[]
+		ObservedWaypoint<String> order = Waypoints.observed(Waypoints.root("order")); // <1>
+
+		Map<Waypoint<String>, List<Waypoint<String>>> children = new HashMap<>();
+		List<String> ball = new ArrayList<>();
+		Flows.forEach(order.getEvents(), event -> { // <2>
+			ObservedWaypoint<String> waypoint = event.waypoint();
+			switch (event) {
+				case WaypointEvent.Arrived<String> _ -> {
+					ball.add("at " + waypoint.getElement());
+					for (Waypoint<String> parent: waypoint.getParents()) { // <3>
+						children.computeIfAbsent(parent, p -> new ArrayList<>()).add(waypoint);
+					}
+				}
+				case WaypointEvent.Left<String> _ -> ball.add("left " + waypoint.getElement());
+			}
+		});
+
+		ObservedWaypoint<String> validate = order.commit("validate"); // <4>
+		ObservedWaypoint<String> price = validate.commit("price");
+		ObservedWaypoint<String> stock = validate.commit("stock"); // <5>
+		ObservedWaypoint<String> ship = price.merge("ship", List.of(stock)); // <6>
+		ship.close(); // <7>
+
+		assertThat(children.get(order)).containsExactly(validate);
+		assertThat(children.get(validate)).containsExactly(price, stock);
+		assertThat(children.get(stock)).containsExactly(ship);
+		assertThat(children).doesNotContainKey(ship);
+		assertThat(ball).containsExactly(
+				"left order", "at validate",
+				"left validate", "at price",
+				"at stock",
+				"left price", "left stock", "at ship",
+				"left ship");
+		// end::observed[]
+	}
+
+	@Test
+	void aFailedAttemptIsClosedAndTheRetryArrivesBesideIt() {
+		List<String> events = new ArrayList<>();
+		ObservedWaypoint<String> validate = Waypoints.observed(Waypoints.root("validate"));
+		Flows.forEach(validate.getEvents(), event -> events.add(event.toString()));
+
+		ObservedWaypoint<String> failed = validate.commit("price");
+		failed.close();
+		failed.close();
+		ObservedWaypoint<String> retry = validate.commit("price");
+
+		assertThat(failed.isLeft()).isTrue();
+		assertThat(retry.isLeft()).isFalse();
+		assertThat(retry.getParents()).isEqualTo(List.of(validate));
+		assertThat(events).hasSize(4); // Left validate, arrived, left the failed attempt once, arrived
+	}
+
+	@Test
+	void anObservedWaypointCarriesWhatItDecoratesAndClosesIt() {
+		try (PublishingTracerProvider provider = new PublishingTracerProvider(TracerProvider.noop())) {
+			Tracer tracer = provider.get("orders");
+			StateWaypoint<String, Integer> root = Waypoints.root("order", 0);
+			TelemetryWaypoint<String> traced = Waypoints.traced(root, tracer, element -> "step " + element);
+			ObservedWaypoint<String> order = Waypoints.observed(traced);
+
+			List<WaypointEvent<String>> events = new ArrayList<>();
+			Flows.forEach(order.getEvents(), events::add);
+
+			ObservedWaypoint<String> price = order.follow(traced.follow(root.commit("price", 120)));
+
+			Waypoint<String> arrived = events.get(1).waypoint();
+			assertThat(arrived).isSameAs(price);
+			assertThat(arrived.facet(StateWaypoint.class).orElseThrow().getState()).isEqualTo(120);
+			PublishingSpan span = (PublishingSpan) arrived.facet(Span.class).orElseThrow();
+			assertThat(span.getName()).isEqualTo("step price");
+
+			price.close();
+			assertThat(span.isEnded()).isTrue();
+			traced.close();
+		}
+	}
+
+	@Test
+	void eventsWaitForThePumpWhenItDelivers() {
+		Pump pump = new Pump();
+		ObservedWaypoint<String> order = Waypoints.observed(Waypoints.root("order"), pump);
+		List<WaypointEvent<String>> events = new ArrayList<>();
+		Flows.forEach(order.getEvents(), events::add);
+
+		order.commit("validate").close();
+		assertThat(events).isEmpty();
+
+		pump.settle();
+		assertThat(events).hasSize(3);
 	}
 
 }

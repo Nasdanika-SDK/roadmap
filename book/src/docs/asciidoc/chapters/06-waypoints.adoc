@@ -2,7 +2,7 @@
 == Waypoints
 
 [horizontal]
-Capability:: The history of an execution as it advances through a structure: where it is, how it got there, what it carries, and which span covers it. Rollback, retry, join and settling are then questions asked of that history.
+Capability:: The history of an execution as it advances through a structure: where it is, how it got there, what it carries, and which span covers it. Rollback, retry, join and settling are then questions asked of that history. An observed execution also tells where it goes, as it goes.
 Demonstration:: `WaypointTests` in `runtime/common`.
 Status:: [.sketch]#SKETCH# in `runtime/common`, package `org.nasdanika.sdk.roadmap.runtime.common.waypoint`. Persistence in Git, human-in-the-loop and the mapping engine are [.planned]#PLANNED#.
 Depends on:: The runtime's `common` module: `Pump` and the OpenTelemetry API.
@@ -149,6 +149,74 @@ include::{waypoint-test}/WaypointTests.java[tag=telemetry,indent=0]
 Troubleshooting then happens at the level of spans and not of log lines.
 For any step there is, in one place, what it was, how long it took, what it cost, and the waypoints that led to it.
 
+[#waypoint-observation]
+=== Observation
+
+A waypoint knows its parents and not its children.
+That is what makes it a value, and it lets a branch that nobody holds any more be collected.
+It also means that an execution can be read backward from any waypoint and cannot be followed forward from its root.
+
+Some work needs the forward direction.
+A test asks for a capability, say a similarity search, and wants to record how it was configured: every choice made on the way from the request to the providers that answered.
+A diagram shows where an execution is, with a ball that moves along its connections.
+A recorder keeps the whole graph for whoever examines it later.
+
+Git has the same shape and the same answer: a commit does not know its children, and a tool that needs them builds an index from what it is told.
+Here the telling is a publisher at the root.
+The client decides at the root that the execution is observed, and every waypoint after it shares the root's publisher.
+
+.An observed waypoint
+[source,java]
+----
+include::{waypoint-main}/ObservedWaypoint.java[tag=observed,indent=0]
+}
+----
+
+There are two events, and a waypoint in an event knows its parents, so two are enough.
+
+.Arrived and left
+[source,java]
+----
+include::{waypoint-main}/WaypointEvent.java[tag=event,indent=0]
+----
+
+A step forward says "I am done here and I go there": the waypoint is left and the next one is arrived at.
+`close` says "I am done here and I go nowhere": the work has ended, or this was a dead end, or the attempt failed.
+Without `close` a subscriber could not tell a waypoint where work is still going on from one that was abandoned, and the ball would stay on the last element forever.
+
+.Following an execution forward
+[source,java]
+----
+include::{waypoint-test}/WaypointTests.java[tag=observed,indent=0]
+----
+<1> The decision is made once, at the root. Any waypoint can be made observed: plain, with state, with a realm, with a span.
+<2> A subscriber. Here events are delivered on the thread that advances the execution. With a pump as the executor they are delivered when the pump runs.
+<3> The children of a waypoint, built from arrivals. The waypoints themselves hold nothing new.
+<4> A step: `order` is left, `validate` is arrived at.
+<5> A fork. `validate` was left by the first step, and a waypoint is left once, so the second step publishes only an arrival.
+<6> A join leaves every waypoint it joins.
+<7> Done, and going nowhere.
+
+.A transition and a close
+[source,java]
+----
+include::{waypoint-main}/Waypoints.java[tag=transition,indent=0]
+----
+<1> Every parent is left before the arrival is published.
+<2> Submitted and not offered: no event is dropped, and the execution does not wait for a subscriber. A subscriber that does not keep up has what it has not taken buffered for it.
+<3> A waypoint is left once, by whichever comes first: a step from it or `close`.
+<4> `close` also closes what the waypoint decorates, so the span of a telemetry waypoint ends with it.
+
+An observed waypoint decorates another one, as a telemetry waypoint does, and it should be the outermost decorator.
+Then the waypoint in an event carries everything, and a subscriber reaches the state or the span through `facet`.
+A step that changes the state goes around the decorator, as it does with telemetry, and is brought back with `follow`.
+
+Three things are left out on purpose.
+
+* The root's own arrival is not published, because whoever subscribes has the root.
+* A waypoint does not get a `getChildren` method. A subscriber that needs children keeps them for as long as it needs them, and an execution that nobody observes pays nothing.
+* A retry may step from a waypoint that was closed. The graph only grows, and failure handling is still not part of the interface.
+
 [#waypoint-changes]
 === What changed on the way into the SDK
 
@@ -157,7 +225,7 @@ Four things are different here.
 
 * *No reactive library.* On virtual threads a blocking call is cheap, which is also why `Flows` has no time operators. Methods are synchronous. Work that leaves the process, such as a call to a model provider, returns a `CompletionStage` tracked by the pump. That removed about half of the interface.
 * *Telemetry is in the core.* The OpenTelemetry API is part of the foundation, and the pump already carries the context.
-* *One way to add what a waypoint carries.* `facet(Class)`, as `capability(Class)` is for volumes. Composed interfaces multiply with every facet, so there are none beyond the three in the package.
+* *One way to add what a waypoint carries.* `facet(Class)`, as `capability(Class)` is for volumes. Composed interfaces multiply with every facet, so there are none beyond the four in the package.
 * *A package in `common`,* not a module, since the pump should be a realm and bindings may carry waypoints. It becomes a module of its own if it grows.
 
 ifdef::editor-notes[]
@@ -241,6 +309,9 @@ With a waypoint per step, "why does this target element exist" is answered by wa
 
 === Open questions
 
-* Whether a waypoint tracks its children. Here it does not, so that a long traversal does not hold all of its history in memory. A walker over a factory that records children is the alternative.
+* Whether the publisher of an observed execution completes by itself, when every waypoint that was arrived at has been left. It would tell a recorder that the graph is whole. It would also forbid a retry from an old waypoint after that, so here the publisher does not complete.
+* Whether a step from a telemetry waypoint ends its span, now that a step means "done here". Here it does not: closing a span is still the caller's job, and an observed waypoint ends the span only on `close`.
+* Whether observation belongs in the root implementations and not in a decorator. Then a step that changes the state would not need `follow`, and the waypoint in an event would be the inner one, without its span.
+* Whether a recorder that builds the map of children is part of the package. Here it is a few lines of a test.
 * Whether a waypoint has an identity of its own, or only where it is persisted. Here equality is identity, as it is for commits.
 * Whether the realm's `adapt` needs a snapshot form beside the lens, for a view that is expensive to compute.

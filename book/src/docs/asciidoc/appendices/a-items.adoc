@@ -17,7 +17,7 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.binding` |Bindings |[.sketch]#SKETCH# |<<bindings>>, `runtime/common` |Runtime `common`
 |`runtime.binding.list` |List bindings with changes |[.planned]#PLANNED# |<<bindings>> |`runtime.binding`
 |`runtime.binding.capability` |Bindings that provide capabilities, with quality attributes |[.planned]#PLANNED# |<<bindings-capabilities>> |`runtime.binding`
-|`runtime.waypoint` |Waypoints, state, realms, telemetry |[.sketch]#SKETCH# |<<waypoints>>, `runtime/common` |Runtime `common`
+|`runtime.waypoint` |Waypoints, state, realms, telemetry, observation |[.sketch]#SKETCH# |<<waypoints>>, `runtime/common` |Runtime `common`
 |`runtime.waypoint.git` |Waypoints in Git, and escalation |[.planned]#PLANNED# |<<waypoints>> |`runtime.waypoint`, a Git volume
 |`runtime.widget` |Widgets, kinds and Markdown |[.sketch]#SKETCH# |<<widgets>>, `runtime/widget` |`runtime.binding`
 |`runtime.widget.asciidoc` |An AsciiDoc context with files split by policy |[.planned]#PLANNED# |<<widgets>> |`runtime.widget`

@@ -14,6 +14,10 @@ They are here so that the first cut of the book has its history, and only what i
 |===
 |Date |Decision |Chapters
 
+|2026-11-14
+|Observed waypoints. A waypoint still does not know its children. A client that needs to follow an execution forward makes the root observed, and every waypoint after it shares the root's publisher of two events: arrived and left. A step means "done here and going there", and `close` means "done here and going nowhere". A subscriber builds the children, moves a ball on a diagram or records how a capability was configured. This answers the open question of whether a waypoint tracks its children.
+|<<waypoints>>
+
 |2026-11-12
 |Two more ways of delivering in the reactive enterprise: a view on demand with what changed since a point that the one who asks names, and a view sent again because the view was released in a new version and not because the state changed.
 |<<reactive-enterprise>>

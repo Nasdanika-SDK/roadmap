@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
+import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -60,6 +63,31 @@ public final class Waypoints {
 		return new Traced<>(root, List.of(), span, Context.current(), tracer, spanName);
 	}
 	// end::traced[]
+
+	/**
+	 * Makes a root observed, with events delivered on the thread that advances the execution.
+	 */
+	public static <E> ObservedWaypoint<E> observed(Waypoint<E> root) {
+		return observed(root, null);
+	}
+
+	/**
+	 * Makes a root observed: it gets a publisher of events, which every waypoint after it shares.
+	 * The root's own arrival is not published, since whoever subscribes has the root.
+	 *
+	 * <p>
+	 * No event is dropped and the execution never waits for a subscriber: a subscriber that does not
+	 * keep up has what it has not taken buffered for it.
+	 *
+	 * @param executor Delivers events to subscribers, a {@code Pump} for one. Null to deliver on the
+	 * thread that advances the execution
+	 */
+	// tag::observe[]
+	public static <E> ObservedWaypoint<E> observed(Waypoint<E> root, Executor executor) {
+		Executor delivery = executor == null ? Runnable::run : executor;
+		return new Observed<>(root, List.of(), new SubmissionPublisher<>(delivery, Integer.MAX_VALUE));
+	}
+	// end::observe[]
 
 	private static <E> List<Waypoint<E>> parents(Waypoint<E> first, Iterable<? extends Waypoint<E>> additional) {
 		List<Waypoint<E>> parents = new ArrayList<>();
@@ -347,6 +375,116 @@ public final class Waypoints {
 		@Override
 		public String toString() {
 			return "Traced" + delegate;
+		}
+
+	}
+
+	private static final class Observed<E> implements ObservedWaypoint<E> {
+
+		private final Waypoint<E> delegate;
+		private final List<ObservedWaypoint<E>> parents;
+		private final SubmissionPublisher<WaypointEvent<E>> hub;
+		private final AtomicBoolean left = new AtomicBoolean();
+
+		Observed(Waypoint<E> delegate, List<ObservedWaypoint<E>> parents, SubmissionPublisher<WaypointEvent<E>> hub) {
+			this.delegate = delegate;
+			this.parents = parents;
+			this.hub = hub;
+		}
+
+		@Override
+		public E getElement() {
+			return delegate.getElement();
+		}
+
+		@Override
+		public Waypoint<E> getDelegate() {
+			return delegate;
+		}
+
+		@Override
+		public Flow.Publisher<WaypointEvent<E>> getEvents() {
+			return hub::subscribe;
+		}
+
+		@Override
+		public boolean isLeft() {
+			return left.get();
+		}
+
+		@Override
+		public List<? extends ObservedWaypoint<E>> getParents() {
+			return parents;
+		}
+
+		@Override
+		public ObservedWaypoint<E> commit(E next) {
+			return follow(delegate.commit(next));
+		}
+
+		@Override
+		public ObservedWaypoint<E> follow(Waypoint<E> next) {
+			return child(next, List.of());
+		}
+
+		@Override
+		public ObservedWaypoint<E> merge(E next, Iterable<? extends Waypoint<E>> additionalParents) {
+			List<ObservedWaypoint<E>> joining = new ArrayList<>();
+			List<Waypoint<E>> delegates = new ArrayList<>();
+			for (Waypoint<E> parent: additionalParents) {
+				@SuppressWarnings("unchecked")
+				Optional<ObservedWaypoint<E>> observed = (Optional<ObservedWaypoint<E>>) (Optional<?>) parent.facet(ObservedWaypoint.class);
+				observed.ifPresent(joining::add);
+				delegates.add(observed.map(ObservedWaypoint::getDelegate).orElse(parent));
+			}
+			return child(delegate.merge(next, delegates), joining);
+		}
+
+		// tag::transition[]
+		private ObservedWaypoint<E> child(Waypoint<E> next, List<ObservedWaypoint<E>> joining) {
+			List<ObservedWaypoint<E>> all = new ArrayList<>();
+			all.add(this);
+			all.addAll(joining);
+			Observed<E> child = new Observed<>(next, List.copyOf(all), hub);
+			for (ObservedWaypoint<E> parent: all) {
+				if (parent instanceof Observed<E> observed) {
+					observed.leave(); // <1>
+				}
+			}
+			hub.submit(new WaypointEvent.Arrived<>(child)); // <2>
+			return child;
+		}
+
+		private boolean leave() {
+			boolean first = left.compareAndSet(false, true); // <3>
+			if (first) {
+				hub.submit(new WaypointEvent.Left<>(this));
+			}
+			return first;
+		}
+
+		@Override
+		public void close() {
+			if (leave()) { // <4>
+				delegate.facet(AutoCloseable.class).ifPresent(closeable -> {
+					try {
+						closeable.close();
+					} catch (Exception e) {
+						throw new IllegalStateException("Could not close " + delegate, e);
+					}
+				});
+			}
+		}
+		// end::transition[]
+
+		@Override
+		public <F> Optional<F> facet(Class<F> type) {
+			return type.isInstance(this) ? Optional.of(type.cast(this)) : delegate.facet(type);
+		}
+
+		@Override
+		public String toString() {
+			return "Observed" + delegate;
 		}
 
 	}

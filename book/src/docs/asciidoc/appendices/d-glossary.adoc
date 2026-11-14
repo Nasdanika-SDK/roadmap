@@ -47,6 +47,8 @@ NBOK:: The Nasdanika Body of Knowledge: the books, stories and example code abou
 
 North Star:: Agentic work on bounded, typed models, with state in Git and the safety of a transaction.
 
+Observed waypoint:: A waypoint whose root has a publisher of two events, arrived and left, so that an execution can be followed forward.
+
 Occupancy:: The recorded fact that a subject is in a region: a box in dimensions, of which time is one.
 
 Polymorphic user interface:: A user interface assembled from views chosen by the class of what they show and by the format asked for.
