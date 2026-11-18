@@ -18,10 +18,30 @@ import org.junit.jupiter.api.io.TempDir;
 import org.nasdanika.sdk.roadmap.models.core.change.ChangeFactory;
 import org.nasdanika.sdk.roadmap.models.core.change.ChangeMode;
 import org.nasdanika.sdk.roadmap.models.core.change.SetChange;
+import org.nasdanika.sdk.roadmap.models.core.chart.Bar;
+import org.nasdanika.sdk.roadmap.models.core.chart.BarChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.CartesianSeries;
+import org.nasdanika.sdk.roadmap.models.core.chart.Cell;
+import org.nasdanika.sdk.roadmap.models.core.chart.ChartFactory;
+import org.nasdanika.sdk.roadmap.models.core.chart.ChartPackage;
+import org.nasdanika.sdk.roadmap.models.core.chart.ComposedChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.Layout;
+import org.nasdanika.sdk.roadmap.models.core.chart.Line;
+import org.nasdanika.sdk.roadmap.models.core.chart.LineChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.Pie;
+import org.nasdanika.sdk.roadmap.models.core.chart.PieChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.ReferenceLine;
+import org.nasdanika.sdk.roadmap.models.core.chart.Side;
+import org.nasdanika.sdk.roadmap.models.core.chart.YAxis;
+import org.nasdanika.sdk.roadmap.models.core.document.Column;
+import org.nasdanika.sdk.roadmap.models.core.document.DataType;
 import org.nasdanika.sdk.roadmap.models.core.document.Document;
 import org.nasdanika.sdk.roadmap.models.core.document.DocumentFactory;
 import org.nasdanika.sdk.roadmap.models.core.document.DocumentPackage;
+import org.nasdanika.sdk.roadmap.models.core.document.Frame;
+import org.nasdanika.sdk.roadmap.models.core.document.FrameReference;
 import org.nasdanika.sdk.roadmap.models.core.document.Section;
+import org.nasdanika.sdk.roadmap.models.core.document.Table;
 import org.nasdanika.sdk.roadmap.models.core.document.Text;
 import org.nasdanika.sdk.roadmap.models.core.enterprise.Channel;
 import org.nasdanika.sdk.roadmap.models.core.enterprise.Concern;
@@ -251,6 +271,218 @@ class NanoModelTests {
 		return payload;
 	}
 
+	static Column column(String name, DataType type, String... values) {
+		Column column = DocumentFactory.eINSTANCE.createColumn();
+		column.setName(name);
+		column.setType(type);
+		column.getValues().addAll(List.of(values));
+		return column;
+	}
+
+	/** Results of an evaluation suite, one row per version of a prompt. */
+	// tag::frame[]
+	static Frame results() {
+		Frame results = DocumentFactory.eINSTANCE.createFrame();
+		results.setDocumentation("Eval suite of 120 cases, one run per prompt version."); // <1>
+		results.getColumns().add(column("version", DataType.TEXT, "v1", "v2", "v3", "v4"));
+		Column passRate = column("passRate", DataType.NUMBER, "72", "81", "86", "84");
+		passRate.setLabel("Pass rate"); // <2>
+		results.getColumns().add(passRate);
+		return results;
+	}
+	// end::frame[]
+
+	@Test
+	void anEvaluationIsABarChartInADocument() {
+		// tag::chart[]
+		Bar passRate = ChartFactory.eINSTANCE.createBar(); // <1>
+		passRate.setDataKey("passRate");
+		passRate.setFill("#898781");
+		Cell shipped = ChartFactory.eINSTANCE.createCell(); // <2>
+		shipped.setCategory("v3");
+		shipped.setFill("#2a78d6");
+		passRate.getCells().add(shipped);
+
+		YAxis percent = ChartFactory.eINSTANCE.createYAxis();
+		percent.setUnit("%");
+		percent.setMax("100");
+		ReferenceLine threshold = ChartFactory.eINSTANCE.createReferenceLine(); // <3>
+		threshold.setY("80");
+		threshold.setLabel("Release threshold");
+		threshold.setStrokeDasharray("3 3");
+
+		BarChart chart = ChartFactory.eINSTANCE.createBarChart();
+		chart.setTitle("Pass rate by prompt version");
+		chart.setAlternativeText("v3 passes 86% of cases, the most of four versions."
+				+ " v2, v3 and v4 are above the release threshold of 80%."); // <4>
+		chart.setData(results());
+		chart.getSeries().add(passRate);
+		chart.getYAxes().add(percent);
+		chart.getReferenceLines().add(threshold);
+
+		Section evaluation = DocumentFactory.eINSTANCE.createSection(); // <5>
+		evaluation.setTitle("Evaluation");
+		evaluation.getElements().add(chart);
+
+		assertThat(evaluation.getElements()).containsExactly(chart);
+		assertThat(chart.getXAxis()).isNull(); // <6>
+		assertThat(chart.getLayout()).isEqualTo(Layout.HORIZONTAL);
+		assertThat(chart.getBarCategoryGap()).isEqualTo("10%");
+		assertThat(chart.getWidth()).isEqualTo(640);
+		// end::chart[]
+	}
+
+	@Test
+	void costAndPassRateOnTwoAxes() {
+		// tag::composed[]
+		Frame results = results();
+		results.getColumns().add(column("cost", DataType.NUMBER, "1.2", "1.4", "2.1", "1.4"));
+
+		YAxis cents = ChartFactory.eINSTANCE.createYAxis();
+		cents.setLabel("Cost per case, cents");
+		YAxis percent = ChartFactory.eINSTANCE.createYAxis();
+		percent.setLabel("Pass rate");
+		percent.setUnit("%");
+		percent.setOrientation(Side.RIGHT); // <1>
+
+		Bar cost = ChartFactory.eINSTANCE.createBar();
+		cost.setDataKey("cost");
+		cost.setYAxis(cents);
+		Line passRate = ChartFactory.eINSTANCE.createLine();
+		passRate.setDataKey("passRate");
+		passRate.setYAxis(percent); // <2>
+
+		ComposedChart chart = ChartFactory.eINSTANCE.createComposedChart();
+		chart.setTitle("What a point of pass rate costs");
+		chart.setData(results);
+		chart.getYAxes().addAll(List.of(cents, percent));
+		chart.getSeries().addAll(List.<CartesianSeries>of(cost, passRate)); // <3>
+		chart.setLegend(ChartFactory.eINSTANCE.createLegend());
+
+		Column costs = results.getColumns().get(2);
+		assertThat(costs.getValues()).containsExactly("1.2", "1.4", "2.1", "1.4"); // <4>
+		assertThat(passRate.getStrokeWidth()).isEqualTo(2);
+		assertThat(chart.getLegend().getPosition()).isEqualTo(Side.BOTTOM);
+		// end::composed[]
+	}
+
+	@Test
+	void outcomesAsARing() {
+		// tag::pie[]
+		Frame outcomes = DocumentFactory.eINSTANCE.createFrame();
+		outcomes.getColumns().add(column("outcome", DataType.TEXT, "passed", "failed", "errored"));
+		outcomes.getColumns().add(column("cases", DataType.NUMBER, "103", "13", "4"));
+
+		Pie pie = ChartFactory.eINSTANCE.createPie();
+		pie.setDataKey("cases"); // <1>
+		pie.setInnerRadius("60%"); // <2>
+		pie.setLabel(true);
+
+		PieChart chart = ChartFactory.eINSTANCE.createPieChart();
+		chart.setTitle("Outcomes of v3");
+		chart.setData(outcomes);
+		chart.getSeries().add(pie);
+
+		assertThat(pie.getNameKey()).isNull();
+		assertThat(pie.getOuterRadius()).isEqualTo("80%");
+		assertThat(List.of(pie.getStartAngle(), pie.getEndAngle())).containsExactly(0, 360);
+		// end::pie[]
+	}
+
+	@Test
+	void aChartIsSavedAndLoadedWithItsDocument(@TempDir Path directory) throws IOException {
+		// A viewpoint can name the kind of chart it is made of, since each kind is a class
+		Viewpoint evaluations = EnterpriseFactory.eINSTANCE.createViewpoint();
+		evaluations.setName("Evaluation report");
+		evaluations.getElementKinds().add(ChartPackage.Literals.COMPOSED_CHART);
+
+		YAxis left = ChartFactory.eINSTANCE.createYAxis();
+		YAxis right = ChartFactory.eINSTANCE.createYAxis();
+		right.setOrientation(Side.RIGHT);
+		Line line = ChartFactory.eINSTANCE.createLine();
+		line.setDataKey("passRate");
+		line.setYAxis(right);
+		Bar bar = ChartFactory.eINSTANCE.createBar();
+		bar.setDataKey("passRate");
+		ComposedChart chart = ChartFactory.eINSTANCE.createComposedChart();
+		chart.setData(results());
+		chart.getYAxes().addAll(List.of(left, right));
+		chart.getSeries().addAll(List.<CartesianSeries>of(bar, line));
+
+		Section section = DocumentFactory.eINSTANCE.createSection();
+		section.getElements().add(chart);
+		Document document = DocumentFactory.eINSTANCE.createDocument();
+		document.setViewpoint(evaluations);
+		document.getRepresentations().add(section);
+
+		ResourceSet resourceSet = resourceSet();
+		Resource resource = resourceSet.createResource(URI.createFileURI(directory.resolve("report.xmi").toString()));
+		resource.getContents().addAll(List.of(evaluations, document));
+		resource.save(null);
+
+		Resource loaded = resourceSet().getResource(resource.getURI(), true);
+		Document loadedDocument = (Document) loaded.getContents().get(1);
+		ComposedChart loadedChart = (ComposedChart) loadedDocument.getRepresentations().get(0).getElements().get(0);
+		assertThat(loadedChart.getSeries()).hasSize(2);
+		assertThat(loadedChart.getSeries().get(0)).isInstanceOf(Bar.class);
+		assertThat(loadedChart.getSeries().get(1)).isInstanceOf(Line.class);
+		assertThat(loadedChart.getSeries().get(1).getYAxis()).isSameAs(loadedChart.getYAxes().get(1));
+		assertThat(loadedChart.getYAxes().get(1).getOrientation()).isEqualTo(Side.RIGHT);
+		assertThat(((Frame) loadedChart.getData()).getColumns().get(1).getValues()).containsExactly("72", "81", "86", "84");
+		assertThat(loadedDocument.getViewpoint().getElementKinds()).containsExactly(ChartPackage.Literals.COMPOSED_CHART);
+	}
+
+	static FrameReference reference(Frame frame) {
+		FrameReference reference = DocumentFactory.eINSTANCE.createFrameReference();
+		reference.setTarget(frame);
+		return reference;
+	}
+
+	@Test
+	void aTableAndAChartShowOneFrame(@TempDir Path directory) throws IOException {
+		// tag::shared-frame[]
+		Frame results = results();
+		Document report = DocumentFactory.eINSTANCE.createDocument();
+		report.setName("Evaluation of the prompt");
+		report.getFrames().add(results); // <1>
+
+		Table table = DocumentFactory.eINSTANCE.createTable(); // <2>
+		table.setData(reference(results));
+		Line passRate = ChartFactory.eINSTANCE.createLine();
+		passRate.setDataKey("passRate");
+		LineChart chart = ChartFactory.eINSTANCE.createLineChart();
+		chart.setData(reference(results)); // <3>
+		chart.getSeries().add(passRate);
+
+		Section evaluation = DocumentFactory.eINSTANCE.createSection();
+		evaluation.getElements().addAll(List.of(table, chart));
+		report.getRepresentations().add(evaluation);
+
+		ResourceSet resourceSet = resourceSet();
+		Resource reportResource = resourceSet.createResource(uri(directory, "report.xmi"));
+		reportResource.getContents().add(report);
+		Resource resultsResource = resourceSet.createResource(uri(directory, "results.xmi"));
+		resultsResource.getContents().add(results); // <4>
+		reportResource.save(null);
+		resultsResource.save(null);
+
+		Resource loaded = resourceSet().getResource(reportResource.getURI(), true);
+		Document loadedReport = (Document) loaded.getContents().get(0);
+		Frame loadedResults = loadedReport.getFrames().get(0); // <5>
+		List<?> blocks = loadedReport.getRepresentations().get(0).getElements();
+		Frame tableData = ((FrameReference) ((Table) blocks.get(0)).getData()).getTarget();
+		Frame chartData = ((FrameReference) ((LineChart) blocks.get(1)).getData()).getTarget();
+
+		assertThat(results.eContainer()).isSameAs(report);
+		assertThat(loadedResults.eResource().getURI().lastSegment()).isEqualTo("results.xmi");
+		assertThat(tableData).isSameAs(loadedResults).isSameAs(chartData); // <6>
+		// end::shared-frame[]
+	}
+
+	private static URI uri(Path directory, String name) {
+		return URI.createFileURI(directory.resolve(name).toString());
+	}
+
 	@Test
 	void everyNanoModelIsRegisteredAsAService() {
 		// The module descriptor says which providers it offers; a resource set that uses EPackage services finds them
@@ -258,10 +490,11 @@ class NanoModelTests {
 				.filter(provides -> provides.service().equals(org.eclipse.emf.ecore.EPackage.class.getName()))
 				.flatMap(provides -> provides.providers().stream())
 				.toList();
-		assertThat(providers).hasSize(7);
+		assertThat(providers).hasSize(8);
 
 		List<String> namespaces = List.of(
 				org.nasdanika.sdk.roadmap.models.core.util.ChangeEPackageProvider.provider(),
+				org.nasdanika.sdk.roadmap.models.core.util.ChartEPackageProvider.provider(),
 				org.nasdanika.sdk.roadmap.models.core.util.DocumentEPackageProvider.provider(),
 				org.nasdanika.sdk.roadmap.models.core.util.EnterpriseEPackageProvider.provider(),
 				org.nasdanika.sdk.roadmap.models.core.util.ExampleEPackageProvider.provider(),
@@ -274,6 +507,7 @@ class NanoModelTests {
 
 		assertThat(namespaces).containsExactly(
 				"https://roadmap.sdk.nasdanika.org/models/core/change",
+				"https://roadmap.sdk.nasdanika.org/models/core/chart",
 				"https://roadmap.sdk.nasdanika.org/models/core/document",
 				"https://roadmap.sdk.nasdanika.org/models/core/enterprise",
 				"https://roadmap.sdk.nasdanika.org/models/core/example",

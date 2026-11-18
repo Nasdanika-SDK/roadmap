@@ -302,6 +302,11 @@ It replaces `Documented`, `Section` and `Content` of the runtime's core model, w
 It belongs here for a reason beyond tidiness.
 A generated reference and a hand-written stub are both documentation of an element, and they should be the same kind of thing in the model, so that one writer per format serves both.
 
+Charts come with it, as a nano-model of their own on the document model: <<chart-nano-model>>.
+Evaluations are documentation too, and many of them read better as a chart than as a table.
+The data of a table or a chart is a frame of the document model, so a table and a chart can show the same data.
+What the release needs for charts is the model and at least the writers for SVG and Markdown.
+
 Models that use the three classes today are migrated to the document model.
 There should be few of them, if any, so the classes are replaced and not kept beside it.
 

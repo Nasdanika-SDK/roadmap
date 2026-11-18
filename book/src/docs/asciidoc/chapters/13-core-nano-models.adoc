@@ -2,9 +2,9 @@
 == Core Nano-models
 
 [horizontal]
-Capability:: Small aspects that many models share, defined once in the core model: relationships, changes, occupancy in time and other dimensions, kinds, stakeholders and what they are shown, documents, and examples.
+Capability:: Small aspects that many models share, defined once in the core model: relationships, changes, occupancy in time and other dimensions, kinds, stakeholders and what they are shown, documents, charts, and examples.
 Demonstration:: `NanoModelTests` in `models/core`, which instantiates each one.
-Status:: [.sketch]#SKETCH# in `models/core`: seven Xcore files that generate and compile against the released core model. Role, IAM, Seal and Lifecycle are in `models/core/sketches` as they are in the tower today.
+Status:: [.sketch]#SKETCH# in `models/core`: eight Xcore files that generate and compile against the released core model. Role, IAM, Seal and Lifecycle are in `models/core/sketches` as they are in the tower today.
 Depends on:: The runtime's core model.
 Value and effort:: High, and each is small. Every model above the core gets them for nothing, and several models in the tower shrink when they arrive.
 How to help:: Read the one closest to your work and say which word is wrong. Naming is the hard part of a nano-model and the part that cannot be changed after release.
@@ -27,7 +27,8 @@ The nano-models depend on each other in a line, so there is an order in which to
 |occupancy |related, change |A subject occupies a box in dimensions, of which time is one
 |kind |change, occupancy |Classification as data, which can configure
 |enterprise |core |Stakeholders, concerns, viewpoints, formats and channels
-|document |enterprise |Structure in the model, text in a named format
+|document |enterprise |Structure in the model, text in a named format, data in frames
+|chart |document |A frame of data and the series drawn from it, as a block of a document
 |example |core |An input, the output expected for it, and why
 |===
 
@@ -204,6 +205,223 @@ The model is a pivot.
 Markdown is read into it, and AsciiDoc, Markdown and HTML are written from it, so a new format costs one reader and one writer.
 A widget context of <<widgets>> can build it, and a document can be played back through the kinds into any other context.
 
+[#document-frames]
+==== Data
+
+Data is a *frame*: named columns of equal length, as a data frame of pandas is.
+A value is text, read by the type of its column, and an empty value is missing.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=frame,indent=0]
+----
+<1> A frame is a model element, so its documentation can say where the numbers came from.
+<2> A label is what a reader is shown. The name is the key that a series of a chart uses.
+
+A table can be made from a frame, and a chart of <<chart-nano-model>> always is.
+A frame is the data, and a table or a chart is a representation of it, so "a chart replaced a table" changes the representation and not the data.
+A table is also what an agent and a Markdown page should get: the numbers, and not a picture of them.
+
+A table or a chart holds an `AbstractFrame`, which is the pattern of the kind model: the `Frame` itself, or a `FrameReference` to a frame held elsewhere.
+Two needs are kept apart here, and each has its own answer.
+
+* A frame in a file of its own needs no reference. The containments of frames resolve proxies, so a contained frame can be saved in a resource of its own, such as the results that an evaluation run wrote, and stay where it is in the document.
+* A frame shown more than once needs a reference, and someone to hold it. The document holds it, in its frames.
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=shared-frame,indent=0]
+----
+<1> The document holds the frame, since two blocks show it.
+<2> A table with data and no rows is made from the frame: a header of the labels of the columns and a row for each index of the values.
+<3> The chart shows the same frame, by reference.
+<4> The frame is saved in a file of its own and is still contained by the document.
+<5> The frame is loaded from its file when it is first asked for.
+<6> The table and the chart show one frame.
+
+This bears on which nano-models keep their reference class: containment across resources replaces a reference class that was there to split files, and not one that is there to share.
+
+[#chart-nano-model]
+=== Chart
+
+Some results read better as a chart than as a table: an evaluation across versions, a cost against a score, a share of outcomes.
+The chart nano-model makes a chart a block of a document, so a chart goes wherever text and tables go, and the writers of documents write it.
+It specializes `Block` of the document nano-model and leaves the rest of that model alone.
+Its data is a frame of the document model: <<document-frames>>.
+It goes into the next release with the document model, since evaluations are part of documentation.
+
+==== Charts and series
+
+The classes are those of Recharts, a charting library for React, and so are the defaults, where Recharts has one.
+Someone who knows Recharts can read a chart in the model, and an HTML writer is close to a copy.
+
+[cols="1,3",options="header"]
+|===
+|Chart |Series it holds
+
+|`LineChart` |`Line`
+|`AreaChart` |`Area`, stacked when they share a stack id
+|`BarChart` |`Bar`, grouped, or stacked when they share a stack id
+|`ScatterChart` |`Scatter`
+|`ComposedChart` |Any of the four above, on one set of axes
+|`PieChart` |`Pie`, more than one for nested rings
+|===
+
+The first five are cartesian charts: an x axis, one or two y axes, a grid, reference lines, a legend and a tooltip.
+Each kind of chart is a class, so a viewpoint of the enterprise nano-model can name the kind of chart it is made of, as it names a table.
+
+Here is an evaluation of four versions of a prompt, as a section of a report:
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=chart,indent=0]
+----
+<1> A series names the column it draws.
+<2> A cell styles one category, found by its value: the version that shipped.
+<3> A line at the release threshold, dashed.
+<4> The alternative text says what the chart shows. A screen reader, an agent and a format that has no pictures get this.
+<5> A chart is a block, so a section holds it as it holds text.
+<6> No x axis is given, so the categories are the first column. The layout, the gap between categories and the size are defaults.
+
+Cost and pass rate together need two axes, since they have different units:
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=composed,indent=0]
+----
+<1> A second y axis, on the right.
+<2> A series says which axis its values are on. Without one, it is on the first.
+<3> Bars and a line in one chart.
+<4> A column keeps repeated values, in order.
+
+And the outcomes of one run, as a ring:
+
+[source,java]
+----
+include::{nano-test}/NanoModelTests.java[tag=pie,indent=0]
+----
+<1> The size of a slice is from this column, and its name from the first column.
+<2> An inner radius greater than zero makes a ring.
+
+A test saves a report with a composed chart to a file and loads it again, with its series, the axis each series is on, and the kind of chart its viewpoint names.
+
+==== Where it departs from Recharts
+
+* What Recharts has for the browser is left out: tab indexes, ARIA flags, CSS classes, event handlers, and positions it computes. A chart is also written to places that have none of them. A writer that needs more reads it from the attributes of the chart, which a chart has as a block, under a prefix of its own such as `echarts.`.
+* The x axis has the categories and the y axes have the values, in either layout. A vertical layout turns the chart for horizontal bars, where Recharts asks for the types of the two axes to be swapped as well.
+* A cell names the category it styles. A cell of Recharts is matched by position, which breaks when the rows are sorted.
+* A line is 2 pixels wide, as in ECharts. Recharts has 1, which is thin on a printed page.
+
+==== Surfaces
+
+The model has no dependencies beyond the document nano-model.
+Writers have dependencies, and they are modules of their own.
+The runtime already has most of what they need.
+
+[cols="1,3,2",options="header"]
+|===
+|Surface |Writer |Needs
+
+|SVG
+|A layout computed once: scales, ticks at round numbers, boxes for bars, points for lines. Then elements of the runtime's SVG model. [.sketch]#SKETCH#: <<chart-svg>>.
+|Nothing new
+
+|Draw.io
+|The same layout, written as shapes that a person can then edit.
+|Nothing new
+
+|Terminal
+|The bar chart, chart and sparkline widgets of TamboUI.
+|TamboUI, which `runtime/tui` already uses
+
+|HTML
+|An ECharts option, which the older Nasdanika had a Java layer for, or Recharts through the runtime's React model, for hover and zoom.
+|A script on the page
+
+|Markdown
+|The frame as a table, with the alternative text. Mermaid's `xychart` and `pie`, still marked beta, where the reader renders Mermaid.
+|Nothing
+
+|PNG and PDF
+|XChart, for documents that take only pictures, such as Word and slides.
+|XChart
+|===
+
+Basic charts need no charting library.
+The layout of a bar, line, area, scatter or pie chart is a small amount of arithmetic, and it is shared by SVG and Draw.io.
+It is also what is worth testing, since it can be checked without drawing anything.
+
+XChart is a fair choice where a picture is all that a format takes.
+Version 4.0.4 is under the Apache 2.0 license, needs Java 11, and has no required dependencies: writing SVG and PDF takes optional ones.
+It draws with Java2D, so it needs the `java.desktop` module, and neither its POM nor its README mentions a module name.
+It is not the way to SVG here: what it writes is what Java2D drew, with nothing that says which shape is which bar, and it cannot write Draw.io.
+The model is the API, and a library is one writer behind it.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The XChart facts are from its POM and README in Maven Central and GitHub, read on 2026-11-18. The module name was not checked in its jar.
+====
+endif::[]
+
+[#chart-svg]
+==== SVG
+
+[.sketch]#SKETCH# in `models/svg/chart`, named to graduate next to the runtime's SVG model.
+`ChartSvgWriter` turns a chart into an element of that model, and `SvgFormat` of the runtime saves it.
+It uses no charting library.
+
+[source,java]
+----
+include::{svg-chart-test}/ChartSvgTests.java[tag=write,indent=0]
+----
+<1> The writer returns an element of the SVG model, not text, so it can still be changed or put inside a larger picture.
+<2> A test helper that saves it with `SvgFormat`: here, to the file this book shows.
+<3> The bars of the other versions are grey, and the one that shipped has the fill of its cell.
+<4> With a tooltip, each mark has an SVG title, which a browser shows on hover.
+<5> The alternative text is the description of the SVG.
+
+.Pass rate by prompt version, with tooltips
+image::chart-pass-rate.svg["Bar chart of pass rate by prompt version: v1 72, v2 81, v3 86 in blue, v4 84, with a dashed release threshold at 80",pdfwidth=100%]
+
+The same chart in a vertical layout, with a grid.
+Nothing else changed: the x axis still has the categories.
+
+.The same chart, turned
+image::chart-pass-rate-vertical.svg["Horizontal bars of pass rate by prompt version with a grid and the release threshold as a vertical dashed line",pdfwidth=100%]
+
+.Outcomes of v3, as a ring
+image::chart-outcomes.svg["Ring chart of outcomes: passed 103, failed 13, errored 4",pdfwidth=100%]
+
+A line drawn from a frame it refers to, as steps, with a value missing in the third week:
+
+.A weekly trend with a gap
+image::chart-weekly-trend.svg["Step line of weekly pass rate from 72 to 86, with a gap in week 3",pdfwidth=100%]
+
+The layout is three small pieces, and none of them knows SVG.
+`Ticks` puts the ends of a numeric axis and its ticks at round numbers, steps of 1, 2 or 5 times a power of ten, which is Heckbert's method.
+A band per category places bars and points, and Recharts' gap between categories and gap between bars divide it.
+Geometry is worked out along the categories and along the values and turned into x and y last, so a vertical layout is a swap and not a second drawing.
+The Draw.io writer is to take these pieces as they are, and they move to a module of their own when it does.
+
+The writer applies one set of rules to every chart, and a chart can still say otherwise where the model lets it, such as the color of a series:
+
+* Eight categorical colors, in an order checked for color vision deficiency, used in order and never by rank.
+* Lines 2 pixels wide. Bars at most 24 pixels thick, square at the base and rounded at the end.
+* Dots of at least 8 pixels, ringed in the color of the surface so they stay legible where they cross a line. A gap of 2 pixels in the same color between stacked bars and between slices.
+* A grid of hairlines, and text in ink and never in the color of a series.
+* The title is the accessible name and is not drawn, since a document writer makes it a caption.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+Not drawn yet: logarithmic and time axes, which are drawn linear; monotone curves, drawn straight; steps of areas; the cross, star and wye shapes of a scatter, drawn as circles; and frames at a location.
+The width of text is estimated from its length, so a long label can collide. <<designed-and-waiting>> has measured text as an item.
+Dark mode is not there: the colors are for a light page.
+The pictures were checked by eye in a browser and in the PDF; the tests check structure, not looks.
+====
+endif::[]
+
 === Example
 
 Examples are on tools, operations, mappings, prompts and viewpoints, so they are a nano-model and not a part of each.
@@ -239,5 +457,7 @@ Each should be smaller afterwards than it is now, which is the test that the nan
 * [.planned]#PLANNED# *Region arithmetic:* whether one box contains or meets another, and which occupancies are current at a coordinate.
 * [.planned]#PLANNED# *A model at a coordinate:* the projection of a model to what holds at one place and time, so that a model can be released for a jurisdiction and a date. <<target-business>> has the use.
 * [.planned]#PLANNED# *Catalogs as resources:* formats, channels and a few stakeholders that models can refer to, as the first content.
+* [.planned]#PLANNED# *Chart writers:* Draw.io, the terminal, HTML and Markdown, as listed in <<chart-nano-model>>. SVG is a sketch: <<chart-svg>>.
+* [.planned]#PLANNED# *More charts:* a percentage stack, a size for the points of a scatter, sparklines, and the Sankey chart that the enterprise model already gives as an example. Points that say which model element each one shows, where today only a series can.
 * [.planned]#PLANNED# *Facets:* an element that has an aspect for a while, where today it would have to inherit it for good.
 * [.planned]#PLANNED# *Generated references* for these models, in this book, once the runtime generates them.

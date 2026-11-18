@@ -22,6 +22,17 @@
  *
  * A widget context can build this model where another writes Markdown, and a document can be
  * played back through the widget kinds into any other context.
+ *
+ * Data is a frame: named columns of equal length, as a data frame of pandas or a table of Arrow. A
+ * table can be made from a frame, and a chart of the chart nano-model is always made from one. A
+ * block that shows a frame holds an AbstractFrame: the frame itself, or a reference to a frame that
+ * is held elsewhere, so a table and a chart can show the same data. The kind nano-model has the
+ * same pattern.
+ *
+ * Two things are kept apart. A frame that lives in a file of its own needs no reference: the
+ * containments of frames resolve proxies, so the contained frame can be saved in its own resource,
+ * such as the results that an evaluation run wrote. A reference is for showing a frame more than
+ * once. Such a frame is held by the document, in its frames, or in a resource of its own.
  */
 package org.nasdanika.sdk.roadmap.models.core.document
 
@@ -29,8 +40,12 @@ import org.nasdanika.sdk.roadmap.models.core.enterprise.Representation
 import org.nasdanika.sdk.roadmap.models.core.enterprise.RepresentationElement
 import org.nasdanika.sdk.roadmap.models.core.enterprise.View
 import org.nasdanika.sdk.runtime.models.core.Attributed
+import org.nasdanika.sdk.runtime.models.core.ModelElement
 
 class Document extends View {
+
+	/** Data that blocks refer to: frames shown more than once, or not shown yet. */
+	contains resolving Frame[] frames
 
 }
 
@@ -88,6 +103,10 @@ class ItemList extends Block {
 
 }
 
+/**
+ * Rows of cells, or a frame. A table with data and no rows is made from the frame: a header of the
+ * labels of its columns and a row for each index of their values.
+ */
 class Table extends Block {
 
 	String title
@@ -95,6 +114,8 @@ class Table extends Block {
 	contains Representation[] header
 
 	contains Row[] rows
+
+	contains resolving AbstractFrame data
 
 }
 
@@ -126,4 +147,62 @@ class Figure extends Block {
 
 	String alternativeText
 
+}
+
+// -- Data --
+
+/**
+ * What a table or a chart holds: a frame, or a reference to a frame held elsewhere.
+ */
+abstract class AbstractFrame extends ModelElement {
+
+}
+
+/**
+ * Named columns of equal length. A frame is a model element, so its documentation can say where the
+ * numbers came from: the run, the date, the query.
+ */
+class Frame extends AbstractFrame {
+
+	contains Column[] columns
+
+	/** Data kept somewhere else, resolved against the resource of the frame. Columns given here then name and type the columns read from it. */
+	String location
+
+	/** The format of the data at the location: csv or json. "csv" when empty. */
+	String format
+
+}
+
+/**
+ * A frame shown again: by a table and a chart, or by two charts.
+ */
+class FrameReference extends AbstractFrame {
+
+	refers Frame target
+
+}
+
+class Column {
+
+	/** The key a series or an axis uses. */
+	String name
+
+	/** What a reader is shown: a legend entry, a table header. The name when empty. */
+	String label
+
+	DataType ^type
+
+	/** One value per row, as text. An empty value is missing: a line has a gap there. */
+	String[] values
+
+}
+
+enum DataType {
+	/** Number if every value that is not empty is a number, text otherwise. */
+	auto
+	text
+	number
+	/** ISO 8601. */
+	time
 }

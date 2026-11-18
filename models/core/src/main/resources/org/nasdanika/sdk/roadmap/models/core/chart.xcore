@@ -1,0 +1,364 @@
+@Ecore(nsURI="https://roadmap.sdk.nasdanika.org/models/core/chart", nsPrefix="org.nasdanika.sdk.roadmap.models.core.chart")
+@GenModel(
+    modelDirectory="/core/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * SKETCH. Charts: a frame of data and the series drawn from it, as a block of a document.
+ *
+ * The classes and the defaults are those of Recharts, where Recharts has one, so that a chart reads
+ * the same to someone who knows it and an HTML writer is a near copy. What Recharts has for the DOM
+ * (tab indexes, ARIA flags, CSS classes, event handlers, computed positions) is left out: a chart is
+ * also written to SVG, Draw.io, a terminal and Markdown. A writer that needs more reads it from the
+ * attributes a chart has as a block, under a prefix of its own: "echarts.", "recharts.".
+ *
+ * The data is a frame of the document nano-model: named columns of equal length. A series names the
+ * column it draws, as a dataKey does in Recharts. A table can show the same frame, by reference, so
+ * "a chart replaced a table" changes the representation and not the data.
+ *
+ * The model has no dependencies beyond the document nano-model. Writers do, and they are modules of
+ * their own: SVG and Draw.io from one computed layout, a terminal through TamboUI's chart widgets,
+ * HTML through ECharts or Recharts, and Markdown as the frame's table with the alternative text.
+ *
+ * Departures from Recharts:
+ *   - The x axis is the axis of categories and the y axes of values in either layout. A vertical
+ *     layout turns the chart, so horizontal bars do not swap the types of the axes.
+ *   - The start and end angles of a pie are 0 and 360, as in Recharts. The older Nasdanika model
+ *     had them the other way round.
+ *   - A cell names the category it styles, where a Recharts cell is matched by position.
+ */
+package org.nasdanika.sdk.roadmap.models.core.chart
+
+import org.nasdanika.sdk.roadmap.models.core.document.AbstractFrame
+import org.nasdanika.sdk.roadmap.models.core.document.Block
+import org.nasdanika.sdk.roadmap.models.core.enterprise.RepresentationElement
+
+// -- Charts --
+
+abstract class Chart<S extends Series> extends Block {
+
+	String title
+
+	/** What the chart shows, in words: for a screen reader, for an agent, and for a format that has no picture. */
+	String alternativeText
+
+	/** A frame, or a reference to a frame that a table or another chart shows too. */
+	contains resolving AbstractFrame data
+
+	contains S[] series
+
+	/** Present: a legend is shown. As in Recharts, there is none without it. */
+	contains Legend legend
+
+	/** Present: values are shown on hover where the surface can show them. */
+	contains Tooltip tooltip
+
+	/** Colors of the series in order, for a series that has none. Empty: the colors of the writer. */
+	String[] colors
+
+	/** A size in pixels, which a writer scales to its surface. 16 to 9 by default. */
+	int width = "640"
+
+	int height = "360"
+
+}
+
+/**
+ * A chart on x and y axes. The x axis has the categories, or the numbers or times of a scatter, and
+ * the y axes have the values.
+ */
+abstract class CartesianChart<S extends CartesianSeries> extends Chart<S> {
+
+	contains XAxis xAxis
+
+	/** One axis, or two for values of different units: a left one and a right one. */
+	contains YAxis[] yAxes
+
+	contains CartesianGrid grid
+
+	contains ReferenceLine[] referenceLines
+
+	Layout layout
+
+}
+
+enum Layout {
+	/** Categories along the bottom, values up. */
+	horizontal
+	/** Categories down the left, values across: horizontal bars, for long labels. */
+	vertical
+}
+
+/**
+ * The spacing of bars, in a chart that has them.
+ */
+interface BarSpacing {
+
+	/** The gap between categories, in pixels or as a percentage of a category. */
+	String barCategoryGap = "10%"
+
+	/** The gap between the bars of one category, in pixels or as a percentage. */
+	String barGap = "4"
+
+}
+
+class LineChart extends CartesianChart<Line> {
+
+}
+
+class AreaChart extends CartesianChart<Area> {
+
+}
+
+class BarChart extends CartesianChart<Bar>, BarSpacing {
+
+}
+
+class ScatterChart extends CartesianChart<Scatter> {
+
+}
+
+/**
+ * Lines, areas, bars and scatters on one set of axes: bars of cost with a line of accuracy.
+ */
+class ComposedChart extends CartesianChart<CartesianSeries>, BarSpacing {
+
+}
+
+/**
+ * Pies, more than one for nested rings.
+ */
+class PieChart extends Chart<Pie> {
+
+}
+
+// -- Parts of a chart --
+
+abstract class Axis {
+
+	/** The title of the axis. */
+	String label
+
+	/** Appended to the values of the ticks: "%", "ms". */
+	String unit
+
+	/** The least value shown: a number, "auto" or "dataMin". Empty: zero for numbers, as in Recharts, the least value otherwise. */
+	String min
+
+	/** The greatest value shown: a number, "auto" or "dataMax". Empty: "auto". */
+	String max
+
+	boolean logarithmic
+
+	boolean hidden
+
+}
+
+class XAxis extends Axis {
+
+	/** The column of categories, or of the x values of a scatter. Empty: the first column. */
+	String dataKey
+
+	AxisType ^type = "category"
+
+}
+
+class YAxis extends Axis {
+
+	AxisType ^type = "number"
+
+	Side orientation = "left"
+
+}
+
+enum AxisType {
+	category
+	number
+	time
+}
+
+enum Side {
+	left
+	right
+	top
+	bottom
+}
+
+class CartesianGrid {
+
+	boolean horizontal = "true"
+
+	boolean vertical = "true"
+
+	/** A dash pattern, as SVG's stroke-dasharray: "3 3". Solid when empty. */
+	String strokeDasharray
+
+}
+
+class Legend {
+
+	Side position = "bottom"
+
+}
+
+class Tooltip {
+
+	/** Between the name of a series and its value. */
+	String separator = " : "
+
+}
+
+/**
+ * A line across the chart: a target, a threshold, a date.
+ */
+class ReferenceLine {
+
+	/** A vertical line at this value of the x axis. */
+	String x
+
+	/** A horizontal line at this value of a y axis. */
+	String y
+
+	/** The y axis of the value. Empty: the first. */
+	refers YAxis yAxis
+
+	String label
+
+	String stroke
+
+	String strokeDasharray
+
+}
+
+/**
+ * The style of one category: the bar of the model under evaluation, the slice that matters.
+ */
+class Cell {
+
+	/** The value of the category column this cell styles. */
+	String category
+
+	String fill
+
+}
+
+// -- Series --
+
+/**
+ * Values from one column. A series is a representation element, so it can say which model elements
+ * it shows, and a surface that can be clicked can open them.
+ */
+abstract class Series extends RepresentationElement {
+
+	/** The legend entry. Empty: the label of the column. */
+	String name
+
+	/** The column of values. */
+	String dataKey
+
+}
+
+abstract class CartesianSeries extends Series {
+
+	/** The y axis of the values. Empty: the first. */
+	refers YAxis yAxis
+
+}
+
+enum Curve {
+	linear
+	monotone
+	step
+}
+
+class Line extends CartesianSeries {
+
+	String stroke
+
+	/** 2, as in ECharts. Recharts has 1, which is thin on a page. */
+	int strokeWidth = "2"
+
+	Curve curve
+
+	/** A dot at each value. */
+	boolean dot = "true"
+
+}
+
+class Area extends CartesianSeries {
+
+	String stroke
+
+	String fill
+
+	double fillOpacity = "0.6"
+
+	Curve curve
+
+	boolean dot
+
+	/** Areas with the same stack id are stacked. */
+	String stackId
+
+}
+
+class Bar extends CartesianSeries {
+
+	String fill
+
+	/** Bars with the same stack id are stacked. */
+	String stackId
+
+	contains Cell[] cells
+
+}
+
+class Scatter extends CartesianSeries {
+
+	String fill
+
+	Shape shape
+
+}
+
+enum Shape {
+	circle
+	cross
+	diamond
+	square
+	star
+	triangle
+	wye
+}
+
+/**
+ * Slices, one per row: the size from dataKey and the name from nameKey.
+ */
+class Pie extends Series {
+
+	/** The column of slice names. Empty: the first column. */
+	String nameKey
+
+	/** In pixels or as a percentage of the chart. Greater than zero for a ring. */
+	String innerRadius = "0"
+
+	String outerRadius = "80%"
+
+	int startAngle = "0"
+
+	int endAngle = "360"
+
+	/** Degrees between slices. */
+	int paddingAngle = "0"
+
+	/** Show the name and value beside each slice. */
+	boolean label
+
+	contains Cell[] cells
+
+}

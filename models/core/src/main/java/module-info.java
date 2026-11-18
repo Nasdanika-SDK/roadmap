@@ -6,6 +6,7 @@ import org.nasdanika.sdk.roadmap.models.core.util.KindEPackageProvider;
 import org.nasdanika.sdk.roadmap.models.core.util.EnterpriseEPackageProvider;
 import org.nasdanika.sdk.roadmap.models.core.util.DocumentEPackageProvider;
 import org.nasdanika.sdk.roadmap.models.core.util.ExampleEPackageProvider;
+import org.nasdanika.sdk.roadmap.models.core.util.ChartEPackageProvider;
 
 /**
  * Candidate nano-models of the core model: packages that would join
@@ -43,6 +44,10 @@ module org.nasdanika.sdk.roadmap.models.core {
 	exports org.nasdanika.sdk.roadmap.models.core.example.impl;
 	exports org.nasdanika.sdk.roadmap.models.core.example.util;
 
+	exports org.nasdanika.sdk.roadmap.models.core.chart;
+	exports org.nasdanika.sdk.roadmap.models.core.chart.impl;
+	exports org.nasdanika.sdk.roadmap.models.core.chart.util;
+
 	exports org.nasdanika.sdk.roadmap.models.core.util;
 
 	provides EPackage with
@@ -52,6 +57,7 @@ module org.nasdanika.sdk.roadmap.models.core {
 		KindEPackageProvider,
 		EnterpriseEPackageProvider,
 		DocumentEPackageProvider,
-		ExampleEPackageProvider;
+		ExampleEPackageProvider,
+		ChartEPackageProvider;
 
 }

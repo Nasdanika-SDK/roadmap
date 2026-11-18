@@ -13,11 +13,12 @@
 	<name>Nasdanika SDK Roadmap: Models</name>
 	<description>
 		The models on the roadmap. The core nano-models are a module that generates and compiles, so
-		that they can be tried. The others are sketches: Xcore files to read, with a readme each, in
+		that they can be tried, and svg/chart writes their charts to the runtime's SVG model. The others are sketches: Xcore files to read, with a readme each, in
 		runtime/, tower/ and technology/.
 	</description>
 
 	<modules>
 		<module>core</module>
+		<module>svg/chart</module>
 	</modules>
 </project>

@@ -58,6 +58,7 @@ ifndef::roadmap-repo[:roadmap-repo: https://github.com/Nasdanika-SDK/roadmap]
 :explorer-test: {roadmap-root}/runtime/explorer/src/test/java/org/nasdanika/sdk/roadmap/runtime/explorer
 :showcase-test: {roadmap-root}/tests/widgets/src/test/java/org/nasdanika/sdk/roadmap/tests/widgets
 :nano-test: {roadmap-root}/models/core/src/test/java/org/nasdanika/sdk/roadmap/models/core
+:svg-chart-test: {roadmap-root}/models/svg/chart/src/test/java/org/nasdanika/sdk/roadmap/models/svg/chart
 :nano-xcore: {roadmap-root}/models/core/src/main/resources/org/nasdanika/sdk/roadmap/models/core
 
 include::front/colophon.adoc[]

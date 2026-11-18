@@ -103,6 +103,16 @@
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
+				<groupId>org.nasdanika.sdk.roadmap.models</groupId>
+				<artifactId>core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.nasdanika.sdk.roadmap.models.svg</groupId>
+				<artifactId>chart</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
 				<groupId>dev.tamboui</groupId>
 				<artifactId>tamboui-core</artifactId>
 				<version>${tamboui.version}</version>

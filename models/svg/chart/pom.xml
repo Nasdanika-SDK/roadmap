@@ -1,0 +1,31 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.nasdanika.sdk.roadmap.models</groupId>
+		<artifactId>parent</artifactId>
+		<version>2026.11.0</version>
+		<relativePath>../..</relativePath>
+	</parent>
+	<groupId>org.nasdanika.sdk.roadmap.models.svg</groupId>
+	<artifactId>chart</artifactId>
+	<packaging>jar</packaging>
+	<name>Nasdanika SDK Roadmap: SVG Charts</name>
+	<description>
+		Charts of the chart nano-model written to the runtime's SVG model: bar, line, area, scatter,
+		composed and pie charts, with axes, a grid, reference lines, a legend and tooltips as SVG
+		titles. No charting library: the layout is a few scales and round-number ticks. Named to
+		graduate next to the runtime's SVG model, as org.nasdanika.sdk.runtime.models.svg:chart.
+	</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.models</groupId>
+			<artifactId>core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.nasdanika.sdk.runtime.models.svg</groupId>
+			<artifactId>model</artifactId>
+		</dependency>
+	</dependencies>
+</project>

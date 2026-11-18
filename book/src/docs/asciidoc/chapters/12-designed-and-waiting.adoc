@@ -101,7 +101,7 @@ These are the increments that lead to agentic work on typed models, and they wil
 |A diagram that is another diagram with differences, and elements that are present only at some coordinates. The least defined item of <<target-state>>.
 
 |[.planned]#PLANNED# The document model and a Markdown reader
-|Structure in the model and text in a named format. Markdown is read into it, and AsciiDoc, Markdown and HTML are written from it. <<core-nano-models>> has the sketch. The model is part of the next release, where it replaces `Documented`, `Section` and `Content` of the core model: <<document-model-release>>.
+|Structure in the model, text in a named format, and data in frames that tables and charts show. Markdown is read into it, and AsciiDoc, Markdown and HTML are written from it. <<core-nano-models>> has the sketch. The model is part of the next release, where it replaces `Documented`, `Section` and `Content` of the core model: <<document-model-release>>.
 
 |[.planned]#PLANNED# Measured text for generated diagrams
 |A table of character widths for one font, so that a diagram laid out on one machine looks the same on every other.

@@ -22,7 +22,8 @@ names and behavior may change. Nothing is published to Maven Central from this r
 | `runtime/widget` | One API for many formats: views written against kinds, rendered as Markdown, GitHub Flavored Markdown and on a terminal | Sketch |
 | `runtime/tui` | The terminal on TamboUI, and screenshots of screens as SVG | Sketch |
 | `runtime/commander` | Nasdanika Commander: two panels over volumes, with the classic keys | Sketch, usable |
-| `models/core` | Core nano-models: related, change, occupancy, kind, enterprise, document, example | Sketch |
+| `models/core` | Core nano-models: related, change, occupancy, kind, enterprise, document, chart, example | Sketch |
+| `models/svg/chart` | Charts written to the runtime's SVG model | Sketch |
 | `models/core/sketches`, `models/runtime`, `models/tower`, `models/technology` | Models to migrate, as Xcore files to read | Planned |
 | `tests/widgets` | One view rendered four ways, across modules | |
 | `book` | The book and the site | |

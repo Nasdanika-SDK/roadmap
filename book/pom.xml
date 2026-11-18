@@ -75,6 +75,11 @@
 			<version>${project.version}</version>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.nasdanika.sdk.roadmap.models.svg</groupId>
+			<artifactId>chart</artifactId>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -154,6 +159,7 @@
 									<fileset dir="${roadmap.root}/runtime/commander/target/screenshots" includes="*.svg"/>
 									<fileset dir="${roadmap.root}/runtime/explorer/target/screenshots" includes="*.svg"/>
 									<fileset dir="${roadmap.root}/runtime/tui/target/screenshots" includes="*.svg"/>
+									<fileset dir="${roadmap.root}/models/svg/chart/target/screenshots" includes="*.svg"/>
 									<fileset dir="${roadmap.root}/tests/widgets/target/showcase" includes="*.svg"/>
 								</copy>
 								<!--

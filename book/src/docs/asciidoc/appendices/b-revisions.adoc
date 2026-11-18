@@ -14,6 +14,18 @@ They are here so that the first cut of the book has its history, and only what i
 |===
 |Date |Decision |Chapters
 
+|2026-11-18
+|The release needs the SVG and Markdown writers of charts. The SVG writer is sketched on the runtime's SVG model, in a module named to graduate next to it: a layout that knows no SVG (round-number ticks, bands, geometry along categories and values), and one set of rules for marks, colors and text.
+|<<core-nano-models>>, <<target-state>>
+
+|2026-11-18
+|Charts go into the next release with the document model. Frames move from the chart model to the document model, so that a table can be made from one. A table or a chart holds an abstract frame: a frame, or a reference to one held by the document. The containments of frames resolve proxies, so a frame can be saved in a file of its own without a reference: a reference is for sharing, and containment across resources for splitting files.
+|<<core-nano-models>>, <<target-state>>, <<designed-and-waiting>>
+
+|2026-11-18
+|Charts are a nano-model on the document model: a chart is a block, its data is a frame of named columns, and its classes and defaults are those of Recharts without what Recharts has for the browser. Basic charts need no charting library: SVG and Draw.io share one layout, the terminal uses TamboUI's chart widgets, and an agent gets the frame as a table. XChart is an optional writer of pictures, not the way to SVG.
+|<<core-nano-models>>
+
 |2026-11-14
 |All the polymorphic user interface needs is a lineage: a sequence of things to ask for a view, nearest first, which does not have to be a line of specialization. Java, Ecore and Meta are three providers of it, and there may be more. Its order depends on its nature: C3 for a hierarchy, with a breadth-first walk as the simpler way. "Is a" and "has a" are close, so what an element has, its kinds first, can be part of its lineage, with a warning that reading containment this way may become too complicated.
 |<<direction>>, <<designed-and-waiting>>, <<core-nano-models>>

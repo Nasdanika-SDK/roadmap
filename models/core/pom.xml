@@ -12,7 +12,7 @@
 	<name>Nasdanika SDK Roadmap: Core Nano-models</name>
 	<description>
 		Candidate nano-models of the runtime's core model, each one Xcore file: related, change,
-		occupancy, kind, enterprise, document and example. Java is generated from them into src-gen
+		occupancy, kind, enterprise, document, chart and example. Java is generated from them into src-gen
 		and compiled, so they can be instantiated and tried, on the released core model.
 
 		Role, IAM, Seal and Lifecycle, which are to become nano-models too, are in sketches/ as they

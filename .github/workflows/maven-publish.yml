@@ -1,0 +1,80 @@
+name: Publish to GitHub Packages
+
+# Publishes the Maven artifacts of the roadmap to GitHub Packages, in addition to the site that
+# roadmap.yml publishes to GitHub Pages: the modules, and the book with its PDF, EPUB and HTML
+# attached under the classifier "book".
+#
+#   A snapshot version (the version in pom.xml ends in -SNAPSHOT) is published on every push to
+#   main, and replaces the snapshot published before.
+#   A release version is published once, when a release is published on GitHub, or by hand from the
+#   Actions tab. GitHub Packages does not overwrite a release version, so a second run for the same
+#   version fails, and a push to main with a release version publishes nothing.
+#
+# Nothing to set up: the workflow signs in to GitHub Packages with the token GitHub gives each run.
+# Nothing goes to Maven Central from this repository: the root pom.xml sets skipPublishing, and
+# maven.deploy.skip, which this workflow turns off for GitHub Packages only.
+
+on:
+  push:
+    branches: [ "main" ]
+  release:
+    types: [ published ]
+  # Allows the workflow to be run by hand from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+# One publication at a time for a branch or a tag
+concurrency:
+  group: maven-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 25
+      uses: actions/setup-java@v4
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+        # Writes a settings.xml with a server "github" that reads GITHUB_ACTOR and GITHUB_TOKEN
+        server-id: github
+    - name: Read the version
+      id: version
+      run: echo "version=$(mvn -q -N -DforceStdout help:evaluate -Dexpression=project.version)" >> "$GITHUB_OUTPUT"
+    - name: Decide whether to publish
+      id: decide
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        EVENT: ${{ github.event_name }}
+      run: |
+        case "$VERSION" in
+          *-SNAPSHOT)
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Publishing snapshot $VERSION"
+            ;;
+          *)
+            if [ "$EVENT" = "push" ]; then
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::$VERSION is a release version. It is published by a GitHub release or by hand, not on a push."
+            else
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Publishing release $VERSION"
+            fi
+            ;;
+        esac
+    - name: Build, test and publish
+      if: steps.decide.outputs.publish == 'true'
+      # Published editions of the book leave the editor's notes out.
+      run: >
+        mvn -B deploy
+        -Dbook.editor-notes=false
+        -Dmaven.deploy.skip=false
+        -DaltDeploymentRepository=github::https://maven.pkg.github.com/${{ github.repository }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
