@@ -20,6 +20,7 @@ import org.nasdanika.sdk.roadmap.models.core.change.ChangeMode;
 import org.nasdanika.sdk.roadmap.models.core.change.SetChange;
 import org.nasdanika.sdk.roadmap.models.core.chart.Bar;
 import org.nasdanika.sdk.roadmap.models.core.chart.BarChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.CartesianChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.CartesianSeries;
 import org.nasdanika.sdk.roadmap.models.core.chart.Cell;
 import org.nasdanika.sdk.roadmap.models.core.chart.ChartFactory;
@@ -31,7 +32,6 @@ import org.nasdanika.sdk.roadmap.models.core.chart.LineChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.Pie;
 import org.nasdanika.sdk.roadmap.models.core.chart.PieChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.ReferenceLine;
-import org.nasdanika.sdk.roadmap.models.core.chart.Side;
 import org.nasdanika.sdk.roadmap.models.core.chart.YAxis;
 import org.nasdanika.sdk.roadmap.models.core.document.Column;
 import org.nasdanika.sdk.roadmap.models.core.document.DataType;
@@ -333,37 +333,44 @@ class NanoModelTests {
 	}
 
 	@Test
-	void costAndPassRateOnTwoAxes() {
-		// tag::composed[]
+	void costAndPassRateAsTwoSmallCharts() {
+		// tag::two-charts[]
 		Frame results = results();
 		results.getColumns().add(column("cost", DataType.NUMBER, "1.2", "1.4", "2.1", "1.4"));
+		Document report = DocumentFactory.eINSTANCE.createDocument();
+		report.getFrames().add(results); // <1>
 
+		Bar cost = ChartFactory.eINSTANCE.createBar();
+		cost.setDataKey("cost"); // <2>
 		YAxis cents = ChartFactory.eINSTANCE.createYAxis();
-		cents.setLabel("Cost per case, cents");
+		cents.setLabel("Cents per case");
+		BarChart costs = ChartFactory.eINSTANCE.createBarChart();
+		costs.setTitle("Cost per case by prompt version");
+		costs.getSeries().add(cost);
+		costs.getYAxes().add(cents);
+
+		Line passRate = ChartFactory.eINSTANCE.createLine();
+		passRate.setDataKey("passRate"); // <3>
 		YAxis percent = ChartFactory.eINSTANCE.createYAxis();
 		percent.setLabel("Pass rate");
 		percent.setUnit("%");
-		percent.setOrientation(Side.RIGHT); // <1>
+		percent.setMax("100");
+		LineChart passRates = ChartFactory.eINSTANCE.createLineChart();
+		passRates.setTitle("Pass rate by prompt version");
+		passRates.getSeries().add(passRate);
+		passRates.getYAxes().add(percent);
 
-		Bar cost = ChartFactory.eINSTANCE.createBar();
-		cost.setDataKey("cost");
-		cost.setYAxis(cents);
-		Line passRate = ChartFactory.eINSTANCE.createLine();
-		passRate.setDataKey("passRate");
-		passRate.setYAxis(percent); // <2>
+		Section evaluation = DocumentFactory.eINSTANCE.createSection();
+		for (CartesianChart<?> chart : List.<CartesianChart<?>>of(costs, passRates)) {
+			chart.setData(reference(results)); // <4>
+			chart.setHeight(200); // <5>
+			chart.getYAxes().getFirst().setWidth(64);
+			evaluation.getElements().add(chart);
+		}
 
-		ComposedChart chart = ChartFactory.eINSTANCE.createComposedChart();
-		chart.setTitle("What a point of pass rate costs");
-		chart.setData(results);
-		chart.getYAxes().addAll(List.of(cents, percent));
-		chart.getSeries().addAll(List.<CartesianSeries>of(cost, passRate)); // <3>
-		chart.setLegend(ChartFactory.eINSTANCE.createLegend());
-
-		Column costs = results.getColumns().get(2);
-		assertThat(costs.getValues()).containsExactly("1.2", "1.4", "2.1", "1.4"); // <4>
-		assertThat(passRate.getStrokeWidth()).isEqualTo(2);
-		assertThat(chart.getLegend().getPosition()).isEqualTo(Side.BOTTOM);
-		// end::composed[]
+		assertThat(evaluation.getElements()).containsExactly(costs, passRates);
+		assertThat(((FrameReference) passRates.getData()).getTarget()).isSameAs(results);
+		// end::two-charts[]
 	}
 
 	@Test
@@ -396,17 +403,19 @@ class NanoModelTests {
 		evaluations.setName("Evaluation report");
 		evaluations.getElementKinds().add(ChartPackage.Literals.COMPOSED_CHART);
 
-		YAxis left = ChartFactory.eINSTANCE.createYAxis();
-		YAxis right = ChartFactory.eINSTANCE.createYAxis();
-		right.setOrientation(Side.RIGHT);
+		// Bars of the pass rate of each version, and a line of the baseline they are compared with
+		Frame results = results();
+		results.getColumns().add(column("baseline", DataType.NUMBER, "75", "75", "75", "75"));
+		YAxis percent = ChartFactory.eINSTANCE.createYAxis();
+		percent.setUnit("%");
 		Line line = ChartFactory.eINSTANCE.createLine();
-		line.setDataKey("passRate");
-		line.setYAxis(right);
+		line.setDataKey("baseline");
+		line.setYAxis(percent);
 		Bar bar = ChartFactory.eINSTANCE.createBar();
 		bar.setDataKey("passRate");
 		ComposedChart chart = ChartFactory.eINSTANCE.createComposedChart();
-		chart.setData(results());
-		chart.getYAxes().addAll(List.of(left, right));
+		chart.setData(results);
+		chart.getYAxes().add(percent);
 		chart.getSeries().addAll(List.<CartesianSeries>of(bar, line));
 
 		Section section = DocumentFactory.eINSTANCE.createSection();
@@ -426,8 +435,8 @@ class NanoModelTests {
 		assertThat(loadedChart.getSeries()).hasSize(2);
 		assertThat(loadedChart.getSeries().get(0)).isInstanceOf(Bar.class);
 		assertThat(loadedChart.getSeries().get(1)).isInstanceOf(Line.class);
-		assertThat(loadedChart.getSeries().get(1).getYAxis()).isSameAs(loadedChart.getYAxes().get(1));
-		assertThat(loadedChart.getYAxes().get(1).getOrientation()).isEqualTo(Side.RIGHT);
+		assertThat(loadedChart.getSeries().get(1).getYAxis()).isSameAs(loadedChart.getYAxes().getFirst());
+		assertThat(loadedChart.getYAxes().getFirst().getUnit()).isEqualTo("%");
 		assertThat(((Frame) loadedChart.getData()).getColumns().get(1).getValues()).containsExactly("72", "81", "86", "84");
 		assertThat(loadedDocument.getViewpoint().getElementKinds()).containsExactly(ChartPackage.Literals.COMPOSED_CHART);
 	}

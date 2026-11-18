@@ -1,6 +1,7 @@
 package org.nasdanika.sdk.roadmap.models.svg.chart;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -8,13 +9,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.junit.jupiter.api.Test;
+import org.nasdanika.sdk.roadmap.models.core.chart.AxisType;
 import org.nasdanika.sdk.roadmap.models.core.chart.Bar;
 import org.nasdanika.sdk.roadmap.models.core.chart.BarChart;
-import org.nasdanika.sdk.roadmap.models.core.chart.CartesianSeries;
+import org.nasdanika.sdk.roadmap.models.core.chart.Border;
 import org.nasdanika.sdk.roadmap.models.core.chart.Cell;
 import org.nasdanika.sdk.roadmap.models.core.chart.ChartFactory;
-import org.nasdanika.sdk.roadmap.models.core.chart.ComposedChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.Curve;
 import org.nasdanika.sdk.roadmap.models.core.chart.Layout;
 import org.nasdanika.sdk.roadmap.models.core.chart.Line;
@@ -22,13 +24,18 @@ import org.nasdanika.sdk.roadmap.models.core.chart.LineChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.Pie;
 import org.nasdanika.sdk.roadmap.models.core.chart.PieChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.ReferenceLine;
-import org.nasdanika.sdk.roadmap.models.core.chart.Side;
+import org.nasdanika.sdk.roadmap.models.core.chart.Scatter;
+import org.nasdanika.sdk.roadmap.models.core.chart.ScatterChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.Shade;
+import org.nasdanika.sdk.roadmap.models.core.chart.XAxis;
 import org.nasdanika.sdk.roadmap.models.core.chart.YAxis;
+import org.nasdanika.sdk.roadmap.models.core.chart.ZAxis;
 import org.nasdanika.sdk.roadmap.models.core.document.Column;
 import org.nasdanika.sdk.roadmap.models.core.document.DataType;
 import org.nasdanika.sdk.roadmap.models.core.document.DocumentFactory;
 import org.nasdanika.sdk.roadmap.models.core.document.Frame;
 import org.nasdanika.sdk.roadmap.models.core.document.FrameReference;
+import org.nasdanika.sdk.runtime.models.svg.Circle;
 import org.nasdanika.sdk.runtime.models.svg.Container;
 import org.nasdanika.sdk.runtime.models.svg.Desc;
 import org.nasdanika.sdk.runtime.models.svg.Element;
@@ -148,34 +155,48 @@ class ChartSvgTests {
 	}
 
 	@Test
-	void costAndPassRateOnTwoAxes() throws IOException {
+	void costAndPassRateAsTwoSmallCharts() throws IOException {
 		Frame results = results();
 		results.getColumns().add(column("cost", DataType.NUMBER, "1.2", "1.4", "2.1", "1.4"));
+		FrameReference shared = DocumentFactory.eINSTANCE.createFrameReference();
+		shared.setTarget(results);
+
+		Bar cost = ChartFactory.eINSTANCE.createBar();
+		cost.setDataKey("cost");
 		YAxis cents = ChartFactory.eINSTANCE.createYAxis();
-		cents.setLabel("Cost per case, cents");
+		cents.setLabel("Cents per case");
+		cents.setWidth(64);
+		BarChart costs = ChartFactory.eINSTANCE.createBarChart();
+		costs.setTitle("Cost per case by prompt version");
+		costs.setData(EcoreUtil.copy(shared));
+		costs.setHeight(200);
+		costs.getSeries().add(cost);
+		costs.getYAxes().add(cents);
+
+		Line passRate = ChartFactory.eINSTANCE.createLine();
+		passRate.setDataKey("passRate");
 		YAxis percent = ChartFactory.eINSTANCE.createYAxis();
 		percent.setLabel("Pass rate");
 		percent.setUnit("%");
-		percent.setOrientation(Side.RIGHT);
-		Bar cost = ChartFactory.eINSTANCE.createBar();
-		cost.setDataKey("cost");
-		cost.setYAxis(cents);
-		Line passRate = ChartFactory.eINSTANCE.createLine();
-		passRate.setDataKey("passRate");
-		passRate.setYAxis(percent);
-		ComposedChart chart = ChartFactory.eINSTANCE.createComposedChart();
-		chart.setTitle("What a point of pass rate costs");
-		chart.setData(results);
-		chart.getYAxes().addAll(List.of(cents, percent));
-		chart.getSeries().addAll(List.<CartesianSeries>of(cost, passRate));
-		chart.setLegend(ChartFactory.eINSTANCE.createLegend());
+		percent.setMax("100");
+		percent.setWidth(64);
+		LineChart passRates = ChartFactory.eINSTANCE.createLineChart();
+		passRates.setTitle("Pass rate by prompt version");
+		passRates.setData(EcoreUtil.copy(shared));
+		passRates.setHeight(200);
+		passRates.getSeries().add(passRate);
+		passRates.getYAxes().add(percent);
 
-		Svg svg = new ChartSvgWriter().write(chart);
-		save(svg, "chart-cost-and-pass-rate");
+		Svg costSvg = new ChartSvgWriter().write(costs);
+		save(costSvg, "chart-cost-per-case");
+		Svg passRateSvg = new ChartSvgWriter().write(passRates);
+		save(passRateSvg, "chart-pass-rate-line");
 
-		assertThat(group(svg, "bars")).hasSize(4);
-		assertThat(group(svg, "lines")).hasSize(1 + 4); // the line and its dots
-		assertThat(group(svg, "legend")).isNotEmpty();
+		// One width of axis: the middle of the first bar is above the first dot
+		org.nasdanika.sdk.runtime.models.svg.Path firstBar = ofType(group(costSvg, "bars"),
+				org.nasdanika.sdk.runtime.models.svg.Path.class).getFirst();
+		Circle firstDot = ofType(group(passRateSvg, "lines"), Circle.class).getFirst();
+		assertThat(Double.parseDouble(firstBar.getD().split(" ")[1]) + 12).isCloseTo(firstDot.getCx(), within(0.11));
 	}
 
 	@Test
@@ -225,6 +246,95 @@ class ChartSvgTests {
 		List<org.nasdanika.sdk.runtime.models.svg.Path> lines = ofType(group(svg, "lines"),
 				org.nasdanika.sdk.runtime.models.svg.Path.class);
 		assertThat(lines).hasSize(2); // a missing value is a gap
+	}
+
+	@Test
+	void aCostBenefitChart() throws IOException {
+		Frame runs = DocumentFactory.eINSTANCE.createFrame();
+		runs.getColumns().addAll(List.of(
+				column("configuration", DataType.TEXT, "small, zero-shot", "small, few-shot",
+						"small + RAG", "large, few-shot", "large + RAG", "large + tools"),
+				column("cost", DataType.NUMBER, "0.3", "0.5", "0.9", "1.8", "2.4", "3.1"),
+				column("value", DataType.NUMBER, "61", "76", "79", "84", "88", "83"),
+				column("coverage", DataType.NUMBER, "25", "40", "70", "50", "95", "80"),
+				column("risk", DataType.NUMBER, "0.6", "0.45", "0.3", "0.25", "0.15", "0.5"),
+				column("fewRuns", DataType.TEXT, "no", "no", "no", "no", "yes", "no")));
+
+		// tag::cost-benefit[]
+		Scatter configurations = ChartFactory.eINSTANCE.createScatter();
+		configurations.setName("Value");
+		configurations.setDataKey("value"); // <1>
+		configurations.setNameKey("configuration");
+		configurations.setLabel(true);
+
+		ZAxis coverage = ChartFactory.eINSTANCE.createZAxis();
+		coverage.setDataKey("coverage"); // <2>
+		coverage.setName("Coverage");
+		coverage.setUnit("%");
+		configurations.setZAxis(coverage);
+
+		Shade risk = ChartFactory.eINSTANCE.createShade();
+		risk.setDataKey("risk"); // <3>
+		risk.setName("Risk");
+		configurations.setShade(risk);
+
+		Border fewRuns = ChartFactory.eINSTANCE.createBorder();
+		fewRuns.setDataKey("fewRuns"); // <4>
+		fewRuns.setName("Too few runs");
+		fewRuns.setStrokeDasharray("3 2");
+		configurations.setBorder(fewRuns);
+
+		XAxis cost = ChartFactory.eINSTANCE.createXAxis();
+		cost.setDataKey("cost"); // <5>
+		cost.setType(AxisType.NUMBER);
+		cost.setLabel("Cost per case, cents");
+		YAxis value = ChartFactory.eINSTANCE.createYAxis();
+		value.setLabel("Business value");
+		value.setMin("auto");
+		value.setMax("100");
+		ReferenceLine floor = ChartFactory.eINSTANCE.createReferenceLine();
+		floor.setY("70"); // <6>
+		floor.setLabel("Quality floor");
+		floor.setStrokeDasharray("3 3");
+
+		ScatterChart chart = ChartFactory.eINSTANCE.createScatterChart();
+		chart.setTitle("Cost and value of six configurations");
+		chart.setAlternativeText("Value rises with cost up to large + RAG, 88 at 2.4 cents,"
+				+ " with the widest coverage and the least risk, from too few runs."
+				+ " Large + tools costs more and is worth less."
+				+ " Small, zero-shot is under the quality floor of 70.");
+		chart.setData(runs);
+		chart.getSeries().add(configurations);
+		chart.setXAxis(cost);
+		chart.getYAxes().add(value);
+		chart.getReferenceLines().add(floor);
+		chart.setLegend(ChartFactory.eINSTANCE.createLegend());
+		chart.setTooltip(ChartFactory.eINSTANCE.createTooltip());
+		// end::cost-benefit[]
+
+		Svg svg = new ChartSvgWriter().write(chart);
+		save(svg, "chart-cost-benefit");
+
+		List<Circle> points = ofType(group(svg, "scatters"), Circle.class);
+		assertThat(points).hasSize(6);
+		// The largest point is drawn first, so the smaller ones stay on top
+		Circle largest = points.getFirst();
+		assertThat(ofType(largest.children(), Title.class).getFirst().getValue())
+				.startsWith("large + RAG\n")
+				.contains("Coverage : 95%", "Risk : 0.15", "Too few runs : yes");
+		assertThat(largest.getStrokeDasharray()).isEqualTo("3 2");
+		// The least risk is the lightest shade, the greatest the darkest
+		assertThat(largest.getFill()).isEqualTo("#86b6ef");
+		assertThat(points).extracting(Circle::getFill).contains("#0d366b");
+		assertThat(points).extracting(Circle::getR).isSortedAccordingTo((a, b) -> Double.compare(b, a));
+		assertThat(ofType(group(svg, "labels"), org.nasdanika.sdk.runtime.models.svg.Text.class)).hasSize(6);
+	}
+
+	@Test
+	void shadesMixInSrgb() {
+		assertThat(Encodings.mix("#000000", "#ffffff", 0.5)).isEqualTo("#808080");
+		assertThat(Encodings.mix("#86b6ef", "#0d366b", 0)).isEqualTo("#86b6ef");
+		assertThat(Encodings.mix("#86b6ef", "#0d366b", 1)).isEqualTo("#0d366b");
 	}
 
 	@Test

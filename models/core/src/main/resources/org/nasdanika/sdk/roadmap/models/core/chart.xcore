@@ -31,6 +31,8 @@
  *   - The start and end angles of a pie are 0 and 360, as in Recharts. The older Nasdanika model
  *     had them the other way round.
  *   - A cell names the category it styles, where a Recharts cell is matched by position.
+ *   - A scatter holds its z axis, where a Recharts chart holds it and a scatter names it by id. A
+ *     shade and a border by column are not in Recharts, which sets them with a cell per point.
  */
 package org.nasdanika.sdk.roadmap.models.core.chart
 
@@ -76,7 +78,11 @@ abstract class CartesianChart<S extends CartesianSeries> extends Chart<S> {
 
 	contains XAxis xAxis
 
-	/** One axis, or two for values of different units: a left one and a right one. */
+	/**
+	 * One axis, as a rule. A second one, on the right, is there because Recharts has it: values of
+	 * different units read better as two small charts on one frame, since two scales on one chart
+	 * suggest comparisons that the data does not support.
+	 */
 	contains YAxis[] yAxes
 
 	contains CartesianGrid grid
@@ -124,7 +130,8 @@ class ScatterChart extends CartesianChart<Scatter> {
 }
 
 /**
- * Lines, areas, bars and scatters on one set of axes: bars of cost with a line of accuracy.
+ * Lines, areas, bars and scatters on one set of axes: bars of the pass rate of each version, with a
+ * line of the baseline they are compared with.
  */
 class ComposedChart extends CartesianChart<CartesianSeries>, BarSpacing {
 
@@ -173,6 +180,13 @@ class YAxis extends Axis {
 	AxisType ^type = "number"
 
 	Side orientation = "left"
+
+	/**
+	 * The width of the axis in pixels, with its ticks and its label. Zero: what its ticks need.
+	 * Recharts has 60. Charts stacked to share their categories give their axes one width, so that
+	 * the categories line up.
+	 */
+	int width
 
 }
 
@@ -318,11 +332,95 @@ class Bar extends CartesianSeries {
 
 }
 
+/**
+ * Points at x and y, with an x axis of numbers. More columns can set the size, the shade and the
+ * border of each point, so one chart shows more than two goals: cost along x, value up y, a third
+ * goal as size, a risk as shade.
+ */
 class Scatter extends CartesianSeries {
 
+	/** The fill of the points, when there is no shade. */
 	String fill
 
 	Shape shape
+
+	/** The column that names each point: its tooltip, and its label when label is set. */
+	String nameKey
+
+	/** Show the name beside each point. For a few points: names on many points hide them. */
+	boolean label
+
+	/** The size of each point from a column. */
+	contains ZAxis zAxis
+
+	/** The fill of each point from a column. */
+	contains Shade shade
+
+	/** A border on the points for which a column is true. */
+	contains Border border
+
+}
+
+// -- Encodings --
+
+/**
+ * A column that sets a property of each point of a scatter, beyond its position.
+ */
+abstract class Encoding {
+
+	/** The column. */
+	String dataKey
+
+	/** The name in the legend and the tooltip. Empty: the label of the column. */
+	String name
+
+	/** Appended to the values in the legend and the tooltip. */
+	String unit
+
+}
+
+/**
+ * The size of a point, by area: twice the value is twice the ink. The values map from zero, or from
+ * the least value when it is negative, to the greatest, onto the range.
+ */
+class ZAxis extends Encoding {
+
+	/**
+	 * The least and the greatest area of a point, in square pixels. Empty: 64 and 1024. Recharts has
+	 * 64 and 64, which leaves every point one size.
+	 */
+	int[] range
+
+}
+
+/**
+ * The fill of a point, a shade of one color: lighter for the least value, darker for the greatest.
+ * The values map from the least to the greatest. Red, amber and green are not shades: they mean
+ * status.
+ */
+class Shade extends Encoding {
+
+	/** The color of the least value. Empty, with high empty too: the shades of the writer. */
+	String low
+
+	/** The color of the greatest value. */
+	String high
+
+}
+
+/**
+ * A border on a point for which the column is "true", "yes" or "1": a result from too few runs, a
+ * configuration not yet approved.
+ */
+class Border extends Encoding {
+
+	/** Empty: the color of ink. */
+	String stroke
+
+	int strokeWidth = "2"
+
+	/** A dash pattern, as SVG's stroke-dasharray. Solid when empty. */
+	String strokeDasharray
 
 }
 

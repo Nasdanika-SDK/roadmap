@@ -15,6 +15,22 @@ They are here so that the first cut of the book has its history, and only what i
 |Date |Decision |Chapters
 
 |2026-11-18
+|Planned: courses on Leanpub, tied to the books and to a release, with quizzes about ideas, exercises that are code checked by a build, and a certificate of completion that is not a credential. The first is a track on diagrams: Thinking in Diagrams, with no code, then Diagrams in Java, and Executable Diagrams when executable diagrams are on the SDK. The courses and their exercises are in a repository of their own.
+|<<designed-and-waiting>>, <<taking-part>>
+
+|2026-11-18
+|Cost and pass rate are two small charts of one frame, stacked, and no longer one chart with a scale on each side. A y axis can have a fixed width, as in Recharts, so that stacked charts line up. A second y axis stays in the model for Recharts and is discouraged.
+|<<core-nano-models>>
+
+|2026-11-18
+|Sketched: a scatter takes the size, the shade and the border of its points from columns, through a z axis, a shade and a border, and the SVG writer draws them with a legend for each and a tooltip with every column. Size is by area and from zero; a shade is of one color, light to dark. A cost-benefit chart of six configurations is the example. Still planned: a diverging shade, and the encodings in the other writers.
+|<<core-nano-models>>
+
+|2026-11-18
+|Planned: encodings by column for a scatter, size, shade and border, for cost-benefit charts of evaluations with more than two goals.
+|<<core-nano-models>>
+
+|2026-11-18
 |The release needs the SVG and Markdown writers of charts. The SVG writer is sketched on the runtime's SVG model, in a module named to graduate next to it: a layout that knows no SVG (round-number ticks, bands, geometry along categories and values), and one set of rules for marks, colors and text.
 |<<core-nano-models>>, <<target-state>>
 

@@ -36,10 +36,31 @@ final class Canvas {
 	private static final double CHARACTER_WIDTH = 0.56;
 
 	enum Mark {
-		BOX, LINE, DOT
+		BOX, LINE, DOT,
+		/** A marker, then the name: a border. */
+		MARKER,
+		/** The name, then markers from the least value to the greatest, with the values at the ends: a size or a shade. */
+		SCALE
 	}
 
-	record LegendEntry(String name, String color, Mark mark) {
+	/** A circle in a legend. A stroke width of zero is no stroke. */
+	record Marker(double radius, String fill, String stroke, int strokeWidth, String dasharray) {
+	}
+
+	record LegendEntry(String name, String color, Mark mark, List<Marker> markers, String low, String high) {
+
+		LegendEntry(String name, String color, Mark mark) {
+			this(name, color, mark, List.of(), null, null);
+		}
+
+		static LegendEntry marker(String name, Marker marker) {
+			return new LegendEntry(name, null, Mark.MARKER, List.of(marker), null, null);
+		}
+
+		static LegendEntry scale(String name, String low, List<Marker> markers, String high) {
+			return new LegendEntry(name, null, Mark.SCALE, markers, low, high);
+		}
+
 	}
 
 	final ChartTheme theme;
@@ -177,6 +198,20 @@ final class Canvas {
 		}
 	}
 
+	/** A tooltip of several lines: a heading, then a name and a value on each. */
+	void tooltip(Container mark, String heading, List<String[]> lines) {
+		if (chart.getTooltip() != null) {
+			String separator = chart.getTooltip().getSeparator() == null ? " : " : chart.getTooltip().getSeparator();
+			StringBuilder value = new StringBuilder(heading);
+			for (String[] line : lines) {
+				value.append('\n').append(line[0]).append(separator).append(line[1]);
+			}
+			Title title = SVG.createTitle();
+			title.setValue(value.toString());
+			mark.add(title);
+		}
+	}
+
 	double textWidth(String text) {
 		return text.length() * fontSize() * CHARACTER_WIDTH;
 	}
@@ -194,7 +229,10 @@ final class Canvas {
 		}
 		G legend = group("legend");
 		Side position = chart.getLegend().getPosition();
-		double rowHeight = fontSize() + 8;
+		double rowHeight = entries.stream()
+				.flatMap(entry -> entry.markers().stream())
+				.mapToDouble(marker -> 2 * marker.radius() + 4)
+				.reduce(fontSize() + 8, Math::max);
 		double gap = 16;
 		if (position == Side.TOP || position == Side.BOTTOM) {
 			double total = entries.stream().mapToDouble(entry -> entryWidth(entry) + gap).sum() - gap;
@@ -224,11 +262,57 @@ final class Canvas {
 		return entry.mark() == Mark.LINE ? 20 : 16;
 	}
 
+	private static double markersWidth(LegendEntry entry) {
+		return entry.markers().stream().mapToDouble(marker -> 2 * marker.radius() + 4).sum();
+	}
+
 	private double entryWidth(LegendEntry entry) {
-		return swatchWidth(entry) + textWidth(entry.name());
+		return switch (entry.mark()) {
+			case MARKER -> markersWidth(entry) + 2 + textWidth(entry.name());
+			case SCALE -> textWidth(entry.name()) + 8 + textWidth(entry.low()) + 4 + markersWidth(entry) + 2 + textWidth(entry.high());
+			default -> swatchWidth(entry) + textWidth(entry.name());
+		};
+	}
+
+	/** Markers side by side, centered on a line, from x. */
+	private double markers(Container legend, List<Marker> markers, double x, double y) {
+		for (Marker marker : markers) {
+			Circle circle = SVG.createCircle();
+			circle.setCx(round(x + 2 + marker.radius()));
+			circle.setCy(round(y));
+			circle.setR(round(marker.radius()));
+			circle.setFill(marker.fill());
+			if (marker.strokeWidth() > 0) {
+				circle.setStroke(marker.stroke());
+				circle.setStrokeWidth(Integer.toString(marker.strokeWidth()));
+				circle.setStrokeDasharray(marker.dasharray());
+			}
+			legend.add(circle);
+			x += 2 * marker.radius() + 4;
+		}
+		return x;
 	}
 
 	private void entry(Container legend, LegendEntry entry, double x, double y) {
+		String ink = theme.secondaryInk();
+		switch (entry.mark()) {
+			case MARKER -> {
+				double end = markers(legend, entry.markers(), x, y);
+				centeredText(legend, end + 2, y, entry.name(), "start", ink);
+				return;
+			}
+			case SCALE -> {
+				centeredText(legend, x, y, entry.name(), "start", ink);
+				x += textWidth(entry.name()) + 8;
+				centeredText(legend, x, y, entry.low(), "start", ink);
+				x = markers(legend, entry.markers(), x + textWidth(entry.low()) + 4, y);
+				centeredText(legend, x + 2, y, entry.high(), "start", ink);
+				return;
+			}
+			default -> {
+				// A swatch, below
+			}
+		}
 		switch (entry.mark()) {
 			case BOX -> {
 				Rect swatch = SVG.createRect();
@@ -248,8 +332,9 @@ final class Canvas {
 				dot(legend, x + 7, y, 3, entry.color());
 			}
 			case DOT -> dot(legend, x + 5, y, 4.5, entry.color());
+			default -> throw new IllegalStateException(entry.mark().name());
 		}
-		centeredText(legend, x + swatchWidth(entry), y, entry.name(), "start", theme.secondaryInk());
+		centeredText(legend, x + swatchWidth(entry), y, entry.name(), "start", ink);
 	}
 
 	// -- Numbers --

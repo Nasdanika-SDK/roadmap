@@ -10,6 +10,7 @@ import org.nasdanika.sdk.roadmap.models.core.chart.Chart;
 import org.nasdanika.sdk.roadmap.models.core.chart.Line;
 import org.nasdanika.sdk.roadmap.models.core.chart.Pie;
 import org.nasdanika.sdk.roadmap.models.core.chart.PieChart;
+import org.nasdanika.sdk.roadmap.models.core.chart.Scatter;
 import org.nasdanika.sdk.roadmap.models.core.chart.Series;
 import org.nasdanika.sdk.roadmap.models.svg.chart.Canvas.LegendEntry;
 import org.nasdanika.sdk.roadmap.models.svg.chart.Canvas.Mark;
@@ -60,8 +61,17 @@ public class ChartSvgWriter {
 		List<LegendEntry> entries = new ArrayList<>();
 		for (int index = 0; index < chart.getSeries().size(); ++index) {
 			Series series = chart.getSeries().get(index);
-			Mark mark = series instanceof Line ? Mark.LINE : series instanceof Bar || series instanceof Area ? Mark.BOX : Mark.DOT;
-			entries.add(new LegendEntry(canvas.seriesName(series), canvas.color(series, index), mark));
+			String color = canvas.color(series, index);
+			if (series instanceof Scatter scatter) {
+				// A shaded scatter has no color of its own to show: its shade has the entry
+				if (scatter.getShade() == null) {
+					entries.add(new LegendEntry(canvas.seriesName(series), color, Mark.DOT));
+				}
+				entries.addAll(new Encodings(canvas, scatter, color).legend());
+			} else {
+				Mark mark = series instanceof Line ? Mark.LINE : series instanceof Bar || series instanceof Area ? Mark.BOX : Mark.DOT;
+				entries.add(new LegendEntry(canvas.seriesName(series), color, mark));
+			}
 		}
 		return entries;
 	}

@@ -11,6 +11,7 @@ import org.nasdanika.sdk.roadmap.models.core.chart.Axis;
 import org.nasdanika.sdk.roadmap.models.core.chart.AxisType;
 import org.nasdanika.sdk.roadmap.models.core.chart.Bar;
 import org.nasdanika.sdk.roadmap.models.core.chart.BarSpacing;
+import org.nasdanika.sdk.roadmap.models.core.chart.Border;
 import org.nasdanika.sdk.roadmap.models.core.chart.CartesianChart;
 import org.nasdanika.sdk.roadmap.models.core.chart.CartesianGrid;
 import org.nasdanika.sdk.roadmap.models.core.chart.CartesianSeries;
@@ -24,6 +25,7 @@ import org.nasdanika.sdk.roadmap.models.core.chart.Shape;
 import org.nasdanika.sdk.roadmap.models.core.chart.Side;
 import org.nasdanika.sdk.roadmap.models.core.chart.XAxis;
 import org.nasdanika.sdk.roadmap.models.core.chart.YAxis;
+import org.nasdanika.sdk.runtime.models.svg.Circle;
 import org.nasdanika.sdk.runtime.models.svg.Container;
 import org.nasdanika.sdk.runtime.models.svg.G;
 import org.nasdanika.sdk.runtime.models.svg.Path;
@@ -226,7 +228,9 @@ final class CartesianDrawing {
 		for (int index = 0; index < yAxes.size(); ++index) {
 			YAxis axis = yAxes.get(index);
 			if (!axis.isHidden()) {
-				double space = (vertical ? fontSize : tickWidth(index)) + 8 + (axis.getLabel() == null ? 0 : fontSize + 8);
+				double space = axis.getWidth() > 0
+						? axis.getWidth()
+						: (vertical ? fontSize : tickWidth(index)) + 8 + (axis.getLabel() == null ? 0 : fontSize + 8);
 				if (far(axis)) {
 					farSpace = Math.max(farSpace, space);
 				} else {
@@ -536,9 +540,7 @@ final class CartesianDrawing {
 			if (!Double.isNaN(extents[row][1])) {
 				double category = category(row);
 				double value = value(axis, extents[row][1]);
-				Container dot = each instanceof Scatter scatter
-						? marker(group, scatter.getShape(), x(category, value), y(category, value), color)
-						: canvas.dot(group, x(category, value), y(category, value), radius, color);
+				Container dot = canvas.dot(group, x(category, value), y(category, value), radius, color);
 				double shown = extents[row][1] - extents[row][0];
 				canvas.tooltip(dot, categoryLabel(row), canvas.seriesName(each), Canvas.format(shown) + unit(yAxes.get(axis)));
 			}
@@ -585,25 +587,79 @@ final class CartesianDrawing {
 		}
 	}
 
+	/**
+	 * Points, the largest first so that a small one is not hidden under a large one. Each takes its
+	 * size, fill and border from columns when the scatter says so, and its name from a column.
+	 */
 	private void scatters() {
 		G group = canvas.group("scatters");
+		G labels = canvas.group("labels");
+		double fontSize = canvas.fontSize();
+		String xName = xAxis.getLabel() != null ? xAxis.getLabel()
+				: xAxis.getDataKey() != null ? canvas.values.label(xAxis.getDataKey()) : canvas.values.label(canvas.values.firstColumn());
 		for (CartesianSeries each : series) {
 			if (each instanceof Scatter scatter) {
-				dots(group, scatter, canvas.color(scatter, series.indexOf(scatter)), 4.5);
+				Encodings encodings = new Encodings(canvas, scatter, canvas.color(scatter, series.indexOf(scatter)));
+				List<String> names = scatter.getNameKey() == null ? null : canvas.values.labels(scatter.getNameKey());
+				double[][] extents = bounds.get(scatter);
+				int axis = axis(scatter);
+				List<Integer> rows = new ArrayList<>();
+				for (int row = 0; row < extents.length; ++row) {
+					if (!Double.isNaN(extents[row][1]) && (!numericX || !Double.isNaN(xValues[row]))) {
+						rows.add(row);
+					}
+				}
+				rows.sort((a, b) -> Double.compare(encodings.radius(b), encodings.radius(a)));
+				for (int row : rows) {
+					double category = category(row);
+					double value = value(axis, extents[row][1]);
+					double x = x(category, value);
+					double y = y(category, value);
+					double radius = encodings.radius(row);
+					Shape shape = scatter.getShape();
+					Container mark = shape == null || shape == Shape.CIRCLE
+							? canvas.dot(group, x, y, radius, encodings.fill(row))
+							: marker(group, shape, x, y, radius, encodings.fill(row));
+					if (encodings.border(row)) {
+						Border border = scatter.getBorder();
+						if (mark instanceof Circle circle) {
+							circle.setStroke(encodings.borderColor());
+							circle.setStrokeWidth(Integer.toString(border.getStrokeWidth()));
+							circle.setStrokeDasharray(border.getStrokeDasharray());
+						} else if (mark instanceof Path path) {
+							path.setStroke(encodings.borderColor());
+							path.setStrokeWidth(Integer.toString(border.getStrokeWidth()));
+							path.setStrokeDasharray(border.getStrokeDasharray());
+						}
+					}
+					String name = names == null ? categoryLabel(row) : names.get(row);
+					List<String[]> lines = new ArrayList<>();
+					lines.add(new String[] { xName, categoryLabel(row) + unit(xAxis) });
+					lines.add(new String[] { canvas.seriesName(scatter), Canvas.format(extents[row][1]) + unit(yAxes.get(axis)) });
+					lines.addAll(encodings.tooltip(row));
+					canvas.tooltip(mark, name, lines);
+					if (scatter.isLabel() && names != null) {
+						// To the right of the point, or to the left where the right has no room
+						double width = canvas.textWidth(name);
+						boolean left = x + radius + 4 + width > plot.right();
+						canvas.centeredText(labels, left ? x - radius - 4 : x + radius + 4, y, name, left ? "end" : "start", canvas.theme.ink());
+					}
+				}
 			}
 		}
 	}
 
-	/** A marker of at least 8 pixels, ringed with the surface. */
-	private Container marker(Container group, Shape shape, double x, double y, String color) {
+	/** A marker of a shape, scaled from 8 pixels across to a radius, and ringed with the surface. */
+	private Container marker(Container group, Shape shape, double x, double y, double radius, String color) {
+		double s = radius / 4.5;
 		String d = switch (shape) {
-			case SQUARE -> "M " + p(x - 4, y - 4) + " L " + p(x + 4, y - 4) + " L " + p(x + 4, y + 4) + " L " + p(x - 4, y + 4) + " Z";
-			case DIAMOND -> "M " + p(x, y - 5.5) + " L " + p(x + 5.5, y) + " L " + p(x, y + 5.5) + " L " + p(x - 5.5, y) + " Z";
-			case TRIANGLE -> "M " + p(x, y - 5.5) + " L " + p(x + 5, y + 4) + " L " + p(x - 5, y + 4) + " Z";
+			case SQUARE -> "M " + p(x - 4 * s, y - 4 * s) + " L " + p(x + 4 * s, y - 4 * s) + " L " + p(x + 4 * s, y + 4 * s) + " L " + p(x - 4 * s, y + 4 * s) + " Z";
+			case DIAMOND -> "M " + p(x, y - 5.5 * s) + " L " + p(x + 5.5 * s, y) + " L " + p(x, y + 5.5 * s) + " L " + p(x - 5.5 * s, y) + " Z";
+			case TRIANGLE -> "M " + p(x, y - 5.5 * s) + " L " + p(x + 5 * s, y + 4 * s) + " L " + p(x - 5 * s, y + 4 * s) + " Z";
 			default -> null;
 		};
 		if (d == null) {
-			return canvas.dot(group, x, y, 4.5, color);
+			return canvas.dot(group, x, y, radius, color);
 		}
 		Path path = canvas.path(group, d);
 		path.setFill(color);

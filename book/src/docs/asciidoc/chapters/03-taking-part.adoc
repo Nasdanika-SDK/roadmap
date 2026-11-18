@@ -43,6 +43,8 @@ A model is contributed the same way: an Xcore file with a header that says what 
 A model does not have to generate code to be worth having here.
 A sketch that can be read is the first step, and for many models it is the step that settles the words.
 
+The courses that are planned in <<courses>> will be another way in: take one and say where it lost you, then write an exercise.
+
 === Sponsor
 
 Development is a continuum.

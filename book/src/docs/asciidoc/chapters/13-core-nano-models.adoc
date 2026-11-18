@@ -262,7 +262,7 @@ Someone who knows Recharts can read a chart in the model, and an HTML writer is 
 |`LineChart` |`Line`
 |`AreaChart` |`Area`, stacked when they share a stack id
 |`BarChart` |`Bar`, grouped, or stacked when they share a stack id
-|`ScatterChart` |`Scatter`
+|`ScatterChart` |`Scatter`, with the size, shade and border of its points from columns
 |`ComposedChart` |Any of the four above, on one set of axes
 |`PieChart` |`Pie`, more than one for nested rings
 |===
@@ -283,16 +283,25 @@ include::{nano-test}/NanoModelTests.java[tag=chart,indent=0]
 <5> A chart is a block, so a section holds it as it holds text.
 <6> No x axis is given, so the categories are the first column. The layout, the gap between categories and the size are defaults.
 
-Cost and pass rate together need two axes, since they have different units:
+Cost and pass rate have different units, so they are two small charts of one frame, one above the other.
+One chart with a scale on each side would invite comparisons the data does not support: where the line crosses a bar depends only on where each scale happens to start and end.
 
 [source,java]
 ----
-include::{nano-test}/NanoModelTests.java[tag=composed,indent=0]
+include::{nano-test}/NanoModelTests.java[tag=two-charts,indent=0]
 ----
-<1> A second y axis, on the right.
-<2> A series says which axis its values are on. Without one, it is on the first.
-<3> Bars and a line in one chart.
-<4> A column keeps repeated values, in order.
+<1> The report holds the frame, so both charts can refer to it.
+<2> Cost as bars: an amount per case, from zero.
+<3> Pass rate as a line, on an axis of its own in a chart of its own.
+<4> Each chart refers to the frame, so the two show the same rows in the same order.
+<5> Small: 200 pixels high, so the two together take about the room of one chart. Their axes have one width, so the categories line up.
+
+.Cost and pass rate of four versions, as two small charts
+image::chart-cost-per-case.svg["Bar chart of cost per case: v1 1.2, v2 1.4, v3 2.1, v4 1.4 cents",pdfwidth=100%]
+image::chart-pass-rate-line.svg["Line chart of pass rate: v1 72%, v2 81%, v3 86%, v4 84%",pdfwidth=100%]
+
+The model still lets a chart have a second y axis on the right, since Recharts has one, and the SVG writer draws it.
+A composed chart is for series of one unit: bars of the pass rate of each version with a line of the baseline they are compared with.
 
 And the outcomes of one run, as a ring:
 
@@ -303,13 +312,14 @@ include::{nano-test}/NanoModelTests.java[tag=pie,indent=0]
 <1> The size of a slice is from this column, and its name from the first column.
 <2> An inner radius greater than zero makes a ring.
 
-A test saves a report with a composed chart to a file and loads it again, with its series, the axis each series is on, and the kind of chart its viewpoint names.
+A test saves a report with such a composed chart to a file and loads it again, with its series, the axis each series is on, and the kind of chart its viewpoint names.
 
 ==== Where it departs from Recharts
 
 * What Recharts has for the browser is left out: tab indexes, ARIA flags, CSS classes, event handlers, and positions it computes. A chart is also written to places that have none of them. A writer that needs more reads it from the attributes of the chart, which a chart has as a block, under a prefix of its own such as `echarts.`.
 * The x axis has the categories and the y axes have the values, in either layout. A vertical layout turns the chart for horizontal bars, where Recharts asks for the types of the two axes to be swapped as well.
 * A cell names the category it styles. A cell of Recharts is matched by position, which breaks when the rows are sorted.
+* A scatter holds its z axis, where Recharts has it on the chart and a scatter names it by id. Its range is 64 to 1024 square pixels, where Recharts has 64 to 64, which leaves every point one size. A shade and a border from columns are not in Recharts, which sets them with a cell per point.
 * A line is 2 pixels wide, as in ECharts. Recharts has 1, which is thin on a printed page.
 
 ==== Surfaces
@@ -398,6 +408,30 @@ A line drawn from a frame it refers to, as steps, with a value missing in the th
 .A weekly trend with a gap
 image::chart-weekly-trend.svg["Step line of weekly pass rate from 72 to 86, with a gap in week 3",pdfwidth=100%]
 
+[#chart-cost-benefit]
+A scatter can show more than two goals.
+Here are six configurations of an assistant, from a frame with a row for each.
+Cost goes along x and business value up y.
+Coverage is the size of a point, risk its shade, and a border marks the result from too few runs to trust.
+
+[source,java]
+----
+include::{svg-chart-test}/ChartSvgTests.java[tag=cost-benefit,indent=0]
+----
+<1> Value up y, and the name of each point from a column.
+<2> The size of a point from a column: a z axis, as Recharts calls it. Size is by area and from zero, so twice the coverage is twice the ink.
+<3> The fill from a column: a shade of one color, light for the least risk and dark for the most. Without colors of its own, a shade takes the writer's.
+<4> A border where the column is "yes", dashed here.
+<5> Cost along x, an axis of numbers.
+<6> A floor of quality: a point under it is out, whatever it costs.
+
+.Cost and value of six configurations
+image::chart-cost-benefit.svg["Scatter of six configurations by cost and business value. Large + RAG is the highest, 88 at 2.4 cents, with the largest point, the lightest shade and a dashed border. Small, zero-shot is under the quality floor at 70.",pdfwidth=100%]
+
+Large + tools costs more than large + RAG and is worth less, so it leaves the discussion, and what is left are the candidates.
+The chart does not choose among them.
+Choosing is a decision with weights that people own, and the chart is its evidence.
+
 The layout is three small pieces, and none of them knows SVG.
 `Ticks` puts the ends of a numeric axis and its ticks at round numbers, steps of 1, 2 or 5 times a power of ten, which is Heckbert's method.
 A band per category places bars and points, and Recharts' gap between categories and gap between bars divide it.
@@ -417,6 +451,8 @@ ifdef::editor-notes[]
 ====
 Not drawn yet: logarithmic and time axes, which are drawn linear; monotone curves, drawn straight; steps of areas; the cross, star and wye shapes of a scatter, drawn as circles; and frames at a location.
 The width of text is estimated from its length, so a long label can collide. <<designed-and-waiting>> has measured text as an item.
+The names of the points of a scatter go to the right of each point, or to the left where the right has no room, and nothing moves them off one another or off the label of a reference line: the data of the cost-benefit chart was adjusted until they did not collide.
+Shades are mixed in sRGB between the steps of the ramp, which is close enough between neighboring steps.
 Dark mode is not there: the colors are for a light page.
 The pictures were checked by eye in a browser and in the PDF; the tests check structure, not looks.
 ====
@@ -458,6 +494,7 @@ Each should be smaller afterwards than it is now, which is the test that the nan
 * [.planned]#PLANNED# *A model at a coordinate:* the projection of a model to what holds at one place and time, so that a model can be released for a jurisdiction and a date. <<target-business>> has the use.
 * [.planned]#PLANNED# *Catalogs as resources:* formats, channels and a few stakeholders that models can refer to, as the first content.
 * [.planned]#PLANNED# *Chart writers:* Draw.io, the terminal, HTML and Markdown, as listed in <<chart-nano-model>>. SVG is a sketch: <<chart-svg>>.
-* [.planned]#PLANNED# *More charts:* a percentage stack, a size for the points of a scatter, sparklines, and the Sankey chart that the enterprise model already gives as an example. Points that say which model element each one shows, where today only a series can.
+* [.planned]#PLANNED# *More encodings:* a shade that diverges from a neutral middle, for a value with a sign, and the encodings of a scatter in the writers other than SVG. Size, shade and border by column are a sketch: <<chart-cost-benefit>>.
+* [.planned]#PLANNED# *More charts:* a percentage stack, sparklines, and the Sankey chart that the enterprise model already gives as an example. Points that say which model element each one shows, where today only a series can.
 * [.planned]#PLANNED# *Facets:* an element that has an aspect for a while, where today it would have to inherit it for good.
 * [.planned]#PLANNED# *Generated references* for these models, in this book, once the runtime generates them.
