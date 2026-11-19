@@ -50,6 +50,10 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.merger` |A merger for generated files |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
 |`runtime.ui.lineage` |Lineage providers: Java, Ecore, Meta, and kinds after them |[.planned]#PLANNED# |<<lineage-providers>> |`runtime.ui.views`, `model.core.kind`
 |`runtime.ui.browser` |The polymorphic user interface in a browser |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.widget.html`
+|`runtime.evaluator.cel` |CEL, the default language of evaluators, checked against EClasses and Meta classes, with functions for moving through a model |[.planned]#PLANNED# |<<evaluator-cel>> |Runtime core model, Meta
+|`runtime.evaluator.spel` |SpEL in annotations, first in selection annotations |[.planned]#PLANNED# |<<evaluator-spel>> |Runtime capability framework
+|`runtime.evaluator.js` |JavaScript in a sandbox, on GraalJS |[.planned]#PLANNED# |<<evaluator-js>> |Runtime core model
+|`runtime.agent.surfaces` |Surfaces offered to an agent, chosen by evaluation |[.planned]#PLANNED# |<<agent-surfaces>> |`model.tool`, `runtime.inference`, `runtime.evaluator.cel`, `model.core.chart`
 |===
 
 === Models
@@ -69,8 +73,8 @@ An item has an id that does not change when its title does, so that another plan
 |`model.svg.chart` |Charts written to the runtime's SVG model, with a scatter's size, shade and border from columns |[.sketch]#SKETCH# |<<chart-svg>>, `models/svg/chart` |`model.core.chart`, runtime SVG model
 |`model.core.chart.writers` |Chart writers for Draw.io, the terminal, HTML and Markdown |[.planned]#PLANNED# |<<chart-nano-model>> |`model.core.chart`, runtime Draw.io model, `runtime.tui`, `runtime.widget`
 |`model.core.example` |Example |[.sketch]#SKETCH# |<<core-nano-models>>, `models/core` |Runtime core model
-|`model.core.role` |Role, IAM, Seal and Lifecycle as nano-models |[.planned]#PLANNED# |<<core-nano-models>>, `models/core/sketches` |`model.core.occupancy`, `model.core.kind`
-|`model.core.change.engine` |Applying changes |[.planned]#PLANNED# |<<core-nano-models>> |`model.core.change`
+|`model.core.role` |Role, IAM, Seal and Lifecycle as nano-models, with conditions in CEL |[.planned]#PLANNED# |<<core-nano-models>>, <<iam-conditions>>, `models/core/sketches` |`model.core.occupancy`, `model.core.kind`, `runtime.evaluator.cel`
+|`model.core.change.engine` |Applying changes |[.planned]#PLANNED# |<<core-nano-models>> |`model.core.change`, `runtime.evaluator.cel`
 |`model.core.occupancy.projection` |A model at a coordinate, and releases by coordinate |[.planned]#PLANNED# |<<target-business>>, <<core-nano-models>> |`model.core.occupancy`
 |`model.cli` |The CLI model and self-documenting command lines |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `runtime.widget`
 |`model.tool` |The tool model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `model.core.example`
@@ -78,7 +82,7 @@ An item has an id that does not change when its title does, so that another plan
 |`model.inference` |The inference model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`, `model.skill`
 |`model.expression` |The expression model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Runtime core model
 |`model.cypher` |The Cypher model, parser and engine |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.expression`
-|`model.xpath` |XPath for models |[.planned]#PLANNED# |<<runtime-models>> |Runtime core model
+|`model.xpath` |XPath for XML documents, on the JDK |[.planned]#PLANNED# |<<runtime-models>> |Runtime core model
 |`model.tower` |The model tower on the SDK |[.planned]#PLANNED# |<<model-tower>>, `models/tower` |`model.core.role`, Meta
 |`model.tower.assembler` |Products on projections of the tower |[.planned]#PLANNED# |<<model-tower>> |`model.tower`, `runtime.ui.browser`
 |`model.opgraph` |OpGraph on the SDK |[.planned]#PLANNED# |<<opgraph-and-nsml>> |`runtime.waypoint`, `runtime.screens`

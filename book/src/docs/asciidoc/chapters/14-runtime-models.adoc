@@ -15,7 +15,8 @@ Most have an Xcore file in `models/runtime`, to be read: it was written against 
 |Inference |`inference.xcore` |Providers and models as a catalog, and conversations as a record
 |Expression |`expression.xcore` |A small algebra of conditions that a data source can evaluate for itself
 |Cypher |`cypher.xcore` |The Cypher language as a model, for querying models as graphs
-|XPath |none yet |Paths through a model as selectors
+|XPath |none yet |Paths through XML documents, such as SVG
+|Evaluator languages |none yet |CEL by default, SpEL in annotations, JavaScript in a sandbox
 |===
 
 === CLI
@@ -114,7 +115,7 @@ It is not an expression language.
 A construct belongs in it only if a data source could plausibly evaluate it for itself, and everything else stays with the caller, who applies it after the fetch.
 That fallback is always correct, so the model can stay small: expressiveness here buys speed and never correctness.
 
-Cypher lowers into it, and so would a path language.
+Cypher and CEL lower into it, and so would a path language.
 It also separates syntax from semantics: how nulls compare and how mixed types are ordered is supplied by whoever uses it.
 
 === Cypher
@@ -133,12 +134,156 @@ A read-only subset comes first, published as a tool that is marked read-only fro
 Writing goes through a separate tool that takes changes, of the change nano-model, and that accepts Cypher's updating clauses as one way to write them: they are translated into changes, shown as a plan, and applied after review.
 Agents read with Cypher and write with commands.
 
-=== XPath
+=== XPath for XML documents
 
 [horizontal]
 Status:: [.planned]#PLANNED#. No file in this repository.
 
-The change nano-model needs selectors, and catalogs of changes from untrusted sources need a selector language that cannot do harm.
-XPath is that language: it has no side effects, it cannot loop forever, and it is widely known.
-An XPath evaluator for model objects is the first step, beside the evaluators the core model has.
+XPath is for documents that are XML, such as SVG or a Draw.io file as it is saved, and not for model objects.
+The JDK evaluates it over a DOM, so the core model's `XPathEvaluator` needs no library.
+
+Model objects are selected with CEL and a few functions for moving through a model, in <<evaluator-cel>>.
+XPath was planned for them, as a selector language that cannot do harm, and was set aside for three reasons.
+
+* *Its knowledge does not carry over.* There is no standard mapping of XPath to objects. Whether a step is a feature or a type, and what an attribute is, each implementation decides for itself, so what people and language models know of XPath helps less than it seems.
+* *It is not safe by itself.* The usual library for XPath over Java objects can call Java methods through extension functions, which was reported as a vulnerability in 2022. It would have to be locked down or replaced.
+* *It would be a second language for one job.* A second evaluator, validator, documentation and surface for agents, for what CEL with a few functions does, and without the checking against types that CEL has.
+
+[#evaluator-languages]
+=== Languages of evaluators
+
+The core model has evaluators for SpEL, XPath, scripts and Groovy.
+Only scripts run today, through the JDK's scripting API. The others wait for a delegate loaded as a service.
+Before any of them is built, the roadmap decides which language goes where.
+
+[cols="1,3,3",options="header"]
+|===
+|Language |Where |Why
+
+|CEL
+|Models: evaluators in model files, selectors and values of the change nano-model, Meta, columns of tables and lists, bindings
+|Safe because of what it cannot do, checked against a model's types before it runs, and easy to read for someone who knows Java
+
+|SpEL
+|Annotations in Java, such as the selection annotation that resolves a method to an element of a drawing
+|Written by a developer and compiled with the code, and evaluated against Java objects, which SpEL reads by reflection with nothing to set up
+
+|JavaScript
+|In a sandbox: scripts in models where CEL is not enough, and a surface that an agent writes to
+|Language models write it fluently
+
+|XPath
+|XML documents, such as SVG and Draw.io files as they are saved
+|Above
+
+|Cypher
+|Questions that cross many relationships
+|Above
+|===
+
+The rule behind the split is who writes an expression and what it runs against.
+SpEL is never used for an expression that comes from a model file or from an agent.
+By default it can call any Java method, and a restricted configuration is one that can be forgotten.
+
+Each language is a module of its own that contributes an evaluator through a service, so core stays on Java, EMF and the OpenTelemetry API.
+
+[#evaluator-cel]
+==== CEL
+
+[horizontal]
+Capability:: The default language of evaluators: conditions and computed values over model objects, Meta objects and frames, checked against their types when a model is loaded.
+Demonstration:: None yet. The first is a selector and a computed value of the change nano-model, and a column of a table that takes its value from a frame.
+Status:: [.planned]#PLANNED#.
+Depends on:: The runtime's core model and Meta. Google's CEL for Java, which brings Guava and, to be checked, protobuf and a parser runtime.
+Value and effort:: High for medium. Evaluators, the change engine, tables and bindings get a safe language from one module. Most of the work is an adapter, estimated at a few hundred lines, written once.
+How to help:: Write the conditions you would put in a model of your own in CEL, and say where its strict typing of numbers gets in the way.
+
+CEL, the Common Expression Language, has no loops and no side effects.
+Every expression ends, and it can touch only what it is given.
+Three of its properties fit what is already designed.
+
+* *Checked before it runs.* CEL checks an expression against declared types. An EClass or a Meta class declares them, so a wrong feature name is a marker with a line and a column when the model is loaded, and not an error when it runs. This matters most for expressions an assistant writes.
+* *Costed before it runs.* CEL estimates what an expression costs, which is what `EvaluationCost` in the expression model asks for, so a policy can refuse an expression that costs too much.
+* *Pushed down.* Comparisons, `&&` and `||`, `in`, the string tests and `has()` lower into the expression model, as Cypher's conditions do. The rest becomes an opaque expression, applied after the fetch.
+
+CEL's own types are primitives, lists, maps and protobuf messages, not Java classes.
+So the work is a type provider and a value provider: EObjects through their EClass, by EMF's reflection, which covers generated and dynamic objects alike, and Meta objects through their Meta classes.
+A Meta class is a type for CEL with no Java class behind it.
+
+For selectors, CEL gets a few functions over model objects, declared to its checker like any other: `container()`, `contents()`, `allContents()`, `ancestors()`, `root()` and `resource()`, and `isA()`, a test of type by name that includes subtypes.
+They give what the axes of XPath would have given, as in `self.allContents().filter(x, x.isA("Account") && x.status == "open")`.
+Each declares its cost, so that a walk over all contents is priced as one, and `isA()` lowers to the type test of the expression model.
+Results come back as CEL's values, such as `Long`, `Double` and its own lists and maps, and the evaluator's `evaluate` with a result type converts them.
+
+To be checked first, in a field note: which libraries CEL brings, and whether each has a module name for JPMS.
+
+Open: the core model's `SpelEvaluator` and the `$spel` properties of Draw.io are SpEL in model files.
+Whether they are deprecated in favor of CEL, kept, or kept for a release with `$cel` beside `$spel`, is not decided.
+
+[#evaluator-spel]
+==== SpEL in annotations
+
+[horizontal]
+Capability:: Expressions in Java annotations, evaluated against Java objects. The first is a selection annotation that resolves a method to the elements of a drawing that meet a condition.
+Demonstration:: None yet. A handler of <<drawn-screens>>, or an activity of <<opgraph-and-nsml>>, resolved to elements by a property and a label together.
+Status:: [.planned]#PLANNED#.
+Depends on:: The runtime's capability framework. Spring's expression library, in a module of its own.
+Value and effort:: Medium for small. Selection by id, label or the value of one property covers most cases. An expression covers the rest.
+How to help:: Bring a case that selection by id, label or property does not cover.
+
+An annotation is written by a developer, reviewed and compiled with the code, so it is trusted as the code is.
+And SpEL reads the properties of any Java object with nothing to set up, where CEL needs an adapter for each kind of object.
+That is where SpEL is the easier of the two, and it stays there: it is evaluated with a context restricted to reading properties.
+
+[#evaluator-js]
+==== JavaScript in a sandbox
+
+[horizontal]
+Capability:: Scripts in JavaScript, run in a sandbox: in models where CEL cannot express what is needed, and as a surface an agent writes to.
+Demonstration:: None yet. A script written by an agent that computes over a frame, and that is refused when it reaches for a file or a Java class.
+Status:: [.planned]#PLANNED#.
+Depends on:: The runtime's core model. GraalJS, through GraalVM's polyglot API, in a module of its own.
+Value and effort:: Medium for medium. Language models write JavaScript fluently, and a sandbox is what makes a script from an agent acceptable. The module is small and its dependencies are large.
+How to help:: Run scripts that an agent wrote for you under a sandbox policy, and say what it refused that it should have allowed.
+
+GraalVM's polyglot API has sandbox policies.
+The constrained policy, available from Maven on any JDK, denies access to the host, to files and to threads.
+With a limit on statements and a watchdog that closes a context that runs too long, it is enough for scripts in models.
+Stronger isolation for scripts from agents, with a heap of its own and a limit on memory, is in the isolated and untrusted policies, which need Oracle GraalVM and its license.
+That is to be checked against GraalVM's documentation, and against what an organization's mirror lets in, before the module is started.
+On a JDK that is not GraalVM, scripts are interpreted and not compiled, which is enough for a surface and not for a hot loop.
+
+GraalJS also provides an engine for the JDK's scripting API.
+Through it, the core model's script evaluator with the language `js` would run JavaScript with no sandbox.
+So the sandboxed evaluator is a class of its own, and the script evaluator does not take JavaScript.
+
+*Who wrote a script decides its policy.*
+A script in a model file was written by an author and reviewed with the model.
+A script from an agent is untrusted, and data the agent read may have steered it.
+One engine serves both, and the policy is set by the context of the evaluation, not by the engine.
+That suggests a second axis beside `EvaluationCost`: what an evaluator may reach.
+Whether it belongs in the expression model or in the context of an evaluation is open.
+
+[#agent-surfaces]
+=== Surfaces offered to an agent
+
+[horizontal]
+Capability:: The set of surfaces an agent is given for a kind of task, among Markdown, CEL, Cypher and JavaScript, chosen by evaluation and not by habit.
+Demonstration:: None yet. One kind of task run with several sets of surfaces, with the pass rate, turns and tokens of each in a chart of <<core-nano-models>>.
+Status:: [.planned]#PLANNED#.
+Depends on:: The tool and inference models above, the surfaces themselves, and the chart nano-model for the results.
+Value and effort:: High for medium, once two surfaces exist. Every surface offered costs context on every request and is one more thing the agent can choose wrongly, so fewer is better wherever fewer is enough.
+How to help:: Bring tasks that you give agents over models, with what a good answer is.
+
+An agent can work on a model through several surfaces, and they are not interchangeable.
+For some tasks Markdown and CEL are enough.
+For others Cypher does in one query what would take many turns.
+
+They also differ in what they lose.
+A condition in CEL or Cypher lowers into the expression model, so a data source can apply it, and it can be read without being run.
+A condition in JavaScript is opaque: it is applied after the fetch, and what it does is known only by running it.
+Language models reach for JavaScript first because they write it best, and would give up both without noticing.
+
+So the default is small, Markdown and CEL, and a surface is added for a kind of task when an evaluation shows that it helps.
+What is measured: whether the task was done, the turns and tokens it took, and how much was evaluated after the fetch rather than by the source.
 

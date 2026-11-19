@@ -95,7 +95,7 @@ A drawing's colors map to logical colors, and those to whatever the surface has.
 Two things are connected to an element of a drawing, and the roadmap keeps two words for them.
 
 An element is *resolved* to what implements it: a method that, given the element, returns the widget or the action for it.
-That goes through the capability framework, with a selection annotation that says which document, page and element a method is for: by id, by label, or by the value of a property.
+That goes through the capability framework, with a selection annotation that says which document, page and element a method is for: by id, by label, or by the value of a property, and, when none of those is enough, by a condition in SpEL, as <<evaluator-spel>> says.
 The annotation is what lets a validator find a method whose element is gone.
 
 An element is *bound* to a value: a <<bindings,binding>>, which it shows and follows, or which it writes when the user types.

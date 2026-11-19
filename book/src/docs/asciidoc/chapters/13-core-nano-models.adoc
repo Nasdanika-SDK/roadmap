@@ -88,7 +88,7 @@ Applying a change is recorded by EMF's change recorder, whose description is the
 Three rules come with it.
 Changes apply in order, and each sees the result of those before it.
 A change sets values in the structure its host has and never adds to that structure.
-And selectors and values have no side effects, with XPath as the language for catalogs that are not trusted to run scripts.
+And selectors and values have no side effects, with CEL as the language for catalogs that are not trusted to run scripts, with a few functions for moving through a model, as <<evaluator-cel>> says.
 
 === Occupancy
 
@@ -486,6 +486,37 @@ Moving them is a rewrite and not a rename:
 * *Lifecycle.* A stay in a stage is an occupancy, and a transition between stages is the transition of the occupancy nano-model, with its changes.
 
 Each should be smaller afterwards than it is now, which is the test that the nano-models below it are right.
+
+[#iam-conditions]
+==== Conditions in IAM
+
+CEL was made for the conditions of access policies, and IAM is where it fits best.
+Google Cloud's IAM conditions are CEL over the request and the resource, and Kubernetes writes its admission policies in it.
+The sketch is shaped for it already: the example of a subject selector, `principal.department == "Risk"`, is CEL as it stands, and the conditions of entries and permissions are over the subject, the element and the environment.
+
+The model keeps the structure of a policy, and CEL is only its conditions.
+How entries combine is said by the model: nearest first, an explicit deny over an allow, and no match as a deny.
+So a policy stays a model that can be documented, compared and reviewed.
+A policy language such as Cedar or Rego would carry both, and the model would be lost.
+
+Five things change in the sketch.
+
+* *Every expression is an evaluator.* The string of a subject selector becomes an evaluator, as the conditions are, with CEL as the default of <<evaluator-cel>>.
+* *Selectors answer for one target.* A check of access is about one subject, one action and one element. So the selectors of targets, resources, subjects and actions say whether an entry covers a given one, as in `target.isA("Account") && target.ancestors().exists(a, a == element)`, rather than compute a set. A test is cheaper than a set, and it can be pushed down.
+* *Functions for what CEL cannot recurse through.* `inGroup()` for membership through nested groups, `hasRole()` through hierarchies of roles, and `engaged()` for a subject engaged with an element in a role of the role model. Each declares its cost, since a walk through groups is not free.
+* *The environment is declared.* An `env` variable carries the time, the channel and the region, for access limited to a period or a stage. Access in one region during one period is an occupancy, as above.
+* *Policies are checked when they are loaded.* A condition that names an attribute a subject does not have is rejected when it is saved, and does not quietly allow or deny when it runs. That is what lets an assistant draft a policy: the checker judges its structure, and a person approves what it means, as a change is approved.
+
+Errors fail closed.
+In CEL, `error || true` is true, and an error on its own is a value that a policy has to interpret.
+An error in an allowing condition does not grant, and an error in a denying condition denies.
+If an error meant "does not apply", a denying entry would fail open.
+How the engine applies the rule, and the tests that show it, are open.
+
+Partial evaluation is open too.
+A condition evaluated with the subject known and the resource unknown leaves a condition on resources.
+Lowered into the expression model, it answers "which documents may this person see" as a filter at the source, and not as a check of every row after the fetch.
+The Go implementation of CEL does this. Whether the Java one does as well is to be checked.
 
 === What is not there yet
 

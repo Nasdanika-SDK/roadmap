@@ -232,7 +232,7 @@ A course is a way into the project that asks little at the start.
 
 Capability:: A learner takes a course on diagrams, does exercises that a build checks, and gets a certificate of completion; a contributor adds exercises and questions.
 Demonstration:: The track on Leanpub and the repository of its exercises, built with every release.
-Status:: [.planned]#PLANNED#. Thinking in Diagrams first, with the next release.
+Status:: [.planned]#PLANNED#, when courses are asked for. Thinking in Diagrams first.
 Depends on:: The released Draw.io, Draw.io model, diagram model and ELK books for the first two courses; executable diagrams on the SDK for the third.
 Value and effort:: The first course needs no code, follows chapters that are written and do not change with the API, and reaches anyone who draws diagrams: the most value for the least effort, and a measure of whether courses are wanted at all before more are made. The second course costs its exercise modules, and their upkeep every release.
 How to help:: Take the first course and say where it lost you; write an exercise.

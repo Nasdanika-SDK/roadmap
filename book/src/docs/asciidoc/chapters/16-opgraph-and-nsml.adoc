@@ -68,7 +68,8 @@ Where the metamodel is available, references are validated against it.
 
 *There is no expression language of its own.*
 Every expression says which language it is in.
-On the SDK that is not a feature to build: the core model has evaluators, for SpEL, XPath, scripts and Groovy, and an expression is one of them.
+On the SDK that is not a feature to build: the core model has evaluators, and an expression is one of them.
+CEL is the default, as <<evaluator-languages>> says, and scripts where a mapping is trusted to run them.
 
 *A mapping compiles to code.*
 Rules compile to a transformer factory, so a mapping written as rules composes with one written in Java.

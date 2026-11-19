@@ -187,11 +187,11 @@ With occupancy, a system planned for next year and a system retired last year ar
 === AI assistants
 
 [horizontal]
-Target:: An assistant works on the models with the tool that fits the question: an overview in Markdown to get its bearings, XPath for simple navigation and selection, Cypher for questions that cross many relationships. It can work on very large models, with Cypher over reactive graphs, because it is given a semantic context: the part of the model it may see, and no more.
+Target:: An assistant works on the models with the tool that fits the question: an overview in Markdown to get its bearings, CEL for navigation, selection, conditions and computed values, Cypher for questions that cross many relationships, and JavaScript in a sandbox where none of those will do. Which of them it is offered for a kind of task is decided by evaluation. It can work on very large models, with Cypher over reactive graphs, because it is given a semantic context: the part of the model it may see, and no more.
 Why it matters:: A large model does not fit in a context window, and should not be put there. An assistant given files guesses at structure. An assistant given a query language and a bounded view asks, and what it may see is decided by the view and not by its good behavior.
 Today:: Assistants read documents. Text is retrieved from wikis and office files by similarity and placed in the prompt, and the answer is as good as the page that happened to be retrieved, which may be the one nobody kept. Some build a graph by extracting it from text. Here the graph is the source and the text is generated from it.
 Have:: [.sketch]#SKETCH# Markdown from the same views as everything else, in <<widgets>>.
-Missing:: [.planned]#PLANNED# XPath for models, the Cypher model and engine, and the tool model, in <<runtime-models>>. Views that bound what an agent sees, from the mapping language of <<opgraph-and-nsml>>. MCP and inference, in <<designed-and-waiting>>.
+Missing:: [.planned]#PLANNED# CEL and sandboxed JavaScript for models, the Cypher model and engine, the tool model, and the choice of surfaces by evaluation, in <<runtime-models>>. Views that bound what an agent sees, from the mapping language of <<opgraph-and-nsml>>. MCP and inference, in <<designed-and-waiting>>.
 
 This is where the target state meets the North Star.
 Agentic work on bounded, typed models needs the models to exist, to be owned, to be current and to be reachable by a query.
@@ -226,10 +226,11 @@ An agent is a participant of a process, an agentic system is a component, and a 
 Each is described, owned, versioned and resolved by what the picture already has for people, services and libraries.
 That is the strongest argument for the order of this chapter: what is built for the first four sections is what agents need, and little is built for agents alone.
 
-*Three query surfaces are two too many to start with.*
+*Four surfaces are more than an agent should be offered at once.*
 Markdown overviews come for nothing with the first transition, so they are first.
-XPath is needed by the change nano-model in any case.
-Cypher is the largest and comes when a model is too large for the other two.
+CEL is needed by the change nano-model in any case, for selectors, conditions and values.
+Cypher is the largest and comes when a model is too large for the others, and JavaScript is for computation that none of them can express.
+Which surfaces an agent gets for a kind of task is decided by evaluation, in <<agent-surfaces>>.
 
 [#transitions]
 === Transition states
@@ -260,7 +261,7 @@ Each is named for what becomes possible.
 
 |Agentic
 |The North Star: agents that read with queries and write with changes, with state in Git. Agentic systems that are drawn, owned and approved, and that get their tools and their language model as capabilities.
-|XPath, Cypher, the change engine, the tool model, inference, MCP, and bindings that provide capabilities.
+|CEL, Cypher, the change engine, the tool model, inference, MCP, and bindings that provide capabilities.
 |===
 
 Only the first has a date.

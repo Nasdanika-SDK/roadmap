@@ -14,6 +14,18 @@ They are here so that the first cut of the book has its history, and only what i
 |===
 |Date |Decision |Chapters
 
+|2026-11-19
+|IAM writes its conditions in CEL, the language made for them. The model keeps how entries combine, and CEL is only the conditions. Every expression of the sketch becomes an evaluator, selectors answer whether an entry covers one target rather than compute a set, `inGroup()`, `hasRole()` and `engaged()` cover what CEL cannot recurse through, an `env` variable carries time, channel and region, and policies are checked when they are loaded. Errors fail closed: an error in an allowing condition does not grant, and one in a denying condition denies. Open: how the engine applies that rule, and whether CEL for Java has the partial evaluation that would turn a policy into a filter at the source.
+|<<core-nano-models>>
+
+|2026-11-19
+|XPath is not used on model objects. Model objects are selected with CEL and a few functions declared to its checker, `container()`, `contents()`, `allContents()`, `ancestors()`, `root()`, `resource()` and `isA()`, which give what XPath's axes would have, with checking against types. XPath on objects has no standard mapping, its usual library can call Java methods, and it would be a second language for one job. XPath stays for XML documents, such as SVG, on the JDK. The change nano-model selects with CEL alone, and an agent has four surfaces to be offered from, not five.
+|<<runtime-models>>, <<target-state>>, <<core-nano-models>>, <<opgraph-and-nsml>>
+
+|2026-11-19
+|CEL is the default language of evaluators: in model files, in the selectors and values of the change nano-model, for Meta, for columns of tables and lists, and for bindings. It is checked against an EClass or a Meta class when a model is loaded, and its conditions lower into the expression model. SpEL is for annotations in Java, evaluated against Java objects, such as a selection annotation that resolves a method to an element of a drawing, and never for what comes from a file or an agent. JavaScript runs on GraalJS in a sandbox whose policy depends on who wrote the script, and the script evaluator does not take JavaScript. Each language is a module that contributes an evaluator through a service. The surfaces offered to an agent are chosen by evaluation, with Markdown and CEL by default. Open: whether the core model's `SpelEvaluator` and Draw.io's `$spel` properties are deprecated.
+|<<runtime-models>>, <<target-state>>, <<core-nano-models>>, <<drawn-screens>>, <<opgraph-and-nsml>>
+
 |2026-11-18
 |Planned: courses on Leanpub, tied to the books and to a release, with quizzes about ideas, exercises that are code checked by a build, and a certificate of completion that is not a credential. The first is a track on diagrams: Thinking in Diagrams, with no code, then Diagrams in Java, and Executable Diagrams when executable diagrams are on the SDK. The courses and their exercises are in a repository of their own.
 |<<designed-and-waiting>>, <<taking-part>>
