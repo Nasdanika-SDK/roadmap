@@ -74,7 +74,8 @@ An item has an id that does not change when its title does, so that another plan
 |`model.core.occupancy.projection` |A model at a coordinate, and releases by coordinate |[.planned]#PLANNED# |<<target-business>>, <<core-nano-models>> |`model.core.occupancy`
 |`model.cli` |The CLI model and self-documenting command lines |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `runtime.widget`
 |`model.tool` |The tool model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `model.core.example`
-|`model.inference` |The inference model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`
+|`model.skill` |The skill model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`, `model.core.example`
+|`model.inference` |The inference model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`, `model.skill`
 |`model.expression` |The expression model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Runtime core model
 |`model.cypher` |The Cypher model, parser and engine |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.expression`
 |`model.xpath` |XPath for models |[.planned]#PLANNED# |<<runtime-models>> |Runtime core model

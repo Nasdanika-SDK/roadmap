@@ -124,7 +124,7 @@ Each row is a model to migrate, and none has a date.
 |Agent +
 `agent.xcore`
 |Agentic systems, agents, tasks, tools and skills: for documenting such a system and for running it. An agent is an AI system, so it is governed by construction.
-|Runs on <<waypoints>>. Tools come from the tool model and inference from the inference model, so it should shrink. Authoring in Draw.io follows <<drawn-screens>>. An agentic system is a component like any other: <<agentic-components>>.
+|Runs on <<waypoints>>. Tools come from the tool model, skills from the skill model and inference from the inference model, so it should shrink. Authoring in Draw.io follows <<drawn-screens>>. An agentic system is a component like any other: <<agentic-components>>.
 
 |MCP +
 `mcp.xcore`

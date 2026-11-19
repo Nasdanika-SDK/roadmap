@@ -11,6 +11,7 @@ Most have an Xcore file in `models/runtime`, to be read: it was written against 
 
 |CLI |`cli.xcore` |A command line as data: commands as types, and the tree an installation resolves
 |Tool |`tool.xcore` |What can be called, apart from who calls it and how
+|Skill |`skill.xcore` |How a task is done, written once for people and agents
 |Inference |`inference.xcore` |Providers and models as a catalog, and conversations as a record
 |Expression |`expression.xcore` |A small algebra of conditions that a data source can evaluate for itself
 |Cypher |`cypher.xcore` |The Cypher language as a model, for querying models as graphs
@@ -63,18 +64,38 @@ With the two apart, MCP is a transport and not a category, and a few-shot prompt
 The model is useful with no language model in the picture.
 What a server exposes, who owns each tool, what it costs to call and whether it is approved is a catalog, and a catalog has readers of its own.
 
+=== Skill
+
+[horizontal]
+Status:: [.planned]#PLANNED#. Drafted in `models/runtime/skill.xcore`.
+Depends on:: The tool model, and the example nano-model.
+
+A skill is procedural knowledge: how a task is done, which an agent loads when the task calls for it.
+The agent model had a class for it, and this model takes its place, as the tool model took the place of the agent model's tools.
+
+A skill is useful with no language model in the picture, because a procedure written well enough for an agent can be followed by a new colleague.
+So the instructions are written once, for both readers, and the documentation site renders them as they are.
+The exception is the description: it is in context on every request and decides whether the skill is loaded, so it is written for a model choosing among many.
+
+Skills are already written and shared as folders with a `SKILL.md` file, and agents already load them.
+The model does not replace the folder.
+It loads folders into objects that can be inspected and reviewed, generates folders from skills authored as models, and adds what a folder cannot say: which tools from which catalog a skill expects, where it came from, and whether it has changed since it was approved.
+
+A skill from outside is a dependency.
+Its scripts are code and its instructions steer an agent that holds tools, so it is pinned by digest at intake and loaded at the trust level of its catalog.
+
 === Inference
 
 [horizontal]
 Status:: [.planned]#PLANNED#. Drafted in `models/runtime/inference.xcore`.
-Depends on:: The tool model, and the JDK's HTTP client for the providers.
+Depends on:: The tool and skill models, and the JDK's HTTP client for the providers.
 
 The inference model has two halves.
 
 The *catalog* is configuration: which provider, which model, which endpoint, what settings, what it costs and when it retires.
 Today that is in property files and constructor arguments, where it cannot be documented, compared, reviewed or owned.
 
-The *session* is what happened: messages, tool calls, token counts and latency, as model objects.
+The *session* is what happened: messages, tool calls, the skills offered and loaded, token counts and latency, as model objects.
 They are saved as JSON, opened in a viewer, kept for audit and redacted, on a laptop, with the data staying where it is.
 
 Providers are modules over the JDK's HTTP client, with no vendor library: one for the Anthropic API and one for the OpenAI API, which also covers servers that speak it.

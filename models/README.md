@@ -7,7 +7,7 @@ version changes, and what it waits for.
 |---|---|---|
 | `core/` | The core nano-models as a Maven module: `related`, `change`, `occupancy`, `kind`, `enterprise`, `document` and `example`, one Xcore file each in `src/main/resources`. Java is generated into `src-gen` and compiled, and `NanoModelTests` instantiates each model | Yes |
 | `core/sketches/` | Role, IAM, Seal and Lifecycle, which are to become nano-models, as they are in the model tower today | No |
-| `runtime/` | Models of the runtime itself: `cli`, `tool`, `inference` and `expression` as drafted, and `cypher` as it is before the SDK | No |
+| `runtime/` | Models of the runtime itself: `cli`, `tool`, `skill`, `inference` and `expression` as drafted, and `cypher` as it is before the SDK | No |
 | `tower/` | The model tower: 22 models as they are before the SDK | No |
 | `technology/` | Technology models to migrate. Only GitHub has an Xcore file. The others are defined in Ecore in their own repositories | No |
 

@@ -61,6 +61,7 @@ package org.nasdanika.models.ai
 
 import org.nasdanika.models.nxcore.ModelElement
 import org.nasdanika.models.nxcore.NamedElement
+import org.nasdanika.models.skill.Skill
 import org.nasdanika.models.tool.AbstractTool
 
 annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
@@ -84,6 +85,10 @@ type Instant wraps java.time.Instant
  * Tools are not here. They have their own model and their own catalog, because a tool
  * catalog has a different audience, different owners, and is useful with no language model
  * in the picture at all.
+ *
+ * Nor are skills, for the same reason and one more: a skill is read by people as well as
+ * by models, and a provider catalog is the last place a person would look for how a task
+ * is done.
  */
 class ProviderCatalog extends NamedElement {
     contains Provider[] providers
@@ -356,6 +361,22 @@ class Turn extends ModelElement {
     contains ChatOptions effectiveOptions
     /* Tools offered on this request, which may be a subset of the catalog. */
     refers AbstractTool[] offeredTools
+    /*
+     * Skills whose descriptions were in context on this request, which is what let the
+     * model choose one. Their cost is in every turn's input whether or not one is used,
+     * so this is also where an oversized skill catalog shows up in Usage.
+     */
+    refers Skill[] offeredSkills
+    /*
+     * Skills whose instructions were loaded on this turn.
+     *
+     * Materialized rather than derived. Where loading is a tool call it could be
+     * reconstructed from the calls, but a reader of a transcript should not have to know
+     * how a given runtime loads skills, and where a provider loads them server side there
+     * is no call to reconstruct from. A transcript that cannot say which instructions the
+     * model was following cannot explain what it did.
+     */
+    refers Skill[] loadedSkills
     contains Usage usage
     FinishReason finishReason
     Instant requestedAt

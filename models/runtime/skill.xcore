@@ -1,0 +1,273 @@
+@Ecore(nsURI="https://skill.models.nasdanika.org", nsPrefix="org.nasdanika.models.skill")
+@GenModel(
+    modelDirectory="/model/src-gen",
+    featureDelegation="Dynamic",
+    complianceLevel="25",
+    suppressGenModelAnnotations="false",
+    copyrightFields="false",
+    operationReflection="true",
+    importOrganizing="true"
+)
+/*
+ * DRAFT. Procedural knowledge that an agent loads when a task calls for it, and that a
+ * person can read and follow.
+ *
+ * WHY THIS IS ITS OWN MODEL
+ *
+ * The same test the tool model passed, passed more easily. A skill catalog has its own
+ * audience (the people who know how a task is done), its own owners, and it is useful with
+ * no language model in the picture at all, because a procedure written well enough for an
+ * agent is a procedure a new colleague can follow. Tools needed that argument made; for
+ * skills it is the plain case.
+ *
+ * Not part of the inference model, which is providers, models and sessions. A skill is not
+ * tied to a provider, and moving between providers should not mean rewriting how things
+ * are done.
+ *
+ * The agent model has a Skill class of its own, with a body and resources. This replaces
+ * it, in the same way tool and example replaced the agent model's tools and examples, and
+ * the agent model should get smaller by that much.
+ *
+ * ONE TEXT FOR TWO READERS, WITH ONE EXCEPTION
+ *
+ * The tool model keeps two texts apart: `description` is what a model is told,
+ * documentation is what a person reads. For a tool they really are different texts. For a
+ * skill they mostly are not: a procedure reads the same to a person as to an agent, and a
+ * second copy written "for humans" is a copy that drifts. So the instructions are written
+ * once, for both, and the documentation site renders them as they are.
+ *
+ * The exception is `description`. It is in context on every request, it decides whether
+ * the skill is loaded at all, and it is paid for in tokens every time. That is routing
+ * data with a budget, not prose, and it is kept apart for the same reason the tool model
+ * keeps it apart.
+ *
+ * PROGRESSIVE DISCLOSURE, AS FEATURES
+ *
+ * A skill is disclosed in three levels: the description always, the instructions when the
+ * skill is chosen, and resources when the instructions point at them. Each level is a
+ * separate feature here, so what a skill costs in context at each level is a query over a
+ * catalog rather than a guess. A catalog whose descriptions add up to more than a model's
+ * budget for them is a finding, and it can be found before anything runs.
+ *
+ * The same layering is what makes the instructions readable by people: short, with the
+ * depth in references.
+ *
+ * THE FOLDER IS THE SERIALIZATION
+ *
+ * The SKILL.md folder (a Markdown file with frontmatter, and scripts, references and
+ * assets beside it) is how skills are already written and shared, and agents already know
+ * how to load it. Competing with it would be pointless. This model is the CATALOG over it:
+ * it loads existing folders into objects that can be inspected and reviewed, it generates
+ * folders from skills authored here, and it adds what a folder of Markdown files cannot
+ * say: which tools a skill expects from which catalog, which examples it draws on, where
+ * it came from, and whether that has changed since anyone looked.
+ *
+ * Round trips are lossless for what the format carries. Frontmatter keys this model does
+ * not know are kept as they are rather than dropped, because a format that evolves under
+ * a lossy loader becomes a format that nobody here can update.
+ *
+ * Ownership, approval and review dates are not features here. They come from the role and
+ * seal nano-models, as they do for every other catalog, and rendering them beside the
+ * instructions is the first thing a documentation site adds over the folder.
+ *
+ * TRUST
+ *
+ * A skill is not documentation in the harmless sense. Its scripts are code, and its
+ * instructions are text that steers an agent which holds tools, which is what prompt
+ * injection is. A skill from outside is therefore a dependency, and it takes the same
+ * route into an organization as one: received, pinned by digest, reviewed, then approved.
+ * A skill whose content no longer matches its recorded digest is a different skill until
+ * someone reviews it again.
+ *
+ * Skills are loaded and their scripts run at the trust level of the catalog they came
+ * from. This is the rule for argument bindings in the tool model, one level up, and it is
+ * equally cheap to state now and expensive to add later.
+ *
+ * WHERE A SKILL ENDS AND A TOOL'S INSTRUCTIONS BEGIN
+ *
+ * AbstractTool.instructions and ArgumentDiscovery are already small skills: how to use
+ * this one tool, how to find valid values for that parameter. The line: guidance about
+ * one tool stays on that tool, where everybody offered the tool gets it. Guidance that
+ * spans tools, or is about a task rather than a call, is a skill.
+ *
+ * WHAT THIS IS NOT
+ *
+ * Not a process model. The instructions are Markdown, and steps are not modeled. A skill
+ * with steps worth modeling (ordered, assigned, tracked) has stopped being a skill and
+ * become work, which has a model of its own.
+ *
+ * Not a persona. Who an agent is and how it speaks is the agent's system prompt, in the
+ * agent model. A skill is what any agent that has it knows how to do.
+ *
+ * DEPENDENCIES
+ *
+ * On tool, because a skill names the tools it expects. The tool model knows nothing about
+ * skills, and a tool is useful to an agent that has no skills at all.
+ *
+ * On example, for worked examples, which are often what makes a skill work at all.
+ * Referenced rather than contained, as in the tool model.
+ *
+ * Depended on BY inference, whose Turn records which skills were offered and loaded, and
+ * by the agent model, which says which agents have which skills.
+ *
+ * NOT on inference. Which model runs a skill is the caller's configuration, and a skill
+ * that names a model has started to be about the model rather than the task.
+ */
+package org.nasdanika.models.skill
+
+import org.nasdanika.models.example.ExampleCatalog
+import org.nasdanika.models.example.ExampleSet
+import org.nasdanika.models.nxcore.ModelElement
+import org.nasdanika.models.nxcore.NamedElement
+import org.nasdanika.models.tool.AbstractTool
+import org.nasdanika.models.tool.ToolCatalog
+
+annotation "http://www.eclipse.org/emf/2002/Ecore" as Ecore
+annotation "http://www.eclipse.org/emf/2002/GenModel" as GenModel
+annotation "urn:org.nasdanika" as Nasdanika
+
+type Instant wraps java.time.Instant
+
+/* ---------------------------------------------------------------------------
+ * Catalog
+ * --------------------------------------------------------------------------- */
+
+/*
+ * A published set of skills. The unit of publication, of trust, and what a documentation
+ * site is generated from.
+ *
+ * Catalogs compose by reference, as provider catalogs do: an organization publishes the
+ * skills it has approved, a team points at that catalog and adds its own, and the
+ * difference is a diff.
+ */
+class SkillCatalog extends NamedElement {
+    contains Skill[] skills
+    /*
+     * Tool catalogs the skills here expect. Referenced, because the people who implement
+     * tools and the people who write down how a task is done are rarely the same people.
+     */
+    refers ToolCatalog[] toolCatalogs
+    refers ExampleCatalog[] exampleCatalogs
+}
+
+/* ---------------------------------------------------------------------------
+ * Skills
+ * --------------------------------------------------------------------------- */
+
+/*
+ * A skill.
+ *
+ * `name` is human-facing; `skillId` is what an agent sees and what the folder is called.
+ * The format constrains the identifier (lowercase, hyphens, short), and a title that
+ * people read should not be bent to fit it. Same split, and same reason, as name and
+ * modelId in the inference model.
+ *
+ * One class for authored and received skills. Unlike tools, where an authored tool has a
+ * modeled signature and a received one has only schemas, a skill is Markdown whichever
+ * way it arrived. What differs is provenance, and that is `origin`.
+ */
+class Skill extends NamedElement {
+
+    /* The identifier in frontmatter and the folder name. */
+    String skillId
+
+    /*
+     * Level one. What the skill does and when to use it, written for a model choosing
+     * among many with a small budget. Always in context, so every word is paid for on
+     * every request.
+     */
+    String description
+
+    /*
+     * Level two. The body: Markdown, loaded when the skill is chosen. Written once, for
+     * people and agents both.
+     */
+    String instructions
+
+    /* Level three. Loaded when the instructions point at them. */
+    contains SkillResource[] resources
+
+    /*
+     * Tools the skill expects to have. Generates the format's allowed-tools field where a
+     * target supports it.
+     *
+     * A reference into a tool catalog rather than a list of names, so a skill whose tool
+     * has been retired or renamed is a dangling reference that a build reports, and not a
+     * failure an agent discovers in the middle of a task.
+     */
+    refers AbstractTool[] tools
+
+    refers ExampleSet[] exampleSets
+
+    /* The format's license field: the terms the skill is shared under. */
+    String license
+
+    /*
+     * The format's compatibility field: what the skill needs from the environment it
+     * runs in, such as a product, packages or network access. Prose, as in the format.
+     */
+    String compatibility
+
+    /* Frontmatter keys this model has no feature for, kept so that round trips are lossless. */
+    contains MetadataEntry[] metadata
+
+    /* Where a received skill came from. Unset for a skill authored here. */
+    contains SkillOrigin origin
+}
+
+/*
+ * A file the instructions refer to.
+ *
+ * Text content is inline, so a reference document is visible in a viewer, comparable
+ * between versions and searchable with the rest of the catalog. Binary assets have a
+ * location only, as attachments in the inference model have.
+ *
+ * Open question: whether a SCRIPT should be able to refer to an AbstractTool that
+ * describes calling it, which would put it on the same invocation path as every other
+ * tool. Left open until a skill needs it.
+ */
+class SkillResource extends NamedElement {
+    SkillResourceKind kind
+    /* Path within the skill folder, as the instructions refer to it. */
+    String path
+    String mediaType
+    /* Inline text. Unset for binary assets. */
+    String content
+    /* Where the bytes are, for binary assets and for content that is not inline. */
+    String location
+}
+
+enum SkillResourceKind {
+    /* Documentation loaded into context when the instructions say to. */
+    REFERENCE = 0
+    /* Code that is run rather than read. Executable, and governed as such. */
+    SCRIPT = 1
+    /* Templates, images, data: used in output rather than read as instructions. */
+    ASSET = 2
+}
+
+/*
+ * A frontmatter entry with no feature of its own. Values stay as written, because
+ * interpreting a key nobody here defined is guessing.
+ */
+class MetadataEntry extends ModelElement {
+    String key
+    String value
+}
+
+/*
+ * Where a received skill came from, and what it was when it was received.
+ *
+ * The digest is the point. Skills are shared by copying folders, and a copied folder
+ * changes without a release, a version or a notice. With a digest recorded at intake,
+ * "which approved skills no longer match what was approved" is a query.
+ */
+class SkillOrigin extends ModelElement {
+    /* A repository, a marketplace entry, a folder: wherever it was loaded from. */
+    String uri
+    /* A version, tag or commit, where the source has one. */
+    String revision
+    /* Digest of the skill's files at intake, algorithm included, e.g. sha-256:... */
+    String digest
+    Instant receivedAt
+}
