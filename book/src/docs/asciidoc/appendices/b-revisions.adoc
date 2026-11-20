@@ -14,6 +14,14 @@ They are here so that the first cut of the book has its history, and only what i
 |===
 |Date |Decision |Chapters
 
+|2026-11-20
+|The value of graphs that learn is in the picture, so simulation on drawings comes first: a system or a process drawn in Draw.io, with a calculator on each element that is deterministic, random or trained, and calculators trained alone from load tests, on a component's own time and with the range they were trained on, then composed. The reader is an architect who wires a new solution into an existing architecture. A dense network is a model in Xcore, with layers and weights rather than neurons as objects, weights written raw by a converter of the binary resource, training by code of our own, and a neuron view on a pump for learning. ATMs fit learning along connections and would not draw readers, so they move from the first demonstration to the last steps. The first demonstration is simulated components with a known behavior, whose composition the calculators must predict.
+|<<designed-and-waiting>>
+
+|2026-11-20
+|Planned, as a demonstration: graphs that learn. A connection has four bindings, a value and its correction each way, and when a correction is a gradient this is back-propagation between nodes. That revises the assessment of 2026-11-10 that bindings could run a graph network and not train it. A node may be of any kind, and offers to predict, to learn locally, to propagate a target, or to propagate a gradient. Corrections accumulate rather than coalesce, and are trained one sample at a time on a pump. The demonstration is a synthetic fleet of ATMs, and its third step, local learning compared with no neighbors, decides whether the rest is built.
+|<<designed-and-waiting>>
+
 |2026-11-19
 |IAM writes its conditions in CEL, the language made for them. The model keeps how entries combine, and CEL is only the conditions. Every expression of the sketch becomes an evaluator, selectors answer whether an entry covers one target rather than compute a set, `inGroup()`, `hasRole()` and `engaged()` cover what CEL cannot recurse through, an `env` variable carries time, channel and region, and policies are checked when they are loaded. Errors fail closed: an error in an allowing condition does not grant, and one in a denying condition denies. Open: how the engine applies that rule, and whether CEL for Java has the partial evaluation that would turn a policy into a filter at the source.
 |<<core-nano-models>>

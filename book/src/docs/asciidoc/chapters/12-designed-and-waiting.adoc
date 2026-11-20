@@ -61,6 +61,15 @@ These are the increments that lead to agentic work on typed models, and they wil
 
 |[.planned]#PLANNED# Reactive compute graphs
 |Processors connected by <<bindings>>, settling by the lineage of <<waypoints>>. The first practical graph has arithmetic in its nodes: cost rolled up and risk propagated along the dependencies of an enterprise model. Nodes that call a model provider come after, paced by their inputs and cached by them.
+
+|[.planned]#PLANNED# Simulation on drawings
+|A system or a process drawn in Draw.io, with a calculator on each element: a formula or a table, a random draw, or a network trained from load tests or history. Calculators are trained alone and composed on the drawing, so that an architect sees what a new solution does to an existing architecture before it is built. <<graph-simulation>>.
+
+|[.planned]#PLANNED# A network as a model
+|A dense network in Xcore, layers and weights, saved in a binary resource, trained by code of our own, and shown neuron by neuron for learning. <<neural-model>>.
+
+|[.planned]#PLANNED# Graphs that learn
+|Corrections that travel back along reverse bindings, so that a graph of predictors of any kind learns along its connections. Last of the three. <<learning-graphs>>.
 |===
 
 === The command line
@@ -303,6 +312,299 @@ Each thing an element contains has a lineage of its own, the combinations multip
 So the lineage of the class stays the default.
 Kinds come next, since their order among themselves is already the same linearization.
 Containment is read only where a model says so.
+
+[#learning-graphs]
+=== Simulation and learning on graphs
+
+[.planned]#PLANNED#, as a demonstration.
+In 2025 I wrote a story, https://medium.com/nasdanika/graph-neural-networks-gnn-in-java-0670469114a4[Graph Neural Networks (GNN) in Java], about a graph whose nodes are predictors and exchange messages along their connections.
+It ended with "will it actually work and make good predictions? It is to be seen".
+Reactive compute graphs, in the table above, are the wiring it needed, and this section is how to find out.
+
+The greatest value is in the picture.
+A system or a process is drawn in Draw.io, each element computes what goes out of it from what comes in, and the drawing becomes a simulation.
+Learning along connections comes later, and the network inside a node is a model of its own.
+
+[#graph-simulation]
+==== Calculators on a diagram
+
+The one who gains is an architect who designs a new solution that has to be wired into an existing architecture, and who may have the history of how the existing systems behave.
+An AI architect adding a language model, a search and an agent to a bank's systems is the case of the day.
+The question is what the new solution does to what is already there, and what it needs, before it is built.
+
+Each element of the drawing has a calculator: a function from what comes in, such as transactions per second, to what goes out, such as response time, processor and memory, and the load it puts on what it calls.
+A calculator may be one of three kinds.
+
+[cols="1,3",options="header"]
+|===
+|Kind |What it is
+
+|Deterministic
+|A formula or a table to look up.
+
+|Random
+|Draws from a distribution, so that the graph is run many times, as in Monte Carlo simulation, and the result is a distribution: a 95th percentile of response time, not one number. A seed in the run makes it repeatable.
+
+|Trained
+|A regression or a small network, fitted to history or to load tests.
+|===
+
+*A calculator from a load test.*
+A component is run in isolation, with mocks for what it calls, under loads that vary.
+What is recorded trains a calculator, which is then published with the component, for example as a Maven artifact with a classifier, beside its sources and Javadoc.
+Two things keep it honest.
+It is trained on the component's own time, which spans give as the time of a span less the time of its children, so that the mocks' response times do not leak into it.
+And it carries the range of loads it was trained on: a network extrapolates badly, so a simulation that takes a calculator outside its range says so.
+
+*Calculators composed.*
+The calculators of the components are combined on the drawing of an architecture, and the graph settles: the load at a component is what its callers send, its response time is its own plus that of what it calls.
+Forward is enough for this.
+Nothing travels back along a connection, and none of the machinery of learning below is needed.
+
+This meets <<bindings-capabilities>>.
+There, configurations of a system are compared by running them under load.
+A simulation compares them first, and only those that look worth it are run.
+
+[#neural-model]
+==== A network as a model
+
+A dense network with back-propagation and an optimizer is a few hundred lines of plain Java.
+That is less than adapting a library to a graph whose nodes pass values to each other, and it stays within the foundation of Java, EMF core and the OpenTelemetry API.
+So the network can be a model in Xcore, saved and loaded as any other.
+
+*Layers in the model, and neurons in a view.*
+A model of layers has a network, its layers with their sizes and activations, and the weights of each layer.
+A neuron as an object of its own does not scale, because what grows is not the neurons but the weights between them: two layers of a thousand neurons each are a million weights, and a weight as an object costs tens of bytes before any list holds it.
+Low millions of weights are a few megabytes in arrays.
+Low millions of neurons, densely connected, are out of reach either way.
+So the model keeps layers and arrays, and a neuron is a view derived from them, for the picture.
+
+*Weights in a binary resource.*
+EMF's binary resource writes a many-valued attribute of `double` as one string per value, and an attribute of bytes as a string too (read in the sources of EMF 2.43).
+A package's factory can give the binary resource a converter for a data type of its own, so weights are a data type backed by an array of floats, written as raw bytes.
+Compression gains little on weights, which are close to random bits, so a resource of a few million weights is as large as its arrays.
+
+*A network to learn from.*
+The neuron view is for people who learn how a network works.
+A network of a few dozen neurons is drawn as a diagram, each neuron a node, and values travel forward along bindings and corrections travel back.
+On a pump, a step is a frame: the color of each neuron is its value, the width of each connection its weight, and corrections move back across the picture one step at a time.
+This is where <<designed-and-waiting,Draw.io actions and animation>> and video as a build artifact meet a subject that is hard to see any other way.
+An executor runs the neurons of a layer in parallel, but sums of floating point numbers then depend on the order in which they arrive, so a pump is the default and an executor an option.
+A neuron as a node with a binding per connection is orders of magnitude slower than a loop over an array, so the same model runs on arrays when it computes and on nodes when it is shown.
+
+==== Four bindings on a connection
+
+Simulation sends values one way.
+Learning along connections sends something back.
+
+A node sends its value to another along a binding.
+The reverse binding on the same connection carries what the receiver would have wanted instead: a correction.
+A connection between two nodes may carry values both ways, so it has four bindings.
+
+[cols="1,3",options="header"]
+|===
+|Binding |What it carries
+
+|1. Source to destination
+|The value the source sends.
+
+|2. Destination to source
+|The correction of the value in 1.
+
+|3. Destination to source
+|The value the destination sends.
+
+|4. Source to destination
+|The correction of the value in 3.
+|===
+
+When a correction is a gradient, this is back-propagation.
+A receiver says how its error changes with the value it received.
+The sender knows how its output depends on its inputs, so it says the same to each of its own senders, and adjusts its own parameters on the way.
+Reverse-mode differentiation is message passing on a graph of computations, and it does not matter whether the graph is one network or many nodes, each with a network of its own.
+
+That revises an assessment of 2026-11-10, which said that bindings could run a graph network and not train it.
+The limit was in the libraries, which train one model at a time against a target, and not in the wiring.
+
+==== What a node offers
+
+A node does not have to be a network.
+It can be a rule, a seasonal average, a model trained elsewhere, or a call to a language model.
+What a node can do with a correction depends on what it is, so a node says which of four things it offers.
+
+[cols="1,3,2",options="header"]
+|===
+|Level |What the node does |For example
+
+|Predict
+|Computes its value from its inputs and ignores corrections. Corrections stop here, as they stop at a frozen layer.
+|A rule, a pre-trained model
+
+|Learn locally
+|Learns from the actual value of what it predicts, which it observes. Its neighbors' values are inputs like any other, and nothing comes back along a connection.
+|An ATM that sees what it dispensed
+
+|Propagate a target
+|Given what its output should have been, says what its inputs should have been. The 2025 story did this with an optimizer over the inputs. It needs no gradient.
+|A node that cannot be differentiated
+
+|Propagate a gradient
+|Given how the error changes with its output, says how it changes with each input, and updates its parameters.
+|A small network, a linear model, arithmetic
+|===
+
+A connection carries the most that both of its ends offer.
+
+==== What training needs that bindings do not do yet
+
+*Corrections are messages, and not state.*
+A binding keeps the latest value and drops what was between, which is right for a prediction.
+Two receivers that correct one sender must have their corrections added, and the second must not replace the first.
+So a reverse binding accumulates, and is reset for each sample.
+<<reactive-enterprise>> draws the same line between state and messages.
+
+*A correction must meet the value it corrects.*
+If the forward side has moved on to the next sample, a gradient is applied to the wrong values.
+The simplest way is one sample at a time on a `Pump`: settle forward and drain, settle backward and drain, update, then the next sample.
+Anything less strict needs the sample in the lineage of each value, which <<waypoints>> provides.
+
+*Cycles.*
+Neighbors influence each other, so the graph has cycles, and the forward side settles by iterating.
+To train through a cycle, either unroll the iterations, or settle the reverse bindings at the point where the forward side settled.
+The second is how the first graph neural network was trained, and it requires each step of the forward iteration to bring values closer together, so that the point exists.
+The 2025 story's idea of sending a value between the prediction and the actual one, a step toward convergence, is that kind of damping.
+
+*Settling, both ways.*
+A change smaller than a threshold, a number of updates, and time are the rules, as they are for any loop of bindings.
+<<waypoints>> has them as rules over lineage.
+
+*Shared predictors.*
+In the 2025 story, nodes of one type may share a predictor.
+Its parameters then receive the sum of the corrections of every node that uses it.
+Graph networks in practice share by default, since a predictor of one node learns only from that node's history.
+
+==== Scenarios
+
+[cols="1,2,2,3",options="header"]
+|===
+|Scenario |Nodes and connections |What the graph adds |Notes
+
+|A system, designed or running
+|Components from an architecture drawn in Draw.io, connected by calls
+|Load at one component is load at those it calls, after a delay.
+|The first demonstration. Calculators from load tests or history in, response time and capacity out, before a new solution is built. With telemetry, a running system is predicted, and acting on a prediction is a change of configuration through <<bindings-capabilities>>, proposed as a change and approved. Queueing arithmetic is the baseline to beat.
+
+|A process
+|Steps of a process, connected by what passes between them
+|Work arriving at one step is work leaving the steps before it.
+|Durations and queues of a process, from a drawing of it. A step done by people in one deployment and by an agent in another is two calculators for one element.
+
+|A fleet of ATMs
+|ATMs, connected by location
+|An ATM that is out of service sends its customers to its neighbors. A local event raises demand in a cluster.
+|The problem that prompted the 2025 story: dispense and deposits for the next 14 weeks, to load the right amount of each denomination. A good shape for learning along connections, and a problem that large vendors solve, so not one that would draw readers. Forecasting cash withdrawals from ATMs was a forecasting competition, NN5, with 111 series and no locations (from memory).
+
+|Accounts
+|Accounts, connected by transfers
+|A transfer is an outflow of one account and an inflow of another, so predictions of the two should agree.
+|Cash flow forecasting with a constraint that the graph states.
+
+|Financial instruments
+|Instruments, connected by sector, country or supply chain
+|Movements of related instruments.
+|The signal is weak and noisy, and a result would be doubted. Not a demonstration.
+
+|Agentic systems
+|Calls to language models, connected by what one passes to the next
+|A critique of an output is passed back to whatever produced it.
+|A correction is text, and what is adjusted is a prompt. TextGrad does this (from memory). It needs <<designed-and-waiting,inference>> first.
+|===
+
+==== Is it practical
+
+An assessment, as of November 2026.
+
+*Simulation of architectures has been done, on EMF.*
+The Palladio Component Model describes components with their demands on resources, composes them into an architecture and simulates it to predict performance, and it is built on EMF (from memory).
+Layered queueing networks are the analytic side of the same question.
+What is different here is where the calculators come from, load tests and telemetry rather than specifications written by hand, that the drawing is in Draw.io, which an architect already uses, and that it runs in plain Java beside the rest of the runtime.
+Read Palladio before the demonstration is designed, for what it learned about composing components.
+
+*Not as a competitor to the libraries that train graph networks.*
+PyTorch Geometric and DGL train graphs of millions of nodes on GPUs (from memory).
+A graph here is small, from tens to thousands of nodes, and it is a model that exists already: an architecture, a process, a fleet, a ledger.
+
+*What it has that they do not.*
+Nodes of different kinds in one graph: arithmetic, a trained model, a rule, a language model.
+Every message is a value that can be seen, with a span of its own.
+And the graph is the drawing of the system, so a prediction can be shown where the element is drawn.
+Where predictions are reviewed by people, which neighbor moved a prediction, and by how much, may matter as much as accuracy.
+
+*Most of the value comes before the hardest part.*
+Simulation of a system is forward only.
+And in the ATM scenario, neighbors send their history and their predictions.
+History is observed, so a node that predicts from its own history and its neighbors' learns locally, and nothing has to travel back along a connection.
+Predictions of neighbors as inputs are stacking: train the neighbors first.
+Corrections along connections are needed only when what nodes send to each other is itself learned.
+So a demonstration answers the question of the 2025 story, whether the graph helps, before it builds the four bindings.
+
+*Whether it helps is a question of data.*
+The demonstration measures it against the same node with no neighbors.
+On data where the graph does not help, a graph network is a cost.
+
+*No library is needed.*
+<<neural-model>> says why.
+It also leaves aside the question of Smile's license, which changed after version 2 (from memory, to be checked).
+A library can be a provider of a node later.
+
+==== A demonstration, step by step
+
+. *Calculators of formulas and tables on a drawing.*
+An architecture drawn in Draw.io, the International Banking System's or a part of it, with a deterministic or random calculator on each component.
+A load is set at the entry, the graph settles, and response time and capacity are shown on the drawing, as a distribution where calculators are random.
+It needs only the bindings and waypoints that exist.
+. *Calculators from load tests, whose answer is known.*
+A few components that are themselves simulated, with queues and limits, so that how they behave together is known.
+Each is load tested alone with mocks, its own time is taken from spans, and a calculator is trained on it with the network of <<neural-model>>.
+The calculators are composed on the drawing, and the prediction is compared with the components run together.
+This step decides.
+If calculators trained alone do not predict the composition within a tolerance, inside their ranges, the next steps wait.
+. *A new solution wired in.*
+A component that calls a language model, with its latency and cost as a random calculator, is added to the drawing, and the simulation says what it does to the components it calls and what it needs.
+This is the architect's question, and the story that answers the 2025 one.
+. *The network to learn from.*
+A small network drawn as neurons, forward and back, a step per frame, as a picture and as a video.
+. *Four bindings.*
+What nodes send to each other is learned, with gradients along the reverse bindings, one sample at a time on a pump, and then through cycles, on data where neighbors matter, such as a synthetic fleet of ATMs.
+It is compared with nodes that learn locally.
+. *Nodes of other kinds.*
+A rule that propagates targets, and a call to a language model whose correction is a critique.
+
+==== The item
+
+Capability:: A system or a process drawn in Draw.io becomes a simulation: each element has a calculator, deterministic, random or trained, and the drawing shows what a load does to it. Then a network as a model, shown neuron by neuron for learning, and graphs that learn along their connections.
+Demonstration:: Components simulated with a known behavior, load tested alone, their calculators composed on a drawing, with a test that the composition predicts the components run together within a tolerance. Then a new solution wired in, and a story that answers the 2025 one.
+Status:: [.planned]#PLANNED#, after the first practical graph of reactive compute graphs. Three items: simulation, the network model, and learning along connections.
+Depends on:: `runtime.graph`, `runtime.waypoint`, and the Draw.io model. Values on the drawing also on status on diagrams. Running systems also on live telemetry. Nodes that call a language model also on `runtime.inference`.
+Value and effort:: Simulation has the most value: it answers a question an architect has before building, on a drawing the architect already has. It is small for formulas and tables, and moderate with trained calculators, most of which is the simulated components and their load tests. The network model is small, and its neuron view is a teaching tool. Learning along connections is the most effort and the least value, and comes last. None is on the path of the next release.
+How to help:: Bring a drawing of a system with load test results or history for some of its components, and say what is predicted today and how.
+
+ifdef::editor-notes[]
+[IMPORTANT,caption="Editor's note"]
+====
+The author's, of 2026-11-20 and of the 2025 story: nodes as predictors that exchange messages, four bindings on a connection with correction as the reverse of a value, nodes of any kind, settling by threshold, count or time, shared predictors by type, and the scenarios of ATMs, a running system acting through capability bindings, financial instruments, accounts and agentic systems.
+
+The author's, of 2026-11-20 later the same day: the picture as the greatest value, calculators of three kinds (deterministic, random, trained), the architect who wires a new solution into an existing architecture as the reader, calculators trained alone from load tests with mocks and composed for simulation, the ATMs as a fit for learning that would not draw readers, and the network as an Xcore model with its weights in a binary resource, a neuron as a node, and a view for learning.
+
+The assistant's own: the four levels of what a node offers, the three things training needs that bindings do not do (accumulating corrections, one sample at a time, cycles), the observation that local learning answers the question before the four bindings are built, the constraint on transfers, and the assessment.
+Later the same day: a calculator trained on the component's own time from spans, and carrying its range; layers in the model and neurons in a view, since weights and not neurons are what grows; the converter for weights; a pump as the default for the neuron view; the process scenario; simulated components whose answer is known; and step 2 as the one that decides.
+The first version of this section put the ATMs first, and it was revised when the author placed the value in the picture.
+
+Read for this section: EMF's `BinaryResourceImpl` in version 2.43, for how many-valued attributes and data types are written.
+Named from memory and not checked: the NN5 competition; Scarselli and others, "The Graph Neural Network Model" (2009), for training at a fixed point; target propagation (Bengio, 2014); equilibrium propagation (Scellier and Bengio, 2017), which trains by settling twice; TextGrad (2024); PyTorch Geometric and DGL; Smile's license; the Palladio Component Model and layered queueing networks.
+Check them before the demonstration is written up.
+====
+endif::[]
 
 ifdef::editor-notes[]
 [IMPORTANT,caption="Editor's note"]

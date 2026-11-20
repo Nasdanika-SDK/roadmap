@@ -40,6 +40,8 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.volume.system` |System volumes |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
 |`runtime.autosave` |Model auto-save on change recording |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `cli`
 |`runtime.graph` |Reactive compute graphs |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.binding`, `runtime.waypoint`
+|`runtime.graph.simulation` |Simulation on drawings: a calculator on each element, deterministic, random or trained, composed into an architecture or a process |[.planned]#PLANNED# |<<graph-simulation>> |`runtime.graph`, runtime Draw.io model, `model.neural` for trained calculators
+|`runtime.graph.learning` |Graphs that learn: four bindings on a connection, nodes that predict, learn, propagate targets or gradients |[.planned]#PLANNED# |<<learning-graphs>> |`runtime.graph.simulation`, `model.neural`
 |`runtime.cli.commands` |Commands over what is built |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `cli`
 |`runtime.cli.install` |`nsdk install` and profiles |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `bootstrap`
 |`runtime.doc.reference` |Generated metamodel references |[.planned]#PLANNED# |<<metamodel-documentation>> |`runtime.ui.views`, `runtime.widget.asciidoc`, `runtime.doc.stubs`
@@ -80,6 +82,7 @@ An item has an id that does not change when its title does, so that another plan
 |`model.tool` |The tool model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Meta, `model.core.example`
 |`model.skill` |The skill model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`, `model.core.example`
 |`model.inference` |The inference model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.tool`, `model.skill`
+|`model.neural` |A dense network as a model: layers, weights in a binary resource, training in plain Java, and a neuron view for learning |[.planned]#PLANNED# |<<neural-model>> |Runtime core model
 |`model.expression` |The expression model |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |Runtime core model
 |`model.cypher` |The Cypher model, parser and engine |[.planned]#PLANNED# |<<runtime-models>>, `models/runtime` |`model.expression`
 |`model.xpath` |XPath for XML documents, on the JDK |[.planned]#PLANNED# |<<runtime-models>> |Runtime core model
