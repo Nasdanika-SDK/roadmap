@@ -214,13 +214,113 @@ Each view comes from the module that knows the class, as views do everywhere in 
 The same form serves the other floors: a tree of capabilities, of controls, of work.
 It is the navigator with details, which is now <<explorer>>.
 
+[#accounting-intake]
+=== Statements arrive
+
+[horizontal]
+Capability:: A ledger that takes in what a bank publishes, wherever it shows up: a file that a person downloads, a message that says a statement is ready, and, if ever, a feed. Every balance that arrives becomes an assertion with its source, every transaction an entry in the state `imported`, and what does not reconcile becomes something to do.
+Demonstration:: A synthetic household ledger: statements downloaded as OFX, notification messages from the same institutions, and a slipped balance that verification finds by interval and account. My own ledger is the first real use, and stays private.
+Status:: [.planned]#PLANNED#. Nothing is built. The pre-SDK `accounting.xcore` already has `Source`, `EntryState` and `Assertion`, which is most of what this needs.
+Depends on:: The accounting floor, a volume that reports changes, and, for the agent, <<agentic-components>>.
+Value and effort:: A reader of OFX and a command that imports a file are small, need no inference, and give most of the value. Watching a folder is small once a volume reports changes. Messages are moderate. A direct connection to banks is large, fragile and a liability, and is not planned. None of it moves the accounting floor up the order: it is the floor's first demonstration, and waits for it.
+How to help:: Tell me which of your institutions put a balance and a date in their notification messages, and which offer OFX or QFX, CSV, or only PDF. No account numbers.
+
+The idea came from a message from a bank saying that a statement was ready.
+Three things can follow such a message, and they are worth very different amounts.
+
+==== A file a person downloads
+
+The person signs in, with whatever second factor the bank asks for, and downloads a statement or a range of transactions.
+The ledger sees the file appear and takes it in.
+Nothing holds a password, and nothing breaks when the bank redesigns its site.
+
+OFX carries more than transactions, and so does QFX, which is OFX with an identifier for Intuit's products.
+A statement has a ledger balance with the date it holds as of, so every download asserts a balance with no extra work, and verification gets a fixed point at the end of every period downloaded.
+Each transaction has an identifier from the institution, unique within the account, so periods that overlap are taken in once.
+CSV has neither, and needs a mapping per institution and a balance entered by hand.
+A PDF is the last resort, and the first place where a language model earns its keep.
+
+This is the route Quicken has called Web Connect for decades, and the one that plain text accounting automates.
+Beancount's importers identify the files in a folder of downloads and extract transactions and balance assertions from them, and hledger's `import` remembers what it has already seen.
+What is new here is not the import.
+It is that what is imported stays in the state `imported`, with its source, until a person reviews it, and that a balance that does not hold is reported with the interval and the account where it slipped.
+
+==== A message that says a statement is ready
+
+A notification is a claim, not a statement.
+For a deposit account it usually says only that a statement is ready.
+For a card it often carries the statement balance, the minimum payment and the due date.
+
+So a message does one of two things.
+With a balance and a date, it is an assertion whose source is the message.
+Without them, it is an expectation: a source with no entries yet, which the downloaded file fills later, so that a statement announced and never downloaded is something the ledger can list.
+When a message and a file assert a balance for the same account and date, they corroborate each other.
+When they disagree, that is a finding, which is what an assertion with a source is for.
+
+Notification messages are what phishing imitates, and a message is text that an agent would read.
+So the rules are narrow.
+Only messages from senders that the ledger names are read, filtered by the mail server, and only with a valid DKIM signature, which the source records.
+Nothing else in the mailbox is visible: the bound is the view, not the agent's good behavior, as in <<target-ai>>.
+Nothing follows a link or signs in anywhere.
+Each institution's format is a mapping written once, and a language model is asked only about a message that no mapping recognizes.
+Either way the result is the same typed entry in the state `imported`, checked against the model, and a person confirms it.
+
+A mail folder fits the runtime as a read-only volume, in which a message is a file.
+A new message and a new download then arrive through the same mechanism, and whatever watches does not care which it was.
+
+==== A connection to the bank
+
+Reading the bank directly is what the large personal finance applications do, through aggregators such as Plaid, MX, Finicity and Yodlee.
+Self-hosted tools such as Actual Budget and Firefly III do it through cheaper bridges such as SimpleFIN, and in Europe GoCardless under PSD2.
+OFX Direct Connect survives at some banks, for a fee at some of them.
+Signing in with a browser driven by Playwright, which the runtime has, would work for one bank for a while.
+
+It is not planned.
+An aggregator is an account with an outside party that sees every transaction.
+Scraping means storing credentials, getting past a second factor that exists for a reason, and breaking terms of service.
+Either is a product of its own.
+If a connection ever comes, it comes as an adapter that writes the same files into the same folder, so that nothing after the folder changes.
+In the United States, access to one's own data through standard interfaces is the subject of a rule under section 1033 of the Dodd-Frank Act, which has been in flux since 2025.
+If it settles, such an adapter gets cheaper.
+
+==== Where an agent fits
+
+Most of this needs no inference: reading a file, matching a sender, folding entries between assertions.
+That is the rule of <<direction>>, to show first what needs no inference.
+An agent earns a place at three points.
+It proposes the other leg of a transaction, the expense account for a payment to a merchant, from the history of the ledger, as Beancount's smart_importer does with a classifier.
+It reads a PDF or a message that no mapping knows.
+And when a balance does not hold, it looks at the entries in the failing interval for a duplicate, a missing entry or a leg posted to the wrong account, and says which it suspects.
+Each answer is a proposal, an entry in a state, that a person accepts or rejects.
+In the terms of <<agentic-components>>, the agent requests a language model and can be given none, in which case the ledger works as before, with more for the person to do.
+
+==== More than a convenience
+
+It is the North Star in miniature.
+An event arrives, an agent turns it into typed claims with their sources, verification checks them against what is known, and a person confirms, with the ledger in Git so that any of it can be rolled back.
+That is agentic work on a bounded, typed model, with real data every month and a first user who is also the author.
+
+It is also the other side of the North Star's slice.
+The review of imported entries is where a customer finds a transaction they do not recognize, which is where the dispute of a card transaction begins.
+The customer's ledger and the International Banking System are the two parties to one transaction, and the demonstration of a dispute could start from an entry marked as not recognized, a state the sketch does not have yet.
+That is a candidate, not a decision.
+
+==== Steps
+
+. A reader of OFX and QFX, and a command that imports a file: transactions in the state `imported`, the ledger balance as an assertion, duplicates skipped by the institution's identifier.
+. Watching a folder of downloads, once a volume reports changes.
+. Messages: a mail folder as a volume, a mapping per sender, assertions and expectations.
+. Proposals from an agent: the other leg, formats no mapping knows, the search for a slip.
+
+A connection to a bank is not among them.
+
 === Order
 
 The tower moves in the order of dependency, and a floor moves when something needs it.
 
 . The nano-models of <<core-nano-models>>, since everything stands on them.
 . Role, IAM, Seal and Lifecycle as nano-models.
-. Accounting, as the first floor in Meta and the first with a terminal interface.
+. Accounting, as the first floor in Meta and the first with a terminal interface, with the intake of statements as its first demonstration: <<accounting-intake>>.
 . Then by need. The International Banking System decides: what a bank's example requires next is what moves next.
 
 A floor reaches Maven Central when its namespace is settled, it has a book, and something other than itself uses it.

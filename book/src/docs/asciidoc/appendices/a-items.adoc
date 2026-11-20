@@ -38,6 +38,8 @@ An item has an id that does not change when its title does, so that another plan
 |`runtime.telemetry.live` |Live telemetry |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `common`
 |`runtime.telemetry.sanitizer` |A sanitizer for telemetry |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `common`
 |`runtime.volume.system` |System volumes |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `volume`
+|`runtime.volume.watch` |Volumes that report changes |[.planned]#PLANNED# |<<accounting-intake>> |Runtime `volume`
+|`runtime.volume.mail` |A mail folder as a read-only volume, filtered by sender at the server |[.planned]#PLANNED# |<<accounting-intake>> |Runtime `volume`, `runtime.volume.watch`
 |`runtime.autosave` |Model auto-save on change recording |[.planned]#PLANNED# |<<designed-and-waiting>> |Runtime `cli`
 |`runtime.graph` |Reactive compute graphs |[.planned]#PLANNED# |<<designed-and-waiting>> |`runtime.binding`, `runtime.waypoint`
 |`runtime.graph.simulation` |Simulation on drawings: a calculator on each element, deterministic, random or trained, composed into an architecture or a process |[.planned]#PLANNED# |<<graph-simulation>> |`runtime.graph`, runtime Draw.io model, `model.neural` for trained calculators
@@ -88,6 +90,7 @@ An item has an id that does not change when its title does, so that another plan
 |`model.xpath` |XPath for XML documents, on the JDK |[.planned]#PLANNED# |<<runtime-models>> |Runtime core model
 |`model.tower` |The model tower on the SDK |[.planned]#PLANNED# |<<model-tower>>, `models/tower` |`model.core.role`, Meta
 |`model.tower.assembler` |Products on projections of the tower |[.planned]#PLANNED# |<<model-tower>> |`model.tower`, `runtime.ui.browser`
+|`model.tower.accounting.intake` |Statements into the ledger: downloads, notification messages, balances asserted with their sources, proposals from an agent |[.planned]#PLANNED# |<<accounting-intake>> |`model.tower`, `runtime.volume.watch`, `runtime.volume.mail` for messages, `runtime.agentic` for proposals
 |`model.opgraph` |OpGraph on the SDK |[.planned]#PLANNED# |<<opgraph-and-nsml>> |`runtime.waypoint`, `runtime.screens`
 |`model.nsml` |NSML on the SDK |[.planned]#PLANNED# |<<opgraph-and-nsml>> |`runtime.waypoint`
 |`model.technology` |Technology models: coverage, Excel, Git, GitHub, GitLab, Java, Jira, SQL |[.planned]#PLANNED# |<<technology-models>>, `models/technology` |`runtime.volume.system`
